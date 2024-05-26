@@ -5,6 +5,7 @@ import Login from './componemts/Login';
 import { Route, Switch, BrowserRouter, Redirect } from 'react-router-dom';
 import ChatRoom from './componemts/ChatRoom';
 import Register from './componemts/Register';
+import Homes from './componemts/Home';
 import RegisterT from './componemts/Test';
 import Test from './componemts/Test';
 import Home from './pages/Home';
@@ -26,6 +27,9 @@ function App() {
         </Route>
         <Route path="/register">
           <Register />
+        </Route>
+        <Route path="/home">
+          <Homes />
         </Route>
         {/*<Route path="/test">*/}
         {/*  <Test />*/}
