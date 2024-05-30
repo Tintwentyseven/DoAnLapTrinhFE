@@ -21,11 +21,16 @@ function App() {
         {/* <Route exact path="/">
           <Home />
         </Route> */}
+        {/**/}
+        <Redirect exact from="/" to="/login"/>
         <Route path="/login">
           <Login />
         </Route>
         <Route path="/register">
           <Register />
+        </Route>
+        <Route path="/chat">
+          <ChatRoom/>
         </Route>
         {/*<Route path="/test">*/}
         {/*  <Test />*/}
