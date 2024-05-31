@@ -30,77 +30,77 @@
 //
 //     const [linkPreviews, setLinkPreviews] = useState([]);
 //
-//     useEffect(() => {
-//         const fetchLinkPreviews = async () => {
-//             const updatedLinkPreviews = [];
-//
-//             for (const mess of chatMess) {
-//                 if (isLink(decodeURIComponent(mess.mes))) {
-//                     try {
-//                         // Lấy thông tin từ link
-//
-//                         const apiKey = 'fca1f0fbda8ee17102bc3ae0f2e5d6f7'; // Thay YOUR_API_KEY bằng API key của bạn
-//                         // const url = `https://api.linkpreview.net/?key=${apiKey}&q=${encodeURIComponent(mess.mes)}`;
-//                         const url = `https://api.linkpreview.net/?key=${apiKey}&q=${encodeURIComponent(decodeURIComponent(mess.mes))}`;
-//
-//
-//                         const response = await axios.get(url);
-//
-//                         updatedLinkPreviews.push(response.data);
-//                         console.log(response.data);
-//                     } catch (error) {
-//                         console.error('Error fetching link preview:', error);
-//                         updatedLinkPreviews.push(null);
-//                     }
-//                 } else {
-//                     updatedLinkPreviews.push(null);
-//                 }
-//             }
-//
-//             // Cập nhật state linkPreviews
-//             setLinkPreviews(updatedLinkPreviews);
-//             console.log(linkPreviews)
-//         };
-//
-//         fetchLinkPreviews();
-//
-//         if (chatBoxRef.current) {
-//             chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
-//         }
-//
-//
-//
-//     }, [chatMess]);
-//     // Sắp xếp tin nhắn theo thời gian tăng dần
-//     if (!chatMess || !Array.isArray(chatMess)) {
-//         return null;
-//     }
-//
-//     const sortedChatContent = chatMess.sort((a, b) => {
-//         const timeA = new Date(a.createAt).getTime();
-//         const timeB = new Date(b.createAt).getTime();
-//         return timeA - timeB;
-//     });
-//
-//     const isLink = (str) => {
-//         const urlRegex = /^(https?:\/\/)?([\w.-]+\.[a-z]{2,})(\/[\w.-]*)*\/?$/;
-//         return urlRegex.test(str);
-//     };
-//     const isImage = (str) => {
-//         return str.includes("images");
-//     };
-//
-//
-//
-//     const timeMess = (str) => {
-//         if (str) {
-//             return str.substring(10);
-//         }
-//         return ""
-//     };
-//     const isImageLink = (str) => {
-//         return isImage(str) || isLink(str);
-//     };
+//     // useEffect(() => {
+//     //     const fetchLinkPreviews = async () => {
+//     //         const updatedLinkPreviews = [];
+//     //
+//     //         for (const mess of chatMess) {
+//     //             if (isLink(decodeURIComponent(mess.mes))) {
+//     //                 try {
+//     //                     // Lấy thông tin từ link
+//     //
+//     //                     const apiKey = 'fca1f0fbda8ee17102bc3ae0f2e5d6f7'; // Thay YOUR_API_KEY bằng API key của bạn
+//     //                     // const url = `https://api.linkpreview.net/?key=${apiKey}&q=${encodeURIComponent(mess.mes)}`;
+//     //                     const url = `https://api.linkpreview.net/?key=${apiKey}&q=${encodeURIComponent(decodeURIComponent(mess.mes))}`;
+//     //
+//     //
+//     //                     const response = await axios.get(url);
+//     //
+//     //                     updatedLinkPreviews.push(response.data);
+//     //                     console.log(response.data);
+//     //                 } catch (error) {
+//     //                     console.error('Error fetching link preview:', error);
+//     //                     updatedLinkPreviews.push(null);
+//     //                 }
+//     //             } else {
+//     //                 updatedLinkPreviews.push(null);
+//     //             }
+//     //         }
+//     //
+//     //         // Cập nhật state linkPreviews
+//     //         setLinkPreviews(updatedLinkPreviews);
+//     //         console.log(linkPreviews)
+//     //     };
+//     //
+//     //     fetchLinkPreviews();
+//     //
+//     //     if (chatBoxRef.current) {
+//     //         chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
+//     //     }
+//     //
+//     //
+//     //
+//     // }, [chatMess]);
+//     // // Sắp xếp tin nhắn theo thời gian tăng dần
+//     // if (!chatMess || !Array.isArray(chatMess)) {
+//     //     return null;
+//     // }
+//     //
+//     // const sortedChatContent = chatMess.sort((a, b) => {
+//     //     const timeA = new Date(a.createAt).getTime();
+//     //     const timeB = new Date(b.createAt).getTime();
+//     //     return timeA - timeB;
+//     // });
+//     //
+//     // const isLink = (str) => {
+//     //     const urlRegex = /^(https?:\/\/)?([\w.-]+\.[a-z]{2,})(\/[\w.-]*)*\/?$/;
+//     //     return urlRegex.test(str);
+//     // };
+//     // const isImage = (str) => {
+//     //     return str.includes("images");
+//     // };
+//     //
+//     //
+//     //
+//     // const timeMess = (str) => {
+//     //     if (str) {
+//     //         return str.substring(10);
+//     //     }
+//     //     return ""
+//     // };
+//     // const isImageLink = (str) => {
+//     //     return isImage(str) || isLink(str);
+//     // };
 //
 //     return (
 //         <><MDBTypography style={{ height: "590px", overflow: "scroll", scrollBehavior: "smooth", borderLeft: 'white solid 5px', }} ref={chatBoxRef} listUnStyled>
