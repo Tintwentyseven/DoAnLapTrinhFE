@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
     MDBBtn,
     MDBContainer,
@@ -23,22 +23,22 @@ const Register = () => {
 
     const [error, setError] = useState('');
 
-    const history = useHistory();
+    const history = useNavigate();
 
     // Khi component được tạo, thiết lập kết nối WebSocket
-    useEffect(() => {
-        const newSocket = new WebSocket("ws://140.238.54.136:8080/chat/chat");
-
-        newSocket.addEventListener("open", (event) => {
-            console.log("Kết nối WebSocket đã được thiết lập", event);
-            setSocket(newSocket);
-        });
-
-        return () => {
-            // Đóng kết nối WebSocket khi component bị hủy
-            newSocket.close();
-        };
-    }, []);
+    // useEffect(() => {
+    //     const newSocket = new WebSocket("ws://140.238.54.136:8080/chat/chat");
+    //
+    //     newSocket.addEventListener("open", (event) => {
+    //         console.log("Kết nối WebSocket đã được thiết lập", event);
+    //         setSocket(newSocket);
+    //     });
+    //
+    //     return () => {
+    //         // Đóng kết nối WebSocket khi component bị hủy
+    //         newSocket.close();
+    //     };
+    // }, []);
 
     const handleRegister = () => {
         // Gửi yêu cầu đăng nhập đến server WebSocket

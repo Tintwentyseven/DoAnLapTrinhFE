@@ -1,48 +1,22 @@
 import './App.css';
 
 import React from "react";
-import Login from './componemts/Login';
-import { Route, Switch, BrowserRouter, Redirect } from 'react-router-dom';
-import ChatRoom from './componemts/ChatRoom';
-import Register from './componemts/Register';
-import Logout from "./componemts/Logout/Logout";
-import RegisterT from './componemts/Test';
-import Test from './componemts/Test';
-import Home from './pages/Home';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Login from "./componemts/Login"; // Corrected path
+import ChatRoom from "./componemts/ChatRoom"; // Corrected path
+import Register from "./componemts/Register";
 
-// function isUserLoggedIn() {
-//   // Kiểm tra giá trị của username trong sessionStorage
-//   const username = sessionStorage.getItem('username');
-//   return !!username; // Trả về true nếu đã đăng nhập, ngược lại trả về false
-// }
 function App() {
   return (
-    <BrowserRouter>
-      <Switch>
-        {/* <Route exact path="/">
-          <Home />
-        </Route> */}
-        <Route path="/login">
-          <Login />
-        </Route>
-        <Route path="/register">
-          <Register />
-        </Route>
-        <Route path="/Logout">
-          <Logout />
-        </Route>
-        {/*<Route path="/test">*/}
-        {/*  <Test />*/}
-        {/*</Route>*/}
-        {/*{isUserLoggedIn() ? (*/}
-        {/*  <Route path="/">*/}
-        {/*    <Home />*/}
-        {/*  </Route>*/}
-        {/*) : (*/}
-        {/*  <Redirect to="/login" />*/}
-        {/*)}*/}
-      </Switch>
-    </BrowserRouter>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login/>} />
+          <Route path="/register" element={<Register/>} />
+          <Route path="/chat" element={<ChatRoom/>} />
+
+          <Route path="/" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
   );
 }
 
