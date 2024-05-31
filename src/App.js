@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./componemts/Login"; // Corrected path
 import ChatRoom from "./componemts/ChatRoom"; // Corrected path
 import Register from "./componemts/Register";
+import Logout from "./componemts/Logout";
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
           <Route path="/login" element={<Login/>} />
           <Route path="/register" element={<Register/>} />
           <Route path="/chat" element={<ChatRoom/>} />
+            <Route path="/Logout" element={<Logout/>} />
 
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
