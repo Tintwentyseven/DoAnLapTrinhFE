@@ -40,6 +40,7 @@ const Register = () => {
         }
     };
 
+
     const handleRegister = (event) => {
         event.preventDefault();
         if (username.trim() === "" || password.trim() === "") {
@@ -102,6 +103,7 @@ const Register = () => {
                 text: 'Unable to establish WebSocket connection',
             });
         };
+
     };
 
     return (

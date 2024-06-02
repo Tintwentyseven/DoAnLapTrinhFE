@@ -12,51 +12,82 @@ import {
     MDBInput
 } from 'mdb-react-ui-kit';
 import './style.css';
-import { useLocation } from 'react-router-dom';
+import {useLocation, useNavigate} from 'react-router-dom';
+import Swal from "sweetalert2";
+//trang
+import {useWebSocket } from "../WebSocket/ WebSocketContext";
 
 export default function ChatRoom() {
-    const [basicModal, setBasicModal] = useState(false);
-    const location = useLocation();
-    const { username } = location.state || { username: 'Guest' }; // Default to 'Guest' if username is not available
+    const [basicModal, setBasicModal] = useState(false);// mở Menu Item
+    const location = useLocation();// lấy dữ liệu trang
+    const { username, password } = location.state || { username: 'Guest' }; // Default to 'Guest' if username is not available
 
     const toggleOpen = () => setBasicModal(!basicModal);
-
+    const  history = useNavigate();// điều hướng và gửi dữ liệu đến trang khác
+    const socket = useWebSocket();
+    // console.log("socket1: "+socket);
+    console.log("user: "+ username);
     const [isOpen, setIsOpen] = useState(false);
 
     const toggleMenu = () => {
         setIsOpen(!isOpen);
     };
 
-    useEffect(() => {
-        const script = document.createElement('script');
-        script.src = "https://cdn.jsdelivr.net/npm/darkreader@4.9.80/darkreader.min.js";
-        script.async = true;
-        script.onload = () => {
-            const toggleDarkModeButton = document.getElementById("toggle-dark-mode");
-            const icondarklight = document.getElementById('icontype');
-            const darkModeText = document.querySelector(".dark");
 
-            // Initially disable Dark Reader
-            window.DarkReader.disable();
+    const handleLogout = () => {
+        console.log("da vao dang xuat")
+        console.log("socket: "+socket);
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            console.error('WebSocket connection is not open');
+            return;
+        }
 
-            toggleDarkModeButton.addEventListener("click", () => {
-                if (window.DarkReader.isEnabled()) {
-                    window.DarkReader.disable();
-                    icondarklight.classList.replace("fa-sun", "fa-moon");
-                    darkModeText.textContent = "Dark mode";
-                } else {
-                    window.DarkReader.enable({
-                        brightness: 100,
-                        contrast: 90,
-                        sepia: 10
-                    });
-                    icondarklight.classList.replace("fa-moon", "fa-sun");
-                    darkModeText.textContent = "Light mode";
+
+            const requestData = {
+                action: "onchat",
+                data: {
+                    event: "LOGOUT",
                 }
+            };
+            socket.send(JSON.stringify(requestData));
+        // };
+
+        socket.onmessage = (event) => {
+            console.log("da vao dang xuat onmess")
+            const response = JSON.parse(event.data);
+            console.log(response);
+            if (response.status === "success") {
+                console.log("da vao dang xuat success")
+                localStorage.removeItem('sessionData');
+                Swal.fire({
+                    position: 'center',
+                    icon: response.status,
+                    title: response.status,
+                    showConfirmButton: false,
+                    timer: 1500
+                }).then(() => {
+                    history('/logout'); // Điều chỉnh URL tới trang logout của bạn
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: response.status,
+                    text: response.mes,
+                });
+            }
+            // socket.close();
+        };
+
+        socket.onerror = (error) => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Lỗi WebSocket',
+                text: 'Không thể thiết lập kết nối WebSocket',
             });
         };
-        document.body.appendChild(script);
-    }, []);
+    };
+
+
 
     return (
         <>
@@ -188,11 +219,15 @@ export default function ChatRoom() {
                                     </span>
                                     <div className={`action_menu ${isOpen ? 'open' : ''}`}>
                                         <ul>
-                                            <li id="toggle-dark-mode"><i className="fa-regular fa-moon" id="icontype"></i> <span className="dark">Dark mode</span>
+                                            <li id="toggle-dark-mode"><i className="fa-regular fa-moon"
+                                                                         id="icontype"></i> <span className="dark">Dark mode</span>
                                             </li>
                                             <li><i className="fas fa-user-circle"></i> View profile</li>
                                             <li><i className="fas fa-plus"></i> Add to group</li>
-                                            <li><i className="fas fa-ban"></i> Logout</li>
+                                            <li id="logout-button" onClick={handleLogout}><i
+                                                className="fas fa-ban"></i> Logout
+                                            </li>
+
                                         </ul>
                                     </div>
                                 </div>
