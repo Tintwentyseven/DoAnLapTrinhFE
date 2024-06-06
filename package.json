@@ -17,6 +17,7 @@
     "firebase": "^10.12.0",
     "fslightbox-react": "^1.7.6",
     "gh-pages": "^5.0.0",
+    "gsap": "^3.12.5",
     "i": "^0.3.7",
     "mdb-react-ui-kit": "^6.0.0",
     "npm": "^9.7.1",

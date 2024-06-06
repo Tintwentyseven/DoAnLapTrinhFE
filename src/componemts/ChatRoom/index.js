@@ -67,6 +67,9 @@ export default function ChatRoom() {
             if (response.status === "success") {
                 console.log("Logout success");
                 localStorage.removeItem('sessionData'); // Remove session data only when logout is successful
+                localStorage.removeItem('userList'); // Remove userList from localStorage
+                sessionStorage.removeItem('userList'); // Remove userList from sessionStorage
+                setUserList([]); // Clear the user list
                 Swal.fire({
                     position: 'center',
                     icon: response.status,
@@ -130,9 +133,8 @@ export default function ChatRoom() {
                                                         </div>
                                                         <div className="user_info">
                                                             <span>{user.name}</span>
-
                                                             <p>Type: {user.type}</p>
-                                                                <p>Last Action: {user.actionTime}</p>
+                                                            <p>Last Action: {user.actionTime}</p>
                                                         </div>
                                                     </div>
                                                 </li>
