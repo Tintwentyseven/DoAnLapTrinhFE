@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     MDBBtn,
     MDBModal,
@@ -12,14 +12,20 @@ import {
     MDBInput
 } from 'mdb-react-ui-kit';
 import './style.css';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import Swal from "sweetalert2";
+import { useWebSocket } from "../WebSocket/WebSocketContext";
 
 export default function ChatRoom() {
-    const [basicModal, setBasicModal] = useState(false);
-    const location = useLocation();
-    const { username } = location.state || { username: 'Guest' }; // Default to 'Guest' if username is not available
+    const [basicModal, setBasicModal] = useState(false); // mở Menu Item
+    const location = useLocation(); // lấy dữ liệu trang
+    const { username, password, userList: initialUserList } = location.state || {};
+    const [userList, setUserList] = useState(initialUserList || []); // State to store the user list
 
     const toggleOpen = () => setBasicModal(!basicModal);
+    const history = useNavigate(); // điều hướng và gửi dữ liệu đến trang khác
+    const socket = useWebSocket();
+    const existingSocketRef = useRef(null);
 
     const [isOpen, setIsOpen] = useState(false);
 
@@ -28,35 +34,65 @@ export default function ChatRoom() {
     };
 
     useEffect(() => {
-        const script = document.createElement('script');
-        script.src = "https://cdn.jsdelivr.net/npm/darkreader@4.9.80/darkreader.min.js";
-        script.async = true;
-        script.onload = () => {
-            const toggleDarkModeButton = document.getElementById("toggle-dark-mode");
-            const icondarklight = document.getElementById('icontype');
-            const darkModeText = document.querySelector(".dark");
+        const savedUserList = JSON.parse(sessionStorage.getItem('userList'));
+        if (savedUserList) {
+            setUserList(savedUserList);
+        }
+    }, []);
 
-            // Initially disable Dark Reader
-            window.DarkReader.disable();
+    const handleLogout = () => {
+        console.log("Logging out...");
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            console.error('WebSocket connection is not open');
+            Swal.fire({
+                icon: 'error',
+                title: 'WebSocket Error',
+                text: 'Unable to establish WebSocket connection',
+            });
+            return;
+        }
 
-            toggleDarkModeButton.addEventListener("click", () => {
-                if (window.DarkReader.isEnabled()) {
-                    window.DarkReader.disable();
-                    icondarklight.classList.replace("fa-sun", "fa-moon");
-                    darkModeText.textContent = "Dark mode";
-                } else {
-                    window.DarkReader.enable({
-                        brightness: 100,
-                        contrast: 90,
-                        sepia: 10
-                    });
-                    icondarklight.classList.replace("fa-moon", "fa-sun");
-                    darkModeText.textContent = "Light mode";
-                }
+        const requestData = {
+            action: "onchat",
+            data: {
+                event: "LOGOUT",
+            }
+        };
+        socket.send(JSON.stringify(requestData));
+
+        socket.onmessage = (event) => {
+            console.log("Logout response received");
+            const response = JSON.parse(event.data);
+            console.log(response);
+            if (response.status === "success") {
+                console.log("Logout success");
+                localStorage.removeItem('sessionData'); // Remove session data only when logout is successful
+                Swal.fire({
+                    position: 'center',
+                    icon: response.status,
+                    title: response.status,
+                    showConfirmButton: false,
+                    timer: 1500
+                }).then(() => {
+                    history('/logout'); // Navigate to logout page
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: response.status,
+                    text: response.mes,
+                });
+            }
+        };
+
+        socket.onerror = (error) => {
+            Swal.fire({
+                icon: 'error',
+                title: 'WebSocket Error',
+                text: 'Unable to establish WebSocket connection',
             });
         };
-        document.body.appendChild(script);
-    }, []);
+    };
 
     return (
         <>
@@ -80,76 +116,30 @@ export default function ChatRoom() {
                                 </div>
                                 <div className="card-body contacts_body">
                                     <ul className="contacts">
-                                        <li className="active">
-                                            <div className="d-flex bd-highlight">
-                                                <div className="img_cont">
-                                                    <img
-                                                        src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                        className="rounded-circle user_img"/>
-                                                    <span className="online_icon"></span>
-                                                </div>
-                                                <div className="user_info">
-                                                    <span>jassa</span>
-                                                    <p>Kalid is online</p>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div className="d-flex bd-highlight">
-                                                <div className="img_cont">
-                                                    <img
-                                                        src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                        className="rounded-circle user_img"/>
-                                                    <span className="online_icon offline"></span>
-                                                </div>
-                                                <div className="user_info">
-                                                    <span>jassa</span>
-                                                    <p>Taherah left 7 mins ago</p>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div className="d-flex bd-highlight">
-                                                <div className="img_cont">
-                                                    <img
-                                                        src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                        className="rounded-circle user_img"/>
-                                                    <span className="online_icon"></span>
-                                                </div>
-                                                <div className="user_info">
-                                                    <span>jassa Mann</span>
-                                                    <p>Sami is online</p>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div className="d-flex bd-highlight">
-                                                <div className="img_cont">
-                                                    <img
-                                                        src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                        className="rounded-circle user_img"/>
-                                                    <span className="online_icon offline"></span>
-                                                </div>
-                                                <div className="user_info">
-                                                    <span>jassa Mann</span>
-                                                    <p>Nargis left 30 mins ago</p>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div className="d-flex bd-highlight">
-                                                <div className="img_cont">
-                                                    <img
-                                                        src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                        className="rounded-circle user_img"/>
-                                                    <span className="online_icon offline"></span>
-                                                </div>
-                                                <div className="user_info">
-                                                    <span>jassa Mann</span>
-                                                    <p>Rashid left 50 mins ago</p>
-                                                </div>
-                                            </div>
-                                        </li>
+                                        {userList.length > 0 ? (
+                                            userList.map((user, index) => (
+                                                <li key={index} className="active">
+                                                    <div className="d-flex bd-highlight">
+                                                        <div className="img_cont">
+                                                            <img
+                                                                src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
+                                                                alt="avatar"
+                                                                className="rounded-circle user_img"
+                                                            />
+                                                            <span className="online_icon"></span>
+                                                        </div>
+                                                        <div className="user_info">
+                                                            <span>{user.name}</span>
+
+                                                            <p>Type: {user.type}</p>
+                                                                <p>Last Action: {user.actionTime}</p>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            ))
+                                        ) : (
+                                            <li>No users found.</li>
+                                        )}
                                     </ul>
                                 </div>
                                 <div className="card-footer"></div>
@@ -171,16 +161,17 @@ export default function ChatRoom() {
                                         <div className="video_cam">
                                             <span><i className="fas fa-video"></i></span>
                                             <span><i className="fas fa-phone"></i></span>
-                                            <span><MDBBtn
-                                                rounded
-                                                size="sm"
-                                                color="primary"
-                                                onClick={toggleOpen}
-                                                style={{marginBottom: "3px"}}
-                                            >
-                                              <MDBIcon fas icon="plus-circle"/>
-                                          </MDBBtn></span>
-
+                                            <span>
+                                                <MDBBtn
+                                                    rounded
+                                                    size="sm"
+                                                    color="primary"
+                                                    onClick={toggleOpen}
+                                                    style={{marginBottom: "3px"}}
+                                                >
+                                                  <MDBIcon fas icon="plus-circle"/>
+                                              </MDBBtn>
+                                            </span>
                                         </div>
                                     </div>
                                     <span id="action_menu_btn" onClick={toggleMenu}>
@@ -188,11 +179,14 @@ export default function ChatRoom() {
                                     </span>
                                     <div className={`action_menu ${isOpen ? 'open' : ''}`}>
                                         <ul>
-                                            <li id="toggle-dark-mode"><i className="fa-regular fa-moon" id="icontype"></i> <span className="dark">Dark mode</span>
+                                            <li id="toggle-dark-mode"><i className="fa-regular fa-moon"
+                                                                         id="icontype"></i> <span className="dark">Dark mode</span>
                                             </li>
                                             <li><i className="fas fa-user-circle"></i> View profile</li>
                                             <li><i className="fas fa-plus"></i> Add to group</li>
-                                            <li><i className="fas fa-ban"></i> Logout</li>
+                                            <li id="logout-button" onClick={handleLogout}><i
+                                                className="fas fa-ban"></i> Logout
+                                            </li>
                                         </ul>
                                     </div>
                                 </div>

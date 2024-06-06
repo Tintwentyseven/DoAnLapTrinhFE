@@ -1,12 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from 'react-router-dom';
 import { MDBContainer, MDBCol, MDBRow, MDBBtn, MDBIcon, MDBInput, MDBCheckbox } from 'mdb-react-ui-kit';
 import Swal from 'sweetalert2';
+import { useWebSocket } from "../WebSocket/WebSocketContext";
 
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const history = useNavigate();
+  const navigate = useNavigate();
+  const socket = useWebSocket();
+  const usernameRef = useRef(username);
+  const passwordRef = useRef(password);
+
+  useEffect(() => {
+    const sessionData = localStorage.getItem('sessionData');
+    if (sessionData) {
+      navigate("/chat");
+    }
+  }, [navigate]);
 
   const handleUsernameChange = (event) => {
     const value = event.target.value;
@@ -30,6 +41,14 @@ const Login = () => {
     }
   };
 
+  useEffect(() => {
+    usernameRef.current = username;
+  }, [username]);
+
+  useEffect(() => {
+    passwordRef.current = password;
+  }, [password]);
+
   const handleSubmit = (event) => {
     event.preventDefault();
     if (username.trim() === "" || password.trim() === "") {
@@ -39,7 +58,14 @@ const Login = () => {
       });
     }
 
-    const requestData = {
+    if (!socket) {
+      return Swal.fire({
+        text: "WebSocket connection is not established",
+        icon: 'error',
+      });
+    }
+
+    const loginData = {
       action: "onchat",
       data: {
         event: "LOGIN",
@@ -50,7 +76,11 @@ const Login = () => {
       }
     };
 
-    const socket = new WebSocket("ws://140.238.54.136:8080/chat/chat");
+    socket.send(JSON.stringify(loginData));
+  };
+
+  useEffect(() => {
+    if (!socket) return;
 
     socket.onopen = () => {
       Swal.fire({
@@ -59,29 +89,45 @@ const Login = () => {
         timer: 1500,
         showConfirmButton: false
       });
-      socket.send(JSON.stringify(requestData));
     };
 
     socket.onmessage = (event) => {
       const response = JSON.parse(event.data);
-      if (response.status === "success") {
-        Swal.fire({
-          position: 'center',
-          icon: response.status,
-          title: response.status,
-          showConfirmButton: false,
-          timer: 1500
-        }).then(() => {
-          history("/chat", { state: { username: username } }); // Pass the username to the Chat component
-        });
-      } else {
+      if (response.status === "success" && response.event === "LOGIN") {
+        const reloginCode = response.data.RE_LOGIN_CODE;
+        localStorage.setItem("sessionData", JSON.stringify({
+          username: usernameRef.current,
+          password: passwordRef.current,
+          reloginCode: btoa(reloginCode)  // Encode the relogin code
+        }));
+
+        // Request the user list after successful login
+        const userListRequest = {
+          action: 'onchat',
+          data: {
+            event: 'GET_USER_LIST',
+          },
+        };
+        socket.send(JSON.stringify(userListRequest));
+      } else if (response.status === "error" && response.event === "LOGIN") {
         Swal.fire({
           icon: 'error',
           title: response.status,
           text: response.mes,
         });
+      } else if (response.status === 'success' && response.event === 'GET_USER_LIST') {
+        const users = response.data;
+        localStorage.setItem("userList", JSON.stringify(users));
+        Swal.fire({
+          position: 'center',
+          icon: 'success',
+          title: 'Login successful',
+          showConfirmButton: false,
+          timer: 1500
+        }).then(() => {
+          navigate("/chat", { state: { username: usernameRef.current, password: passwordRef.current, userList: users } });
+        });
       }
-      socket.close();
     };
 
     socket.onerror = (error) => {
@@ -91,7 +137,8 @@ const Login = () => {
         text: 'Unable to establish WebSocket connection',
       });
     };
-  };
+  }, [socket, navigate]); // Đảm bảo useEffect chỉ chạy khi giá trị của socket thay đổi
+
 
   return (
       <MDBContainer fluid className="p-3 my-5 h-custom">
