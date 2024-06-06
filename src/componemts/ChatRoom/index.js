@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     MDBBtn,
     MDBModal,
@@ -12,53 +12,64 @@ import {
     MDBInput
 } from 'mdb-react-ui-kit';
 import './style.css';
-import {useLocation, useNavigate} from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Swal from "sweetalert2";
-//trang
-import {useWebSocket } from "../WebSocket/ WebSocketContext";
+import { useWebSocket } from "../WebSocket/WebSocketContext";
 
 export default function ChatRoom() {
-    const [basicModal, setBasicModal] = useState(false);// mở Menu Item
-    const location = useLocation();// lấy dữ liệu trang
-    const { username, password } = location.state || { username: 'Guest' }; // Default to 'Guest' if username is not available
+    const [basicModal, setBasicModal] = useState(false); // mở Menu Item
+    const location = useLocation(); // lấy dữ liệu trang
+    const { username, password, userList: initialUserList } = location.state || {};
+    const [userList, setUserList] = useState(initialUserList || []); // State to store the user list
 
     const toggleOpen = () => setBasicModal(!basicModal);
-    const  history = useNavigate();// điều hướng và gửi dữ liệu đến trang khác
+    const history = useNavigate(); // điều hướng và gửi dữ liệu đến trang khác
     const socket = useWebSocket();
-    // console.log("socket1: "+socket);
-    console.log("user: "+ username);
+    const existingSocketRef = useRef(null);
+
     const [isOpen, setIsOpen] = useState(false);
 
     const toggleMenu = () => {
         setIsOpen(!isOpen);
     };
 
+    useEffect(() => {
+        const savedUserList = JSON.parse(sessionStorage.getItem('userList'));
+        if (savedUserList) {
+            setUserList(savedUserList);
+        }
+    }, []);
 
     const handleLogout = () => {
-        console.log("da vao dang xuat")
-        console.log("socket: "+socket);
+        console.log("Logging out...");
         if (!socket || socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket connection is not open');
+            Swal.fire({
+                icon: 'error',
+                title: 'WebSocket Error',
+                text: 'Unable to establish WebSocket connection',
+            });
             return;
         }
 
-
-            const requestData = {
-                action: "onchat",
-                data: {
-                    event: "LOGOUT",
-                }
-            };
-            socket.send(JSON.stringify(requestData));
-        // };
+        const requestData = {
+            action: "onchat",
+            data: {
+                event: "LOGOUT",
+            }
+        };
+        socket.send(JSON.stringify(requestData));
 
         socket.onmessage = (event) => {
-            console.log("da vao dang xuat onmess")
+            console.log("Logout response received");
             const response = JSON.parse(event.data);
             console.log(response);
             if (response.status === "success") {
-                console.log("da vao dang xuat success")
-                localStorage.removeItem('sessionData');
+                console.log("Logout success");
+                localStorage.removeItem('sessionData'); // Remove session data only when logout is successful
+                localStorage.removeItem('userList'); // Remove userList from localStorage
+                sessionStorage.removeItem('userList'); // Remove userList from sessionStorage
+                setUserList([]); // Clear the user list
                 Swal.fire({
                     position: 'center',
                     icon: response.status,
@@ -66,7 +77,7 @@ export default function ChatRoom() {
                     showConfirmButton: false,
                     timer: 1500
                 }).then(() => {
-                    history('/logout'); // Điều chỉnh URL tới trang logout của bạn
+                    history('/logout'); // Navigate to logout page
                 });
             } else {
                 Swal.fire({
@@ -75,19 +86,16 @@ export default function ChatRoom() {
                     text: response.mes,
                 });
             }
-            // socket.close();
         };
 
         socket.onerror = (error) => {
             Swal.fire({
                 icon: 'error',
-                title: 'Lỗi WebSocket',
-                text: 'Không thể thiết lập kết nối WebSocket',
+                title: 'WebSocket Error',
+                text: 'Unable to establish WebSocket connection',
             });
         };
     };
-
-
 
     return (
         <>
@@ -111,76 +119,29 @@ export default function ChatRoom() {
                                 </div>
                                 <div className="card-body contacts_body">
                                     <ul className="contacts">
-                                        <li className="active">
-                                            <div className="d-flex bd-highlight">
-                                                <div className="img_cont">
-                                                    <img
-                                                        src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                        className="rounded-circle user_img"/>
-                                                    <span className="online_icon"></span>
-                                                </div>
-                                                <div className="user_info">
-                                                    <span>jassa</span>
-                                                    <p>Kalid is online</p>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div className="d-flex bd-highlight">
-                                                <div className="img_cont">
-                                                    <img
-                                                        src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                        className="rounded-circle user_img"/>
-                                                    <span className="online_icon offline"></span>
-                                                </div>
-                                                <div className="user_info">
-                                                    <span>jassa</span>
-                                                    <p>Taherah left 7 mins ago</p>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div className="d-flex bd-highlight">
-                                                <div className="img_cont">
-                                                    <img
-                                                        src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                        className="rounded-circle user_img"/>
-                                                    <span className="online_icon"></span>
-                                                </div>
-                                                <div className="user_info">
-                                                    <span>jassa Mann</span>
-                                                    <p>Sami is online</p>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div className="d-flex bd-highlight">
-                                                <div className="img_cont">
-                                                    <img
-                                                        src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                        className="rounded-circle user_img"/>
-                                                    <span className="online_icon offline"></span>
-                                                </div>
-                                                <div className="user_info">
-                                                    <span>jassa Mann</span>
-                                                    <p>Nargis left 30 mins ago</p>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div className="d-flex bd-highlight">
-                                                <div className="img_cont">
-                                                    <img
-                                                        src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                        className="rounded-circle user_img"/>
-                                                    <span className="online_icon offline"></span>
-                                                </div>
-                                                <div className="user_info">
-                                                    <span>jassa Mann</span>
-                                                    <p>Rashid left 50 mins ago</p>
-                                                </div>
-                                            </div>
-                                        </li>
+                                        {userList.length > 0 ? (
+                                            userList.map((user, index) => (
+                                                <li key={index} className="active">
+                                                    <div className="d-flex bd-highlight">
+                                                        <div className="img_cont">
+                                                            <img
+                                                                src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
+                                                                alt="avatar"
+                                                                className="rounded-circle user_img"
+                                                            />
+                                                            <span className="online_icon"></span>
+                                                        </div>
+                                                        <div className="user_info">
+                                                            <span>{user.name}</span>
+                                                            <p>Type: {user.type}</p>
+                                                            <p>Last Action: {user.actionTime}</p>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            ))
+                                        ) : (
+                                            <li>No users found.</li>
+                                        )}
                                     </ul>
                                 </div>
                                 <div className="card-footer"></div>
@@ -202,16 +163,17 @@ export default function ChatRoom() {
                                         <div className="video_cam">
                                             <span><i className="fas fa-video"></i></span>
                                             <span><i className="fas fa-phone"></i></span>
-                                            <span><MDBBtn
-                                                rounded
-                                                size="sm"
-                                                color="primary"
-                                                onClick={toggleOpen}
-                                                style={{marginBottom: "3px"}}
-                                            >
-                                              <MDBIcon fas icon="plus-circle"/>
-                                          </MDBBtn></span>
-
+                                            <span>
+                                                <MDBBtn
+                                                    rounded
+                                                    size="sm"
+                                                    color="primary"
+                                                    onClick={toggleOpen}
+                                                    style={{marginBottom: "3px"}}
+                                                >
+                                                  <MDBIcon fas icon="plus-circle"/>
+                                              </MDBBtn>
+                                            </span>
                                         </div>
                                     </div>
                                     <span id="action_menu_btn" onClick={toggleMenu}>
@@ -227,7 +189,6 @@ export default function ChatRoom() {
                                             <li id="logout-button" onClick={handleLogout}><i
                                                 className="fas fa-ban"></i> Logout
                                             </li>
-
                                         </ul>
                                     </div>
                                 </div>
