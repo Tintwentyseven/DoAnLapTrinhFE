@@ -18,9 +18,14 @@ import { useWebSocket } from "../WebSocket/WebSocketContext";
 
 export default function ChatRoom() {
     const [basicModal, setBasicModal] = useState(false); // mở Menu Item
+    const [searchInput, setSearchInput] = useState(''); // State to manage the search input value
+    const [isCheckboxChecked, setIsCheckboxChecked] = useState(false); // State to manage the checkbox state
     const location = useLocation(); // lấy dữ liệu trang
     const { username, password, userList: initialUserList } = location.state || {};
     const [userList, setUserList] = useState(initialUserList || []); // State to store the user list
+    const [roomOwner, setRoomOwner] = useState(''); // State to store room owner
+    const [messageContent, setMessageContent] = useState('1767 Messages'); // State to store the message content
+    const [displayName, setDisplayName] = useState(username); // State to store the display name
 
     const toggleOpen = () => setBasicModal(!basicModal);
     const history = useNavigate(); // điều hướng và gửi dữ liệu đến trang khác
@@ -37,6 +42,13 @@ export default function ChatRoom() {
         const savedUserList = JSON.parse(sessionStorage.getItem('userList'));
         if (savedUserList) {
             setUserList(savedUserList);
+        }
+
+        const roomData = JSON.parse(localStorage.getItem('data'));
+        if (roomData && roomData.own) {
+            const roomOwner = roomData.own;
+            setRoomOwner(roomOwner);
+            setMessageContent(username === roomOwner ? 'Người tạo phòng' : 'Người tham gia');
         }
     }, []);
 
@@ -68,6 +80,7 @@ export default function ChatRoom() {
                 console.log("Logout success");
                 localStorage.removeItem('sessionData'); // Remove session data only when logout is successful
                 localStorage.removeItem('userList'); // Remove userList from localStorage
+                localStorage.removeItem('data');
                 sessionStorage.removeItem('userList'); // Remove userList from sessionStorage
                 setUserList([]); // Clear the user list
                 Swal.fire({
@@ -97,6 +110,83 @@ export default function ChatRoom() {
         };
     };
 
+    const handleSearchInputChange = (event) => {
+        setSearchInput(event.target.value);
+    };
+
+    const handleCheckboxChange = (event) => {
+        setIsCheckboxChecked(event.target.checked);
+    };
+
+    const handleSearch = () => {
+        if (!isCheckboxChecked) {
+            Swal.fire({
+                text: "Please check the checkbox to search.",
+                icon: 'warning',
+            });
+            return;
+        }
+
+        // Gửi API GET_ROOM_CHAT_MES thông qua WebSocket
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            console.error('WebSocket connection is not open');
+            Swal.fire({
+                icon: 'error',
+                title: 'WebSocket Error',
+                text: 'Unable to establish WebSocket connection',
+            });
+            return;
+        }
+
+        const requestData = {
+            action: "onchat",
+            data: {
+                event: "GET_ROOM_CHAT_MES",
+                data: {
+                    name: searchInput.trim(),
+                    page: 1
+                }
+            }
+        };
+
+        socket.send(JSON.stringify(requestData));
+
+        socket.onmessage = (event) => {
+            const response = JSON.parse(event.data);
+            console.log("Get Room Chat Mes response: ", response);
+            if (response.status === "success") {
+                const roomData = response.data;
+                const roomName = roomData.name;
+                const chatData = roomData.chatData;
+
+                // Lưu dữ liệu vào localStorage dưới tên "data"
+                localStorage.setItem('data', JSON.stringify(roomData));
+
+                // Lưu dữ liệu vào localStorage
+                const savedUserList = JSON.parse(localStorage.getItem('userList')) || [];
+                const existingRoom = savedUserList.find(room => room.name === roomName);
+                if (!existingRoom) {
+                    savedUserList.push(roomData);
+                    localStorage.setItem('userList', JSON.stringify(savedUserList));
+                }
+
+                setRoomOwner(roomData.own);
+                setMessageContent(username === roomData.own ? 'Người tạo phòng' : 'Người tham gia');
+                setDisplayName(roomName);
+
+                Swal.fire({
+                    text: `Room ${roomName} tồn tại`,
+                    icon: 'success',
+                });
+            } else {
+                Swal.fire({
+                    text: `Room ${searchInput} không tồn tại`,
+                    icon: 'warning',
+                });
+            }
+        };
+    };
+
     return (
         <>
             <div className="maincontainer">
@@ -108,12 +198,28 @@ export default function ChatRoom() {
                                     <div className="input-group">
                                         <div className="input-group-prepend">
                                         </div>
-                                        <input type="checkbox" className="cbox" aria-label="Checkbox for search"/>
-                                        <input type="text" placeholder="Search..." name=""
-                                               className="form-control search"/>
+                                        <input
+                                            type="checkbox"
+                                            className="cbox"
+                                            aria-label="Checkbox for search"
+                                            checked={isCheckboxChecked}
+                                            onChange={handleCheckboxChange}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Search..."
+                                            name=""
+                                            className="form-control search"
+                                            value={searchInput}
+                                            onChange={handleSearchInputChange}
+                                        />
                                         <div className="input-group-prepend">
-                                            <span className="input-group-text search_btn"><i
-                                                className="fas fa-search"></i></span>
+                                            <span
+                                                className="input-group-text search_btn"
+                                                onClick={handleSearch}
+                                            >
+                                                <i className="fas fa-search"></i>
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -153,12 +259,12 @@ export default function ChatRoom() {
                                     <div className="d-flex bd-highlight">
                                         <div className="img_cont">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img"/>
+                                                 className="rounded-circle user_img" />
                                             <span className="online_icon"></span>
                                         </div>
                                         <div className="user_info">
-                                            <span>{username}</span>
-                                            <p>1767 Messages</p>
+                                            <span>{displayName}</span>
+                                            {messageContent && messageContent !== '1767 Messages' && <p>{messageContent}</p>}
                                         </div>
                                         <div className="video_cam">
                                             <span><i className="fas fa-video"></i></span>
@@ -169,10 +275,10 @@ export default function ChatRoom() {
                                                     size="sm"
                                                     color="primary"
                                                     onClick={toggleOpen}
-                                                    style={{marginBottom: "3px"}}
+                                                    style={{ marginBottom: "3px" }}
                                                 >
-                                                  <MDBIcon fas icon="plus-circle"/>
-                                              </MDBBtn>
+                                                    <MDBIcon fas icon="plus-circle" />
+                                                </MDBBtn>
                                             </span>
                                         </div>
                                     </div>
@@ -196,7 +302,7 @@ export default function ChatRoom() {
                                     <div className="d-flex justify-content-start mb-4">
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg"/>
+                                                 className="rounded-circle user_img_msg" />
                                         </div>
                                         <div className="msg_cotainer">
                                             Hi, how are you samim?
@@ -210,13 +316,13 @@ export default function ChatRoom() {
                                         </div>
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg"/>
+                                                 className="rounded-circle user_img_msg" />
                                         </div>
                                     </div>
                                     <div className="d-flex justify-content-start mb-4">
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg"/>
+                                                 className="rounded-circle user_img_msg" />
                                         </div>
                                         <div className="msg_cotainer">
                                             I am good too, thank you for your chat template
@@ -230,13 +336,13 @@ export default function ChatRoom() {
                                         </div>
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg"/>
+                                                 className="rounded-circle user_img_msg" />
                                         </div>
                                     </div>
                                     <div className="d-flex justify-content-start mb-4">
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg"/>
+                                                 className="rounded-circle user_img_msg" />
                                         </div>
                                         <div className="msg_cotainer">
                                             I am looking for your next templates
@@ -250,13 +356,13 @@ export default function ChatRoom() {
                                         </div>
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg"/>
+                                                 className="rounded-circle user_img_msg" />
                                         </div>
                                     </div>
                                     <div className="d-flex justify-content-start mb-4">
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg"/>
+                                                 className="rounded-circle user_img_msg" />
                                         </div>
                                         <div className="msg_cotainer">
                                             Bye, see you
