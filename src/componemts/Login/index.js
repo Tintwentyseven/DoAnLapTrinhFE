@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from 'react-router-dom';
 import { MDBContainer, MDBCol, MDBRow, MDBBtn, MDBIcon, MDBInput, MDBCheckbox } from 'mdb-react-ui-kit';
 import Swal from 'sweetalert2';
-import { useWebSocket } from "../WebSocket/WebSocketContext";
+//trang
+import {useWebSocket} from "../WebSocket/WebSocketContext";
+
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -11,6 +13,7 @@ const Login = () => {
   const socket = useWebSocket();
   const usernameRef = useRef(username);
   const passwordRef = useRef(password);
+
 
   useEffect(() => {
     const sessionData = localStorage.getItem('sessionData');
@@ -65,7 +68,8 @@ const Login = () => {
       });
     }
 
-    const loginData = {
+    const requestData = {
+
       action: "onchat",
       data: {
         event: "LOGIN",
@@ -76,13 +80,13 @@ const Login = () => {
       }
     };
 
-    socket.send(JSON.stringify(loginData));
+
+    socket.send(JSON.stringify(requestData));
   };
 
   useEffect(() => {
     if (!socket) return;
-
-    socket.onopen = () => {
+    const handleOpen = () => {
       Swal.fire({
         text: "WebSocket connection established",
         icon: 'success',
@@ -91,16 +95,17 @@ const Login = () => {
       });
     };
 
-    socket.onmessage = (event) => {
+    const handleMessage = (event) => {
       const response = JSON.parse(event.data);
       if (response.status === "success" && response.event === "LOGIN") {
         const reloginCode = response.data.RE_LOGIN_CODE;
         localStorage.setItem("sessionData", JSON.stringify({
           username: usernameRef.current,
           password: passwordRef.current,
-          reloginCode: btoa(reloginCode)  // Encode the relogin code
+// <<<<<<< HEAD
+          code: response.data.RE_LOGIN_CODE,
+          reloginCode: btoa(reloginCode),
         }));
-
         // Request the user list after successful login
         const userListRequest = {
           action: 'onchat',
@@ -110,6 +115,7 @@ const Login = () => {
         };
         socket.send(JSON.stringify(userListRequest));
       } else if (response.status === "error" && response.event === "LOGIN") {
+// >>>>>>> main
         Swal.fire({
           icon: 'error',
           title: response.status,
@@ -118,26 +124,74 @@ const Login = () => {
       } else if (response.status === 'success' && response.event === 'GET_USER_LIST') {
         const users = response.data;
         localStorage.setItem("userList", JSON.stringify(users));
+
         Swal.fire({
           position: 'center',
-          icon: 'success',
-          title: 'Login successful',
+          icon: response.status,
+          title: response.status,
           showConfirmButton: false,
           timer: 1500
         }).then(() => {
-          navigate("/chat", { state: { username: usernameRef.current, password: passwordRef.current, userList: users } });
+          navigate("/chat", { state: { username: usernameRef.current, password: passwordRef.current,  userList: users } });
         });
+      } else {
+// =======
+//           reloginCode: btoa(reloginCode)  // Encode the relogin code
+//         }));
+//
+//         // Request the user list after successful login
+//         const userListRequest = {
+//           action: 'onchat',
+//           data: {
+//             event: 'GET_USER_LIST',
+//           },
+//         };
+//         socket.send(JSON.stringify(userListRequest));
+//       } else if (response.status === "error" && response.event === "LOGIN") {
+// >>>>>>> main
+//         Swal.fire({
+//           icon: 'error',
+//           title: response.status,
+//           text: response.mes,
+//         });
+//       } else if (response.status === 'success' && response.event === 'GET_USER_LIST') {
+//         const users = response.data;
+//         localStorage.setItem("userList", JSON.stringify(users));
+//         Swal.fire({
+//           position: 'center',
+//           icon: 'success',
+//           title: 'Login successful',
+//           showConfirmButton: false,
+//           timer: 1500
+//         }).then(() => {
+//           navigate("/chat", { state: { username: usernameRef.current, password: passwordRef.current, userList: users } });
+//         });
       }
     };
 
-    socket.onerror = (error) => {
-      Swal.fire({
-        icon: 'error',
-        title: 'WebSocket Error',
-        text: 'Unable to establish WebSocket connection',
-      });
+        const handleError = (error) => {
+          Swal.fire({
+            icon: 'error',
+            title: 'WebSocket Error',
+            text: 'Unable to establish WebSocket connection',
+          });
+        };
+      // }
+// <<<<<<< HEAD
+
+    socket.addEventListener('open', handleOpen);
+    socket.addEventListener('message', handleMessage);
+    socket.addEventListener('error', handleError);
+
+    return () => {
+      socket.removeEventListener('open', handleOpen);
+      socket.removeEventListener('message', handleMessage);
+      socket.removeEventListener('error', handleError);
     };
-  }, [socket, navigate]); // Đảm bảo useEffect chỉ chạy khi giá trị của socket thay đổi
+  }, [socket, navigate]);
+// =======
+//   }, [socket, navigate]); // Đảm bảo useEffect chỉ chạy khi giá trị của socket thay đổi
+// >>>>>>> main
 
 
   return (
