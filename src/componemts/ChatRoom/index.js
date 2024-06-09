@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     MDBBtn,
     MDBModal,
@@ -12,12 +12,12 @@ import {
     MDBInput
 } from 'mdb-react-ui-kit';
 import './style.css';
-import {useLocation, useNavigate} from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Swal from "sweetalert2";
-//trang
-import {useWebSocket } from "../WebSocket/ WebSocketContext";
+import { useWebSocket } from "../WebSocket/WebSocketContext";
 
 export default function ChatRoom() {
+// <<<<<<< HEAD
     // const [basicModal, setBasicModal] = useState(false);// mở Menu Item
     // const location = useLocation();// lấy dữ liệu trang
     // const { username, password } = location.state || { username: 'Guest' }; // Default to 'Guest' if username is not available
@@ -96,12 +96,41 @@ export default function ChatRoom() {
 
     const sessionData = JSON.parse(localStorage.getItem('sessionData')) || {};
     // console.log("session1: "+ sessionData);
-    const { username, code } =  sessionData;
+    const { username, code ,userList: initialUserList} =  sessionData;
 
     console.log("user: " + username);
 
     const toggleOpen = () => setBasicModal(!basicModal);
     const toggleMenu = () => setIsOpen(!isOpen);
+
+    //search
+    const [searchInput, setSearchInput] = useState(''); // State to manage the search input value
+    const [isCheckboxChecked, setIsCheckboxChecked] = useState(false); // State to manage the checkbox state
+    const [userList, setUserList] = useState(initialUserList || []); // State to store the user list
+    const [roomOwner, setRoomOwner] = useState(''); // State to store room owner
+    const [messageContent, setMessageContent] = useState(''); // State to store the message content
+    const [displayName, setDisplayName] = useState(username); // State to store the display name
+    const [searchType, setSearchType] = useState(''); // State to store the type of search (room or user)
+    const existingSocketRef = useRef(null);
+// =======
+//     const [basicModal, setBasicModal] = useState(false); // mở Menu Item -----
+//     const [searchInput, setSearchInput] = useState(''); // State to manage the search input value
+//     const [isCheckboxChecked, setIsCheckboxChecked] = useState(false); // State to manage the checkbox state
+//     const location = useLocation(); // lấy dữ liệu trang
+//     const { username, password, userList: initialUserList } = location.state || {};
+//     const [userList, setUserList] = useState(initialUserList || []); // State to store the user list
+//     const [roomOwner, setRoomOwner] = useState(''); // State to store room owner
+//     const [messageContent, setMessageContent] = useState(''); // State to store the message content
+//     const [displayName, setDisplayName] = useState(username); // State to store the display name
+//     const [searchType, setSearchType] = useState(''); // State to store the type of search (room or user)
+//
+//     const toggleOpen = () => setBasicModal(!basicModal);
+//     const history = useNavigate(); // điều hướng và gửi dữ liệu đến trang khác
+//     const socket = useWebSocket();
+//     const existingSocketRef = useRef(null);
+//
+//     const [isOpen, setIsOpen] = useState(false);
+// >>>>>>> main
 
     useEffect(() => {
         if (!socket) return;
@@ -172,12 +201,34 @@ export default function ChatRoom() {
         };
     }, [socket, username, code]);
 
+    useEffect(() => {
+        const savedUserList = JSON.parse(sessionStorage.getItem('userList'));
+        if (savedUserList) {
+            setUserList(savedUserList);
+        }
+
+        const roomData = JSON.parse(localStorage.getItem('data'));
+        if (roomData && roomData.own) {
+            const roomOwner = roomData.own;
+            setRoomOwner(roomOwner);
+            setMessageContent(username === roomOwner ? 'Người tạo phòng' : 'Người tham gia');
+        }
+    }, [username]);
 
     const handleLogout = () => {
-        console.log("Đã vào đăng xuất");
-
+// <<<<<<< HEAD
+//         console.log("Đã vào đăng xuất");
+//
+// =======
+//         console.log("Logging out...");
+// >>>>>>> main
         if (!socket || socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket connection is not open');
+            Swal.fire({
+                icon: 'error',
+                title: 'WebSocket Error',
+                text: 'Unable to establish WebSocket connection',
+            });
             return;
         }
 
@@ -189,14 +240,28 @@ export default function ChatRoom() {
         };
         socket.send(JSON.stringify(requestData));
 
+// <<<<<<< HEAD
         const handleLogoutMessage = (event) => {
             console.log("Đã vào đăng xuất onmessage");
+// =======
+//         socket.onmessage = (event) => {
+//             console.log("Logout response received");
+// >>>>>>> main
             const response = JSON.parse(event.data);
             console.log(response);
 
             if (response.status === "success") {
+// <<<<<<< HEAD
                 console.log("Đã vào đăng xuất success");
                 localStorage.removeItem('sessionData');
+// =======
+//                 console.log("Logout success");
+//                 localStorage.removeItem('sessionData'); // Remove session data only when logout is successful
+                localStorage.removeItem('userList'); // Remove userList from localStorage
+                localStorage.removeItem('data');
+                sessionStorage.removeItem('userList'); // Remove userList from sessionStorage
+                setUserList([]); // Clear the user list
+// >>>>>>> main
                 Swal.fire({
                     position: 'center',
                     icon: response.status,
@@ -204,7 +269,11 @@ export default function ChatRoom() {
                     showConfirmButton: false,
                     timer: 1500
                 }).then(() => {
+// <<<<<<< HEAD
                     navigate('/logout'); // Điều chỉnh URL tới trang logout của bạn
+// =======
+//                     history('/logout'); // Navigate to logout page
+// >>>>>>> main
                 });
             } else {
                 Swal.fire({
@@ -213,9 +282,12 @@ export default function ChatRoom() {
                     text: response.mes,
                 });
             }
+// <<<<<<< HEAD
 
             // Dọn dẹp listener sau khi xử lý tin nhắn
             socket.removeEventListener('message', handleLogoutMessage);
+// =======
+// >>>>>>> main
         };
 
         socket.addEventListener('message', handleLogoutMessage);
@@ -223,12 +295,13 @@ export default function ChatRoom() {
         socket.onerror = (error) => {
             Swal.fire({
                 icon: 'error',
-                title: 'Lỗi WebSocket',
-                text: 'Không thể thiết lập kết nối WebSocket',
+                title: 'WebSocket Error',
+                text: 'Unable to establish WebSocket connection',
             });
         };
     };
 
+// <<<<<<< HEAD
     // useEffect(() => {
     //     if (!socket) return;
     //
@@ -308,7 +381,116 @@ export default function ChatRoom() {
     // }, [socket, sessionData, navigate]);
 
 
+// =======
+    const handleSearchInputChange = (event) => {
+        setSearchInput(event.target.value);
+    };
+// >>>>>>> main
 
+    const handleCheckboxChange = (event) => {
+        setIsCheckboxChecked(event.target.checked);
+    };
+
+    const handleSearch = () => {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            console.error('WebSocket connection is not open');
+            Swal.fire({
+                icon: 'error',
+                title: 'WebSocket Error',
+                text: 'Unable to establish WebSocket connection',
+            });
+            return;
+        }
+
+        if (!isCheckboxChecked) {
+            const requestData = {
+                action: "onchat",
+                data: {
+                    event: "CHECK_USER",
+                    data: {
+                        user: searchInput.trim()
+                    }
+                }
+            };
+
+            socket.send(JSON.stringify(requestData));
+
+            socket.onmessage = (event) => {
+                const response = JSON.parse(event.data);
+                console.log("Check User response: ", response);
+                if (response.status === "success") {
+                    if (response.data.status) {
+                        setDisplayName(searchInput.trim());
+                        setMessageContent(''); // Clear the message content for user search
+                        setSearchType('user');
+                        Swal.fire({
+                            text: `User ${searchInput} has logged in before.`,
+                            icon: 'success',
+                        });
+                    } else {
+                        Swal.fire({
+                            text: `User ${searchInput} has not logged in before.`,
+                            icon: 'warning',
+                        });
+                    }
+                } else {
+                    Swal.fire({
+                        text: `Failed to check user ${searchInput}.`,
+                        icon: 'error',
+                    });
+                }
+            };
+        } else {
+            const requestData = {
+                action: "onchat",
+                data: {
+                    event: "GET_ROOM_CHAT_MES",
+                    data: {
+                        name: searchInput.trim(),
+                        page: 1
+                    }
+                }
+            };
+
+            socket.send(JSON.stringify(requestData));
+
+            socket.onmessage = (event) => {
+                const response = JSON.parse(event.data);
+                console.log("Get Room Chat Mes response: ", response);
+                if (response.status === "success") {
+                    const roomData = response.data;
+                    const roomName = roomData.name;
+                    const chatData = roomData.chatData;
+
+                    // Lưu dữ liệu vào localStorage dưới tên "data"
+                    localStorage.setItem('data', JSON.stringify(roomData));
+
+                    // Lưu dữ liệu vào localStorage
+                    const savedUserList = JSON.parse(localStorage.getItem('userList')) || [];
+                    const existingRoom = savedUserList.find(room => room.name === roomName);
+                    if (!existingRoom) {
+                        savedUserList.push(roomData);
+                        localStorage.setItem('userList', JSON.stringify(savedUserList));
+                    }
+
+                    setRoomOwner(roomData.own);
+                    setMessageContent(username === roomData.own ? 'Người tạo phòng' : 'Người tham gia');
+                    setDisplayName(roomName);
+                    setSearchType('room');
+
+                    Swal.fire({
+                        text: `Room ${roomName} tồn tại`,
+                        icon: 'success',
+                    });
+                } else {
+                    Swal.fire({
+                        text: `Room ${searchInput} không tồn tại`,
+                        icon: 'warning',
+                    });
+                }
+            };
+        }
+    };
 
     return (
         <>
@@ -321,87 +503,56 @@ export default function ChatRoom() {
                                     <div className="input-group">
                                         <div className="input-group-prepend">
                                         </div>
-                                        <input type="checkbox" className="cbox" aria-label="Checkbox for search"/>
-                                        <input type="text" placeholder="Search..." name=""
-                                               className="form-control search"/>
+                                        <input
+                                            type="checkbox"
+                                            className="cbox"
+                                            aria-label="Checkbox for search"
+                                            checked={isCheckboxChecked}
+                                            onChange={handleCheckboxChange}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Search..."
+                                            name=""
+                                            className="form-control search"
+                                            value={searchInput}
+                                            onChange={handleSearchInputChange}
+                                        />
                                         <div className="input-group-prepend">
-                                            <span className="input-group-text search_btn"><i
-                                                className="fas fa-search"></i></span>
+                                            <span
+                                                className="input-group-text search_btn"
+                                                onClick={handleSearch}
+                                            >
+                                                <i className="fas fa-search"></i>
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="card-body contacts_body">
                                     <ul className="contacts">
-                                        <li className="active">
-                                            <div className="d-flex bd-highlight">
-                                                <div className="img_cont">
-                                                    <img
-                                                        src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                        className="rounded-circle user_img"/>
-                                                    <span className="online_icon"></span>
-                                                </div>
-                                                <div className="user_info">
-                                                    <span>jassa</span>
-                                                    <p>Kalid is online</p>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div className="d-flex bd-highlight">
-                                                <div className="img_cont">
-                                                    <img
-                                                        src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                        className="rounded-circle user_img"/>
-                                                    <span className="online_icon offline"></span>
-                                                </div>
-                                                <div className="user_info">
-                                                    <span>jassa</span>
-                                                    <p>Taherah left 7 mins ago</p>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div className="d-flex bd-highlight">
-                                                <div className="img_cont">
-                                                    <img
-                                                        src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                        className="rounded-circle user_img"/>
-                                                    <span className="online_icon"></span>
-                                                </div>
-                                                <div className="user_info">
-                                                    <span>jassa Mann</span>
-                                                    <p>Sami is online</p>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div className="d-flex bd-highlight">
-                                                <div className="img_cont">
-                                                    <img
-                                                        src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                        className="rounded-circle user_img"/>
-                                                    <span className="online_icon offline"></span>
-                                                </div>
-                                                <div className="user_info">
-                                                    <span>jassa Mann</span>
-                                                    <p>Nargis left 30 mins ago</p>
-                                                </div>
-                                            </div>
-                                        </li>
-                                        <li>
-                                            <div className="d-flex bd-highlight">
-                                                <div className="img_cont">
-                                                    <img
-                                                        src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                        className="rounded-circle user_img"/>
-                                                    <span className="online_icon offline"></span>
-                                                </div>
-                                                <div className="user_info">
-                                                    <span>jassa Mann</span>
-                                                    <p>Rashid left 50 mins ago</p>
-                                                </div>
-                                            </div>
-                                        </li>
+                                        {userList.length > 0 ? (
+                                            userList.map((user, index) => (
+                                                <li key={index} className="active">
+                                                    <div className="d-flex bd-highlight">
+                                                        <div className="img_cont">
+                                                            <img
+                                                                src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
+                                                                alt="avatar"
+                                                                className="rounded-circle user_img"
+                                                            />
+                                                            <span className="online_icon"></span>
+                                                        </div>
+                                                        <div className="user_info">
+                                                            <span>{user.name}</span>
+                                                            <p>Type: {user.type}</p>
+                                                            <p>Last Action: {user.actionTime}</p>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            ))
+                                        ) : (
+                                            <li>No users found.</li>
+                                        )}
                                     </ul>
                                 </div>
                                 <div className="card-footer"></div>
@@ -413,26 +564,27 @@ export default function ChatRoom() {
                                     <div className="d-flex bd-highlight">
                                         <div className="img_cont">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img"/>
+                                                 className="rounded-circle user_img" />
                                             <span className="online_icon"></span>
                                         </div>
                                         <div className="user_info">
-                                            <span>{username}</span>
-                                            <p>1767 Messages</p>
+                                            <span>{displayName}</span>
+                                            {searchType === 'room' && messageContent && <p>{messageContent}</p>}
                                         </div>
                                         <div className="video_cam">
                                             <span><i className="fas fa-video"></i></span>
                                             <span><i className="fas fa-phone"></i></span>
-                                            <span><MDBBtn
-                                                rounded
-                                                size="sm"
-                                                color="primary"
-                                                onClick={toggleOpen}
-                                                style={{marginBottom: "3px"}}
-                                            >
-                                              <MDBIcon fas icon="plus-circle"/>
-                                          </MDBBtn></span>
-
+                                            <span>
+                                                <MDBBtn
+                                                    rounded
+                                                    size="sm"
+                                                    color="primary"
+                                                    onClick={toggleOpen}
+                                                    style={{ marginBottom: "3px" }}
+                                                >
+                                                    <MDBIcon fas icon="plus-circle" />
+                                                </MDBBtn>
+                                            </span>
                                         </div>
                                     </div>
                                     <span id="action_menu_btn" onClick={toggleMenu}>
@@ -448,7 +600,6 @@ export default function ChatRoom() {
                                             <li id="logout-button" onClick={handleLogout}><i
                                                 className="fas fa-ban"></i> Logout
                                             </li>
-
                                         </ul>
                                     </div>
                                 </div>
@@ -456,7 +607,7 @@ export default function ChatRoom() {
                                     <div className="d-flex justify-content-start mb-4">
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg"/>
+                                                 className="rounded-circle user_img_msg" />
                                         </div>
                                         <div className="msg_cotainer">
                                             Hi, how are you samim?
@@ -470,13 +621,13 @@ export default function ChatRoom() {
                                         </div>
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg"/>
+                                                 className="rounded-circle user_img_msg" />
                                         </div>
                                     </div>
                                     <div className="d-flex justify-content-start mb-4">
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg"/>
+                                                 className="rounded-circle user_img_msg" />
                                         </div>
                                         <div className="msg_cotainer">
                                             I am good too, thank you for your chat template
@@ -490,13 +641,13 @@ export default function ChatRoom() {
                                         </div>
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg"/>
+                                                 className="rounded-circle user_img_msg" />
                                         </div>
                                     </div>
                                     <div className="d-flex justify-content-start mb-4">
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg"/>
+                                                 className="rounded-circle user_img_msg" />
                                         </div>
                                         <div className="msg_cotainer">
                                             I am looking for your next templates
@@ -510,13 +661,13 @@ export default function ChatRoom() {
                                         </div>
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg"/>
+                                                 className="rounded-circle user_img_msg" />
                                         </div>
                                     </div>
                                     <div className="d-flex justify-content-start mb-4">
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg"/>
+                                                 className="rounded-circle user_img_msg" />
                                         </div>
                                         <div className="msg_cotainer">
                                             Bye, see you

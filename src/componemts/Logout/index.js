@@ -29,7 +29,7 @@ const Logout = () => {
                     </p>
                     <button id="login-again-btn" >
 
-                        <Link to="/Login" className="link" >Đăng nhập</Link>
+                        <Link to="/login" className="link" >Đăng nhập</Link>
                     </button>
 
                 </div>
@@ -38,5 +38,6 @@ const Logout = () => {
         </div>
     );
 };
+
 
 export default Logout;
