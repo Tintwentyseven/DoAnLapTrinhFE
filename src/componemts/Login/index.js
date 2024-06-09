@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { MDBContainer, MDBCol, MDBRow, MDBBtn, MDBIcon, MDBInput, MDBCheckbox } from 'mdb-react-ui-kit';
 import Swal from 'sweetalert2';
 //trang
-import {useWebSocket } from "../WebSocket/ WebSocketContext";
+import {useWebSocket} from "../WebSocket/ WebSocketContext";
 
 
 const Login = () => {
@@ -11,13 +11,18 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const history = useNavigate();
   const socket = useWebSocket();
-  console.log("socket: "+socket);
+  // console.log("socket: "+socket);
   const usernameRef = useRef(username);
   const passwordRef = useRef(password);
+  // useEffect(() => {
+  //   console.log("Socket changed:", socket);
+  // }, [socket]);
+
 
 
   const handleUsernameChange = (event) => {
     console.log("Handle username change is called"); // Thêm dòng này để kiểm tra hàm được gọi hay không
+    console.log("socket: "+socket);
     const value = event.target.value;
     console.log("input: "+value);
     // setUsername(value);
@@ -121,6 +126,92 @@ const Login = () => {
 //   useEffect(() => {
 //     console.log("Updated username: " + username);
 //   }, [username]);
+//   const handleSubmit = (event) => {
+//     event.preventDefault();
+//     if (username.trim() === "" || password.trim() === "") {
+//       return Swal.fire({
+//         text: "Username và Password không được để trống hoặc chỉ có khoảng trắng",
+//         icon: 'warning',
+//       });
+//     }
+//
+//     // Kiểm tra xem WebSocket đã được khởi tạo thành công
+//     if (!socket) {
+//       return Swal.fire({
+//         text: "WebSocket connection is not established",
+//         icon: 'error',
+//       });
+//     }
+//     console.log("datauser: "+username);
+//
+//     const requestData = {
+//       action: "onchat",
+//       data: {
+//         event: "LOGIN",
+//         data: {
+//           user: username,
+//           pass: password
+//         }
+//       }
+//     };
+//
+//     socket.send(JSON.stringify(requestData));
+//   };
+//
+// // Sử dụng useEffect để xử lý các sự kiện của WebSocket
+//   useEffect(() => {
+//     if (!socket) return;
+//
+//     socket.onopen = () => {
+//       Swal.fire({
+//         text: "WebSocket connection established",
+//         icon: 'success',
+//         timer: 1500,
+//         showConfirmButton: false
+//       });
+//     };
+//
+//     socket.onmessage = (event) => {
+//       const response = JSON.parse(event.data);
+//       if (response.status === "success") {
+//         localStorage.setItem("sessionData", JSON.stringify({
+//           username: usernameRef.current,
+//           password: passwordRef.current,
+//           code: response.data.RE_LOGIN_CODE,
+//         }));
+//         // console.log("data: "+response.data.RE_LOGIN_CODE);
+//         Swal.fire({
+//           position: 'center',
+//           icon: response.status,
+//           title: response.status,
+//           showConfirmButton: false,
+//           timer: 1500
+//         }).then(() => {
+//           // console.log("login: " + response.data.user);
+//           // console.log("userlogin: " + usernameRef.current);
+//           history("/chat", { state: { username: usernameRef.current, password: passwordRef.current } });
+//         });
+//       } else {
+//         Swal.fire({
+//           icon: 'error',
+//           title: response.status,
+//           text: response.mes,
+//         });
+//       }
+//     };
+//
+//     socket.onerror = (error) => {
+//       Swal.fire({
+//         icon: 'error',
+//         title: 'WebSocket Error',
+//         text: 'Unable to establish WebSocket connection',
+//       });
+//     };
+//
+//
+//   }, [socket]); // Đảm bảo useEffect chỉ chạy khi giá trị của socket thay đổi
+
+  //moi
   const handleSubmit = (event) => {
     event.preventDefault();
     if (username.trim() === "" || password.trim() === "") {
@@ -130,15 +221,12 @@ const Login = () => {
       });
     }
 
-    // Kiểm tra xem WebSocket đã được khởi tạo thành công
     if (!socket) {
       return Swal.fire({
         text: "WebSocket connection is not established",
         icon: 'error',
       });
     }
-    console.log("datauser: "+username);
-
     const requestData = {
       action: "onchat",
       data: {
@@ -150,14 +238,13 @@ const Login = () => {
       }
     };
 
+
     socket.send(JSON.stringify(requestData));
   };
 
-// Sử dụng useEffect để xử lý các sự kiện của WebSocket
   useEffect(() => {
     if (!socket) return;
-
-    socket.onopen = () => {
+    const handleOpen = () => {
       Swal.fire({
         text: "WebSocket connection established",
         icon: 'success',
@@ -166,12 +253,13 @@ const Login = () => {
       });
     };
 
-    socket.onmessage = (event) => {
+    const handleMessage = (event) => {
       const response = JSON.parse(event.data);
       if (response.status === "success") {
         localStorage.setItem("sessionData", JSON.stringify({
           username: usernameRef.current,
-          password: passwordRef.current
+          password: passwordRef.current,
+          code: response.data.RE_LOGIN_CODE,
         }));
         Swal.fire({
           position: 'center',
@@ -180,8 +268,6 @@ const Login = () => {
           showConfirmButton: false,
           timer: 1500
         }).then(() => {
-          console.log("login: " + response.data.user);
-          console.log("userlogin: " + usernameRef.current);
           history("/chat", { state: { username: usernameRef.current, password: passwordRef.current } });
         });
       } else {
@@ -193,7 +279,7 @@ const Login = () => {
       }
     };
 
-    socket.onerror = (error) => {
+    const handleError = (error) => {
       Swal.fire({
         icon: 'error',
         title: 'WebSocket Error',
@@ -201,11 +287,16 @@ const Login = () => {
       });
     };
 
-    // Đóng kết nối WebSocket khi component bị unmount
-    // return () => {
-    //   socket.close();
-    // };
-  }, [socket]); // Đảm bảo useEffect chỉ chạy khi giá trị của socket thay đổi
+    socket.addEventListener('open', handleOpen);
+    socket.addEventListener('message', handleMessage);
+    socket.addEventListener('error', handleError);
+
+    return () => {
+      socket.removeEventListener('open', handleOpen);
+      socket.removeEventListener('message', handleMessage);
+      socket.removeEventListener('error', handleError);
+    };
+  }, [socket, history]);
 
 
   return (

@@ -18,46 +18,184 @@ import Swal from "sweetalert2";
 import {useWebSocket } from "../WebSocket/ WebSocketContext";
 
 export default function ChatRoom() {
-    const [basicModal, setBasicModal] = useState(false);// mở Menu Item
-    const location = useLocation();// lấy dữ liệu trang
-    const { username, password } = location.state || { username: 'Guest' }; // Default to 'Guest' if username is not available
+    // const [basicModal, setBasicModal] = useState(false);// mở Menu Item
+    // const location = useLocation();// lấy dữ liệu trang
+    // const { username, password } = location.state || { username: 'Guest' }; // Default to 'Guest' if username is not available
+    //
+    // const toggleOpen = () => setBasicModal(!basicModal);
+    // const  history = useNavigate();// điều hướng và gửi dữ liệu đến trang khác
+    // const socket = useWebSocket();
+    // // console.log("socket1: "+socket);
+    // console.log("user: "+ username);
+    // const [isOpen, setIsOpen] = useState(false);
+    //
+    // const toggleMenu = () => {
+    //     setIsOpen(!isOpen);
+    // };
+    //
+    //
+    // const handleLogout = () => {
+    //     console.log("da vao dang xuat")
+    //     console.log("socket: "+socket);
+    //     if (!socket || socket.readyState !== WebSocket.OPEN) {
+    //         console.error('WebSocket connection is not open');
+    //         return;
+    //     }
+    //
+    //
+    //         const requestData = {
+    //             action: "onchat",
+    //             data: {
+    //                 event: "LOGOUT",
+    //             }
+    //         };
+    //         socket.send(JSON.stringify(requestData));
+    //     // };
+    //
+    //     socket.onmessage = (event) => {
+    //         console.log("da vao dang xuat onmess")
+    //         const response = JSON.parse(event.data);
+    //         console.log(response);
+    //         if (response.status === "success") {
+    //             console.log("da vao dang xuat success")
+    //             localStorage.removeItem('sessionData');
+    //             Swal.fire({
+    //                 position: 'center',
+    //                 icon: response.status,
+    //                 title: response.status,
+    //                 showConfirmButton: false,
+    //                 timer: 1500
+    //             }).then(() => {
+    //                 history('/logout'); // Điều chỉnh URL tới trang logout của bạn
+    //             });
+    //         } else {
+    //             Swal.fire({
+    //                 icon: 'error',
+    //                 title: response.status,
+    //                 text: response.mes,
+    //             });
+    //         }
+    //         // socket.close();
+    //     };
+    //
+    //     socket.onerror = (error) => {
+    //         Swal.fire({
+    //             icon: 'error',
+    //             title: 'Lỗi WebSocket',
+    //             text: 'Không thể thiết lập kết nối WebSocket',
+    //         });
+    //     };
+    // };
+
+    //chat
+    const [basicModal, setBasicModal] = useState(false);
+    const location = useLocation();
+    const navigate = useNavigate();
+    const [isOpen, setIsOpen] = useState(false);
+    const socket = useWebSocket();
+
+    const sessionData = JSON.parse(localStorage.getItem('sessionData')) || {};
+    // console.log("session1: "+ sessionData);
+    const { username, code } =  sessionData;
+
+    console.log("user: " + username);
 
     const toggleOpen = () => setBasicModal(!basicModal);
-    const  history = useNavigate();// điều hướng và gửi dữ liệu đến trang khác
-    const socket = useWebSocket();
-    // console.log("socket1: "+socket);
-    console.log("user: "+ username);
-    const [isOpen, setIsOpen] = useState(false);
+    const toggleMenu = () => setIsOpen(!isOpen);
 
-    const toggleMenu = () => {
-        setIsOpen(!isOpen);
-    };
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleReload = () => {
+            console.log("Preparing to reload...");
+            if (username && code) {
+                console.log("Preparing to reload... " + code + " " + username);
+                const requestData = {
+                    action: "onchat",
+                    data: {
+                        event: "RE_LOGIN",
+                        data: {
+                            user: username,
+                            code: code
+                        }
+                    }
+                };
+
+
+
+                if (socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify(requestData));
+                } else {
+                    socket.addEventListener('open', () => {
+                        socket.send(JSON.stringify(requestData));
+                    }, { once: true });
+                }
+            }
+        };
+
+        const handleReloginMessage = (event) => {
+            const response = JSON.parse(event.data);
+            if (response.event === "RE_LOGIN") {
+                if (response.status === "success") {
+                    localStorage.setItem('sessionData', JSON.stringify({
+                        username: username,
+                        code: response.data.RE_LOGIN_CODE
+                    }));
+                    // Swal.fire({
+                    //     position: 'center',
+                    //     icon: 'success',
+                    //     title: response.status,
+                    //     text: response.mes,
+                    //     showConfirmButton: false,
+                    //     timer: 1500
+                    // });
+                    // console.log("relogin thanh cong: "+response.data.RE_LOGIN_CODE);
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: response.status,
+                        text: response.mes,
+                    });
+                    console.error('Relogin error details:', response);
+                }
+            }
+        };
+
+        handleReload();
+
+        window.addEventListener('beforeunload', handleReload);
+        socket.addEventListener('message', handleReloginMessage);
+
+        return () => {
+            window.removeEventListener('beforeunload', handleReload);
+            socket.removeEventListener('message', handleReloginMessage);
+        };
+    }, [socket, username, code]);
 
 
     const handleLogout = () => {
-        console.log("da vao dang xuat")
-        console.log("socket: "+socket);
+        console.log("Đã vào đăng xuất");
+
         if (!socket || socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket connection is not open');
             return;
         }
 
+        const requestData = {
+            action: "onchat",
+            data: {
+                event: "LOGOUT",
+            }
+        };
+        socket.send(JSON.stringify(requestData));
 
-            const requestData = {
-                action: "onchat",
-                data: {
-                    event: "LOGOUT",
-                }
-            };
-            socket.send(JSON.stringify(requestData));
-        // };
-
-        socket.onmessage = (event) => {
-            console.log("da vao dang xuat onmess")
+        const handleLogoutMessage = (event) => {
+            console.log("Đã vào đăng xuất onmessage");
             const response = JSON.parse(event.data);
             console.log(response);
+
             if (response.status === "success") {
-                console.log("da vao dang xuat success")
+                console.log("Đã vào đăng xuất success");
                 localStorage.removeItem('sessionData');
                 Swal.fire({
                     position: 'center',
@@ -66,7 +204,7 @@ export default function ChatRoom() {
                     showConfirmButton: false,
                     timer: 1500
                 }).then(() => {
-                    history('/logout'); // Điều chỉnh URL tới trang logout của bạn
+                    navigate('/logout'); // Điều chỉnh URL tới trang logout của bạn
                 });
             } else {
                 Swal.fire({
@@ -75,8 +213,12 @@ export default function ChatRoom() {
                     text: response.mes,
                 });
             }
-            // socket.close();
+
+            // Dọn dẹp listener sau khi xử lý tin nhắn
+            socket.removeEventListener('message', handleLogoutMessage);
         };
+
+        socket.addEventListener('message', handleLogoutMessage);
 
         socket.onerror = (error) => {
             Swal.fire({
@@ -86,6 +228,85 @@ export default function ChatRoom() {
             });
         };
     };
+
+    // useEffect(() => {
+    //     if (!socket) return;
+    //
+    //     const handleMessage = (event) => {
+    //         console.log("Đã vào đăng xuất onmessage");
+    //         const response = JSON.parse(event.data);
+    //         console.log(response);
+    //
+    //         if (response.status === "success") {
+    //             console.log("Đã vào đăng xuất success");
+    //             localStorage.removeItem('sessionData');
+    //             Swal.fire({
+    //                 position: 'center',
+    //                 icon: response.status,
+    //                 title: response.status,
+    //                 showConfirmButton: false,
+    //                 timer: 1500
+    //             }).then(() => {
+    //                 navigate('/logout'); // Điều chỉnh URL tới trang logout của bạn
+    //             });
+    //         } else {
+    //             Swal.fire({
+    //                 icon: 'error',
+    //                 title: response.status,
+    //                 text: response.mes,
+    //             });
+    //         }
+    //     };
+    //
+    //     const handleError = (error) => {
+    //         Swal.fire({
+    //             icon: 'error',
+    //             title: 'Lỗi WebSocket',
+    //             text: 'Không thể thiết lập kết nối WebSocket',
+    //         });
+    //     };
+    //
+    //     socket.addEventListener('message', handleMessage);
+    //     socket.addEventListener('error', handleError);
+    //
+    //     return () => {
+    //         socket.removeEventListener('message', handleMessage);
+    //         socket.removeEventListener('error', handleError);
+    //     };
+    // }, [socket, navigate]);
+
+    // useEffect(() => {
+    //     if (!sessionData.username || !sessionData.code) {
+    //         navigate('/login'); // Chuyển hướng tới trang login nếu không có thông tin phiên
+    //         return;
+    //     }
+    //
+    //     const requestData = {
+    //         action: "onchat",
+    //         data: {
+    //             event: "RE_LOGIN",
+    //             data: {
+    //                 user: sessionData.username,
+    //                 code: sessionData.code
+    //             }
+    //         }
+    //     };
+    //
+    //     const sendReLoginRequest = () => {
+    //         if (socket && socket.readyState === WebSocket.OPEN) {
+    //             socket.send(JSON.stringify(requestData));
+    //         } else {
+    //             socket.addEventListener('open', () => {
+    //                 socket.send(JSON.stringify(requestData));
+    //             });
+    //         }
+    //     };
+    //
+    //     if (socket) {
+    //         sendReLoginRequest();
+    //     }
+    // }, [socket, sessionData, navigate]);
+
 
 
 
