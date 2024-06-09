@@ -24,8 +24,9 @@ export default function ChatRoom() {
     const { username, password, userList: initialUserList } = location.state || {};
     const [userList, setUserList] = useState(initialUserList || []); // State to store the user list
     const [roomOwner, setRoomOwner] = useState(''); // State to store room owner
-    const [messageContent, setMessageContent] = useState('1767 Messages'); // State to store the message content
+    const [messageContent, setMessageContent] = useState(''); // State to store the message content
     const [displayName, setDisplayName] = useState(username); // State to store the display name
+    const [searchType, setSearchType] = useState(''); // State to store the type of search (room or user)
 
     const toggleOpen = () => setBasicModal(!basicModal);
     const history = useNavigate(); // điều hướng và gửi dữ liệu đến trang khác
@@ -50,7 +51,7 @@ export default function ChatRoom() {
             setRoomOwner(roomOwner);
             setMessageContent(username === roomOwner ? 'Người tạo phòng' : 'Người tham gia');
         }
-    }, []);
+    }, [username]);
 
     const handleLogout = () => {
         console.log("Logging out...");
@@ -119,15 +120,6 @@ export default function ChatRoom() {
     };
 
     const handleSearch = () => {
-        if (!isCheckboxChecked) {
-            Swal.fire({
-                text: "Please check the checkbox to search.",
-                icon: 'warning',
-            });
-            return;
-        }
-
-        // Gửi API GET_ROOM_CHAT_MES thông qua WebSocket
         if (!socket || socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket connection is not open');
             Swal.fire({
@@ -138,53 +130,94 @@ export default function ChatRoom() {
             return;
         }
 
-        const requestData = {
-            action: "onchat",
-            data: {
-                event: "GET_ROOM_CHAT_MES",
+        if (!isCheckboxChecked) {
+            const requestData = {
+                action: "onchat",
                 data: {
-                    name: searchInput.trim(),
-                    page: 1
+                    event: "CHECK_USER",
+                    data: {
+                        user: searchInput.trim()
+                    }
                 }
-            }
-        };
+            };
 
-        socket.send(JSON.stringify(requestData));
+            socket.send(JSON.stringify(requestData));
 
-        socket.onmessage = (event) => {
-            const response = JSON.parse(event.data);
-            console.log("Get Room Chat Mes response: ", response);
-            if (response.status === "success") {
-                const roomData = response.data;
-                const roomName = roomData.name;
-                const chatData = roomData.chatData;
-
-                // Lưu dữ liệu vào localStorage dưới tên "data"
-                localStorage.setItem('data', JSON.stringify(roomData));
-
-                // Lưu dữ liệu vào localStorage
-                const savedUserList = JSON.parse(localStorage.getItem('userList')) || [];
-                const existingRoom = savedUserList.find(room => room.name === roomName);
-                if (!existingRoom) {
-                    savedUserList.push(roomData);
-                    localStorage.setItem('userList', JSON.stringify(savedUserList));
+            socket.onmessage = (event) => {
+                const response = JSON.parse(event.data);
+                console.log("Check User response: ", response);
+                if (response.status === "success") {
+                    if (response.data.status) {
+                        setDisplayName(searchInput.trim());
+                        setMessageContent(''); // Clear the message content for user search
+                        setSearchType('user');
+                        Swal.fire({
+                            text: `User ${searchInput} has logged in before.`,
+                            icon: 'success',
+                        });
+                    } else {
+                        Swal.fire({
+                            text: `User ${searchInput} has not logged in before.`,
+                            icon: 'warning',
+                        });
+                    }
+                } else {
+                    Swal.fire({
+                        text: `Failed to check user ${searchInput}.`,
+                        icon: 'error',
+                    });
                 }
+            };
+        } else {
+            const requestData = {
+                action: "onchat",
+                data: {
+                    event: "GET_ROOM_CHAT_MES",
+                    data: {
+                        name: searchInput.trim(),
+                        page: 1
+                    }
+                }
+            };
 
-                setRoomOwner(roomData.own);
-                setMessageContent(username === roomData.own ? 'Người tạo phòng' : 'Người tham gia');
-                setDisplayName(roomName);
+            socket.send(JSON.stringify(requestData));
 
-                Swal.fire({
-                    text: `Room ${roomName} tồn tại`,
-                    icon: 'success',
-                });
-            } else {
-                Swal.fire({
-                    text: `Room ${searchInput} không tồn tại`,
-                    icon: 'warning',
-                });
-            }
-        };
+            socket.onmessage = (event) => {
+                const response = JSON.parse(event.data);
+                console.log("Get Room Chat Mes response: ", response);
+                if (response.status === "success") {
+                    const roomData = response.data;
+                    const roomName = roomData.name;
+                    const chatData = roomData.chatData;
+
+                    // Lưu dữ liệu vào localStorage dưới tên "data"
+                    localStorage.setItem('data', JSON.stringify(roomData));
+
+                    // Lưu dữ liệu vào localStorage
+                    const savedUserList = JSON.parse(localStorage.getItem('userList')) || [];
+                    const existingRoom = savedUserList.find(room => room.name === roomName);
+                    if (!existingRoom) {
+                        savedUserList.push(roomData);
+                        localStorage.setItem('userList', JSON.stringify(savedUserList));
+                    }
+
+                    setRoomOwner(roomData.own);
+                    setMessageContent(username === roomData.own ? 'Người tạo phòng' : 'Người tham gia');
+                    setDisplayName(roomName);
+                    setSearchType('room');
+
+                    Swal.fire({
+                        text: `Room ${roomName} tồn tại`,
+                        icon: 'success',
+                    });
+                } else {
+                    Swal.fire({
+                        text: `Room ${searchInput} không tồn tại`,
+                        icon: 'warning',
+                    });
+                }
+            };
+        }
     };
 
     return (
@@ -264,7 +297,7 @@ export default function ChatRoom() {
                                         </div>
                                         <div className="user_info">
                                             <span>{displayName}</span>
-                                            {messageContent && messageContent !== '1767 Messages' && <p>{messageContent}</p>}
+                                            {searchType === 'room' && messageContent && <p>{messageContent}</p>}
                                         </div>
                                         <div className="video_cam">
                                             <span><i className="fas fa-video"></i></span>

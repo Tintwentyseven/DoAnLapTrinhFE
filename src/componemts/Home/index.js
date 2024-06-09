@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import gsap from 'gsap';
+import { Link } from 'react-router-dom';
+import { MDBContainer } from 'mdb-react-ui-kit';
 import './style.css';
-import {Link} from 'react-router-dom';
 
 const Home = () => {
     useEffect(() => {
@@ -30,7 +31,7 @@ const Home = () => {
     }, []);
 
     return (
-        <div className="container">
+        <MDBContainer className="container">
             <div className="cookie">
                 <svg
                     fill="none"
@@ -39,11 +40,11 @@ const Home = () => {
                     width="5em"
                     xmlns="http://www.w3.org/2000/svg"
                 >
-                    <circle cx="202.5" cy="197.5" r="197.5" fill="#FAD02E"/>
-                    <circle cx="133" cy="146" r="19" fill="#3E2723"/>
-                    <circle cx="273" cy="106" r="15" fill="#3E2723"/>
-                    <circle cx="130" cy="246" r="13" fill="#3E2723"/>
-                    <circle cx="293" cy="263" r="18" fill="#3E2723"/>
+                    <circle cx="202.5" cy="197.5" r="197.5" fill="#FAD02E" />
+                    <circle cx="133" cy="146" r="19" fill="#3E2723" />
+                    <circle cx="273" cy="106" r="15" fill="#3E2723" />
+                    <circle cx="130" cy="246" r="13" fill="#3E2723" />
+                    <circle cx="293" cy="263" r="18" fill="#3E2723" />
                 </svg>
             </div>
             <div className="text">
@@ -53,16 +54,11 @@ const Home = () => {
                     <b>Cookie</b>, hi vọng bạn sẽ có được những trải nghiệm tuyệt vời khi sử dụng web chat của chúng tôi.
                 </p>
                 <div className="btn">
-                    <a className="button" href="#">
-                        <Link to="/login">Đăng nhập</Link>
-                    </a>
-                    <a className="button" href="#">
-                        <Link to="/register">Đăng kí</Link>
-
-                    </a>
+                    <Link to="/login" className="button primary">Đăng nhập</Link>
+                    <Link to="/register" className="button secondary">Đăng kí</Link>
                 </div>
             </div>
-        </div>
+        </MDBContainer>
     );
 };
 
