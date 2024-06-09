@@ -6,6 +6,7 @@ import Login from "./componemts/Login"; // Corrected path
 import ChatRoom from "./componemts/ChatRoom"; // Corrected path
 import Register from "./componemts/Register";
 import Logout from "./componemts/Logout";
+import Home from "./componemts/Home";
 
 import {WebSocketProvider} from "./componemts/WebSocket/WebSocketContext"
 import ProtectedRoute from "./componemts/auth";
@@ -17,8 +18,9 @@ function App() {
         <WebSocketProvider>
             <BrowserRouter>
                 <Routes>
-                    <Route path="/login" element={isAuthenticated ? <Navigate to="/chat" replace/> : <Login/>}/>
+                    <Route path="/login" element={isAuthenticated ? <Navigate to="/home" replace/> : <Login/>}/>
 
+                    <Route path="/home" element={<Home/>}/>
                     <Route path="/register" element={<Register/>}/>
                     <Route path="/chat" element={<ProtectedRoute element={ChatRoom}/>}/>
                     <Route path="/logout" element={<Logout/>}/>
@@ -28,8 +30,6 @@ function App() {
         </WebSocketProvider>
     );
 }
-
-
 
 
 export default App;
