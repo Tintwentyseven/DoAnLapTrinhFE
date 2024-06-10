@@ -335,4 +335,7 @@
     font-size: 20px;
 
 }
+input.form-control.search:focus {
+    outline: none;
+}
 /* Modal Overlay */

@@ -65,7 +65,7 @@ const Login = () => {
       });
     }
 
-    const loginData = {
+    const requestData = {
       action: "onchat",
       data: {
         event: "LOGIN",
@@ -76,13 +76,13 @@ const Login = () => {
       }
     };
 
-    socket.send(JSON.stringify(loginData));
+    socket.send(JSON.stringify(requestData));
   };
 
   useEffect(() => {
     if (!socket) return;
 
-    socket.onopen = () => {
+    const handleOpen = () => {
       Swal.fire({
         text: "WebSocket connection established",
         icon: 'success',
@@ -91,17 +91,17 @@ const Login = () => {
       });
     };
 
-    socket.onmessage = (event) => {
+    const handleMessage = (event) => {
       const response = JSON.parse(event.data);
       if (response.status === "success" && response.event === "LOGIN") {
         const reloginCode = response.data.RE_LOGIN_CODE;
         localStorage.setItem("sessionData", JSON.stringify({
           username: usernameRef.current,
           password: passwordRef.current,
-          reloginCode: btoa(reloginCode)  // Encode the relogin code
+          code: response.data.RE_LOGIN_CODE,
+          reloginCode: btoa(reloginCode),
         }));
 
-        // Request the user list after successful login
         const userListRequest = {
           action: 'onchat',
           data: {
@@ -118,6 +118,7 @@ const Login = () => {
       } else if (response.status === 'success' && response.event === 'GET_USER_LIST') {
         const users = response.data;
         localStorage.setItem("userList", JSON.stringify(users));
+
         Swal.fire({
           position: 'center',
           icon: 'success',
@@ -130,14 +131,25 @@ const Login = () => {
       }
     };
 
-    socket.onerror = (error) => {
+    const handleError = () => {
       Swal.fire({
         icon: 'error',
         title: 'WebSocket Error',
         text: 'Unable to establish WebSocket connection',
       });
     };
-  }, [socket, navigate]); // Đảm bảo useEffect chỉ chạy khi giá trị của socket thay đổi
+
+    socket.addEventListener('open', handleOpen);
+    socket.addEventListener('message', handleMessage);
+    socket.addEventListener('error', handleError);
+
+    return () => {
+      socket.removeEventListener('open', handleOpen);
+      socket.removeEventListener('message', handleMessage);
+      socket.removeEventListener('error', handleError);
+    };
+  }, [socket, navigate]);
+
 
 
   return (
