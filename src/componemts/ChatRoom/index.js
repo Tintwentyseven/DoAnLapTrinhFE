@@ -96,7 +96,8 @@ export default function ChatRoom() {
 
     const sessionData = JSON.parse(localStorage.getItem('sessionData')) || {};
     // console.log("session1: "+ sessionData);
-    const { username, code ,userList: initialUserList} =  sessionData;
+    const { username, code ,userList:initialUserList} =  sessionData;
+    // console.log("user cua m do: "+userList);
 
     console.log("user: " + username);
 
@@ -301,87 +302,75 @@ export default function ChatRoom() {
         };
     };
 
-// <<<<<<< HEAD
-    // useEffect(() => {
-    //     if (!socket) return;
-    //
-    //     const handleMessage = (event) => {
-    //         console.log("Đã vào đăng xuất onmessage");
-    //         const response = JSON.parse(event.data);
-    //         console.log(response);
-    //
-    //         if (response.status === "success") {
-    //             console.log("Đã vào đăng xuất success");
-    //             localStorage.removeItem('sessionData');
-    //             Swal.fire({
-    //                 position: 'center',
-    //                 icon: response.status,
-    //                 title: response.status,
-    //                 showConfirmButton: false,
-    //                 timer: 1500
-    //             }).then(() => {
-    //                 navigate('/logout'); // Điều chỉnh URL tới trang logout của bạn
-    //             });
-    //         } else {
-    //             Swal.fire({
-    //                 icon: 'error',
-    //                 title: response.status,
-    //                 text: response.mes,
-    //             });
-    //         }
-    //     };
-    //
-    //     const handleError = (error) => {
-    //         Swal.fire({
-    //             icon: 'error',
-    //             title: 'Lỗi WebSocket',
-    //             text: 'Không thể thiết lập kết nối WebSocket',
-    //         });
-    //     };
-    //
-    //     socket.addEventListener('message', handleMessage);
-    //     socket.addEventListener('error', handleError);
-    //
-    //     return () => {
-    //         socket.removeEventListener('message', handleMessage);
-    //         socket.removeEventListener('error', handleError);
-    //     };
-    // }, [socket, navigate]);
 
-    // useEffect(() => {
-    //     if (!sessionData.username || !sessionData.code) {
-    //         navigate('/login'); // Chuyển hướng tới trang login nếu không có thông tin phiên
-    //         return;
-    //     }
-    //
-    //     const requestData = {
-    //         action: "onchat",
-    //         data: {
-    //             event: "RE_LOGIN",
-    //             data: {
-    //                 user: sessionData.username,
-    //                 code: sessionData.code
-    //             }
-    //         }
-    //     };
-    //
-    //     const sendReLoginRequest = () => {
-    //         if (socket && socket.readyState === WebSocket.OPEN) {
-    //             socket.send(JSON.stringify(requestData));
-    //         } else {
-    //             socket.addEventListener('open', () => {
-    //                 socket.send(JSON.stringify(requestData));
-    //             });
-    //         }
-    //     };
-    //
-    //     if (socket) {
-    //         sendReLoginRequest();
-    //     }
-    // }, [socket, sessionData, navigate]);
+    //==========================create room======================
+
+    const [roomNames, setRoomNames] = useState('');
+    const handleCreateRoom = () => {
+        const createRoom = {
+            action: "onchat",
+            data: {
+                event: "CREATE_ROOM",
+                data: {
+                    name: roomNames
+                }
+            }
+        };
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(createRoom));
+            console.log('Room creation message sent');
+        } else {
+            console.error('WebSocket is not open. Unable to send message.');
+        }
+
+        toggleOpen(); // Đóng modal sau khi gửi yêu cầu tạo phòng
+    };
+    useEffect(() => {
+        const handleCreateRoomResponse = (event) => {
+            console.log("da vo create room thong bao...")
+            const response = JSON.parse(event.data);
+            if (response.event === "CREATE_ROOM") {
+                if (response.status === "success") {
+                    // Hiển thị thông báo thành công
+                    Swal.fire({
+                        position: 'center',
+                        icon: 'success',
+                        title: response.status,
+                        text: response.message,
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                    // Xử lý các hành động khác nếu cần
+                } else {
+                    // Hiển thị thông báo lỗi
+                    Swal.fire({
+                        icon: 'error',
+                        title: response.status,
+                        text: 'Tên phòng đã tồn tại!',
+                    });
+                    console.error('Create room error details:', response);
+                }
+            }
+        };
+
+        // Thêm sự kiện lắng nghe cho WebSocket
+        if (socket) {
+            socket.addEventListener('message', handleCreateRoomResponse);
+        }
+
+        // Cleanup function
+        return () => {
+            // Xóa sự kiện lắng nghe khi component unmount
+            if (socket) {
+                socket.removeEventListener('message', handleCreateRoomResponse);
+            }
+        };
+    }, [socket]);
 
 
 // =======
+    //chuc nang search
     const handleSearchInputChange = (event) => {
         setSearchInput(event.target.value);
     };
@@ -491,6 +480,9 @@ export default function ChatRoom() {
             };
         }
     };
+
+
+
 
     return (
         <>
@@ -702,13 +694,18 @@ export default function ChatRoom() {
                             <MDBBtn className="btn-close" color="none" onClick={toggleOpen} />
                         </MDBModalHeader>
                         <MDBModalBody>
-                            <MDBInput type={"text"}></MDBInput>
+                            <MDBInput
+                                type={"text"}
+                                value={roomNames}
+                                onChange={(e) => setRoomNames(e.target.value)}
+                                label="Room Name"
+                            ></MDBInput>
                         </MDBModalBody>
                         <MDBModalFooter>
                             <MDBBtn color="secondary" onClick={toggleOpen}>
                                 Close
                             </MDBBtn>
-                            <MDBBtn>Create</MDBBtn>
+                            <MDBBtn onClick={handleCreateRoom} >Create</MDBBtn>
                         </MDBModalFooter>
                     </MDBModalContent>
                 </MDBModalDialog>
