@@ -12,133 +12,36 @@ import {
     MDBInput
 } from 'mdb-react-ui-kit';
 import './style.css';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Swal from "sweetalert2";
 import { useWebSocket } from "../WebSocket/WebSocketContext";
 
 export default function ChatRoom() {
-// <<<<<<< HEAD
-    // const [basicModal, setBasicModal] = useState(false);// mở Menu Item
-    // const location = useLocation();// lấy dữ liệu trang
-    // const { username, password } = location.state || { username: 'Guest' }; // Default to 'Guest' if username is not available
-    //
-    // const toggleOpen = () => setBasicModal(!basicModal);
-    // const  history = useNavigate();// điều hướng và gửi dữ liệu đến trang khác
-    // const socket = useWebSocket();
-    // // console.log("socket1: "+socket);
-    // console.log("user: "+ username);
-    // const [isOpen, setIsOpen] = useState(false);
-    //
-    // const toggleMenu = () => {
-    //     setIsOpen(!isOpen);
-    // };
-    //
-    //
-    // const handleLogout = () => {
-    //     console.log("da vao dang xuat")
-    //     console.log("socket: "+socket);
-    //     if (!socket || socket.readyState !== WebSocket.OPEN) {
-    //         console.error('WebSocket connection is not open');
-    //         return;
-    //     }
-    //
-    //
-    //         const requestData = {
-    //             action: "onchat",
-    //             data: {
-    //                 event: "LOGOUT",
-    //             }
-    //         };
-    //         socket.send(JSON.stringify(requestData));
-    //     // };
-    //
-    //     socket.onmessage = (event) => {
-    //         console.log("da vao dang xuat onmess")
-    //         const response = JSON.parse(event.data);
-    //         console.log(response);
-    //         if (response.status === "success") {
-    //             console.log("da vao dang xuat success")
-    //             localStorage.removeItem('sessionData');
-    //             Swal.fire({
-    //                 position: 'center',
-    //                 icon: response.status,
-    //                 title: response.status,
-    //                 showConfirmButton: false,
-    //                 timer: 1500
-    //             }).then(() => {
-    //                 history('/logout'); // Điều chỉnh URL tới trang logout của bạn
-    //             });
-    //         } else {
-    //             Swal.fire({
-    //                 icon: 'error',
-    //                 title: response.status,
-    //                 text: response.mes,
-    //             });
-    //         }
-    //         // socket.close();
-    //     };
-    //
-    //     socket.onerror = (error) => {
-    //         Swal.fire({
-    //             icon: 'error',
-    //             title: 'Lỗi WebSocket',
-    //             text: 'Không thể thiết lập kết nối WebSocket',
-    //         });
-    //     };
-    // };
-
-    //chat
     const [basicModal, setBasicModal] = useState(false);
-    const location = useLocation();
     const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
     const socket = useWebSocket();
 
     const sessionData = JSON.parse(localStorage.getItem('sessionData')) || {};
-    // console.log("session1: "+ sessionData);
-    const { username, code ,userList: initialUserList} =  sessionData;
-
-    console.log("user: " + username);
+    const { username, code } = sessionData;
+    const initialUserList = JSON.parse(localStorage.getItem('userList')) || [];
 
     const toggleOpen = () => setBasicModal(!basicModal);
     const toggleMenu = () => setIsOpen(!isOpen);
 
-    //search
-    const [searchInput, setSearchInput] = useState(''); // State to manage the search input value
-    const [isCheckboxChecked, setIsCheckboxChecked] = useState(false); // State to manage the checkbox state
-    const [userList, setUserList] = useState(initialUserList || []); // State to store the user list
-    const [roomOwner, setRoomOwner] = useState(''); // State to store room owner
-    const [messageContent, setMessageContent] = useState(''); // State to store the message content
-    const [displayName, setDisplayName] = useState(username); // State to store the display name
-    const [searchType, setSearchType] = useState(''); // State to store the type of search (room or user)
-    const existingSocketRef = useRef(null);
-// =======
-//     const [basicModal, setBasicModal] = useState(false); // mở Menu Item -----
-//     const [searchInput, setSearchInput] = useState(''); // State to manage the search input value
-//     const [isCheckboxChecked, setIsCheckboxChecked] = useState(false); // State to manage the checkbox state
-//     const location = useLocation(); // lấy dữ liệu trang
-//     const { username, password, userList: initialUserList } = location.state || {};
-//     const [userList, setUserList] = useState(initialUserList || []); // State to store the user list
-//     const [roomOwner, setRoomOwner] = useState(''); // State to store room owner
-//     const [messageContent, setMessageContent] = useState(''); // State to store the message content
-//     const [displayName, setDisplayName] = useState(username); // State to store the display name
-//     const [searchType, setSearchType] = useState(''); // State to store the type of search (room or user)
-//
-//     const toggleOpen = () => setBasicModal(!basicModal);
-//     const history = useNavigate(); // điều hướng và gửi dữ liệu đến trang khác
-//     const socket = useWebSocket();
-//     const existingSocketRef = useRef(null);
-//
-//     const [isOpen, setIsOpen] = useState(false);
-// >>>>>>> main
+    const [searchInput, setSearchInput] = useState('');
+    const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
+    const [userList, setUserList] = useState(initialUserList);
+    const [roomOwner, setRoomOwner] = useState('');
+    const [messageContent, setMessageContent] = useState('');
+    const [displayName, setDisplayName] = useState(username);
+    const [searchType, setSearchType] = useState('');
 
     useEffect(() => {
         if (!socket) return;
 
         const handleReload = () => {
-            console.log("Preparing to reload...");
             if (username && code) {
-                console.log("Preparing to reload... " + code + " " + username);
                 const requestData = {
                     action: "onchat",
                     data: {
@@ -149,8 +52,6 @@ export default function ChatRoom() {
                         }
                     }
                 };
-
-
 
                 if (socket.readyState === WebSocket.OPEN) {
                     socket.send(JSON.stringify(requestData));
@@ -170,22 +71,12 @@ export default function ChatRoom() {
                         username: username,
                         code: response.data.RE_LOGIN_CODE
                     }));
-                    // Swal.fire({
-                    //     position: 'center',
-                    //     icon: 'success',
-                    //     title: response.status,
-                    //     text: response.mes,
-                    //     showConfirmButton: false,
-                    //     timer: 1500
-                    // });
-                    // console.log("relogin thanh cong: "+response.data.RE_LOGIN_CODE);
                 } else {
                     Swal.fire({
                         icon: 'error',
                         title: response.status,
                         text: response.mes,
                     });
-                    console.error('Relogin error details:', response);
                 }
             }
         };
@@ -216,12 +107,6 @@ export default function ChatRoom() {
     }, [username]);
 
     const handleLogout = () => {
-// <<<<<<< HEAD
-//         console.log("Đã vào đăng xuất");
-//
-// =======
-//         console.log("Logging out...");
-// >>>>>>> main
         if (!socket || socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket connection is not open');
             Swal.fire({
@@ -240,40 +125,23 @@ export default function ChatRoom() {
         };
         socket.send(JSON.stringify(requestData));
 
-// <<<<<<< HEAD
         const handleLogoutMessage = (event) => {
-            console.log("Đã vào đăng xuất onmessage");
-// =======
-//         socket.onmessage = (event) => {
-//             console.log("Logout response received");
-// >>>>>>> main
             const response = JSON.parse(event.data);
-            console.log(response);
 
             if (response.status === "success") {
-// <<<<<<< HEAD
-                console.log("Đã vào đăng xuất success");
                 localStorage.removeItem('sessionData');
-// =======
-//                 console.log("Logout success");
-//                 localStorage.removeItem('sessionData'); // Remove session data only when logout is successful
-                localStorage.removeItem('userList'); // Remove userList from localStorage
+                localStorage.removeItem('userList');
                 localStorage.removeItem('data');
-                sessionStorage.removeItem('userList'); // Remove userList from sessionStorage
-                setUserList([]); // Clear the user list
-// >>>>>>> main
+                sessionStorage.removeItem('userList');
+                setUserList([]);
                 Swal.fire({
                     position: 'center',
-                    icon: response.status,
-                    title: response.status,
+                    icon: 'success',
+                    title: 'Logout successful',
                     showConfirmButton: false,
                     timer: 1500
                 }).then(() => {
-// <<<<<<< HEAD
-                    navigate('/logout'); // Điều chỉnh URL tới trang logout của bạn
-// =======
-//                     history('/logout'); // Navigate to logout page
-// >>>>>>> main
+                    navigate('/logout'); // Navigate to logout page after successful logout
                 });
             } else {
                 Swal.fire({
@@ -282,110 +150,16 @@ export default function ChatRoom() {
                     text: response.mes,
                 });
             }
-// <<<<<<< HEAD
 
-            // Dọn dẹp listener sau khi xử lý tin nhắn
             socket.removeEventListener('message', handleLogoutMessage);
-// =======
-// >>>>>>> main
         };
 
         socket.addEventListener('message', handleLogoutMessage);
-
-        socket.onerror = (error) => {
-            Swal.fire({
-                icon: 'error',
-                title: 'WebSocket Error',
-                text: 'Unable to establish WebSocket connection',
-            });
-        };
     };
 
-// <<<<<<< HEAD
-    // useEffect(() => {
-    //     if (!socket) return;
-    //
-    //     const handleMessage = (event) => {
-    //         console.log("Đã vào đăng xuất onmessage");
-    //         const response = JSON.parse(event.data);
-    //         console.log(response);
-    //
-    //         if (response.status === "success") {
-    //             console.log("Đã vào đăng xuất success");
-    //             localStorage.removeItem('sessionData');
-    //             Swal.fire({
-    //                 position: 'center',
-    //                 icon: response.status,
-    //                 title: response.status,
-    //                 showConfirmButton: false,
-    //                 timer: 1500
-    //             }).then(() => {
-    //                 navigate('/logout'); // Điều chỉnh URL tới trang logout của bạn
-    //             });
-    //         } else {
-    //             Swal.fire({
-    //                 icon: 'error',
-    //                 title: response.status,
-    //                 text: response.mes,
-    //             });
-    //         }
-    //     };
-    //
-    //     const handleError = (error) => {
-    //         Swal.fire({
-    //             icon: 'error',
-    //             title: 'Lỗi WebSocket',
-    //             text: 'Không thể thiết lập kết nối WebSocket',
-    //         });
-    //     };
-    //
-    //     socket.addEventListener('message', handleMessage);
-    //     socket.addEventListener('error', handleError);
-    //
-    //     return () => {
-    //         socket.removeEventListener('message', handleMessage);
-    //         socket.removeEventListener('error', handleError);
-    //     };
-    // }, [socket, navigate]);
-
-    // useEffect(() => {
-    //     if (!sessionData.username || !sessionData.code) {
-    //         navigate('/login'); // Chuyển hướng tới trang login nếu không có thông tin phiên
-    //         return;
-    //     }
-    //
-    //     const requestData = {
-    //         action: "onchat",
-    //         data: {
-    //             event: "RE_LOGIN",
-    //             data: {
-    //                 user: sessionData.username,
-    //                 code: sessionData.code
-    //             }
-    //         }
-    //     };
-    //
-    //     const sendReLoginRequest = () => {
-    //         if (socket && socket.readyState === WebSocket.OPEN) {
-    //             socket.send(JSON.stringify(requestData));
-    //         } else {
-    //             socket.addEventListener('open', () => {
-    //                 socket.send(JSON.stringify(requestData));
-    //             });
-    //         }
-    //     };
-    //
-    //     if (socket) {
-    //         sendReLoginRequest();
-    //     }
-    // }, [socket, sessionData, navigate]);
-
-
-// =======
     const handleSearchInputChange = (event) => {
         setSearchInput(event.target.value);
     };
-// >>>>>>> main
 
     const handleCheckboxChange = (event) => {
         setIsCheckboxChecked(event.target.checked);
@@ -417,11 +191,10 @@ export default function ChatRoom() {
 
             socket.onmessage = (event) => {
                 const response = JSON.parse(event.data);
-                console.log("Check User response: ", response);
                 if (response.status === "success") {
                     if (response.data.status) {
                         setDisplayName(searchInput.trim());
-                        setMessageContent(''); // Clear the message content for user search
+                        setMessageContent('');
                         setSearchType('user');
                         Swal.fire({
                             text: `User ${searchInput} has logged in before.`,
@@ -456,16 +229,12 @@ export default function ChatRoom() {
 
             socket.onmessage = (event) => {
                 const response = JSON.parse(event.data);
-                console.log("Get Room Chat Mes response: ", response);
                 if (response.status === "success") {
                     const roomData = response.data;
                     const roomName = roomData.name;
-                    const chatData = roomData.chatData;
 
-                    // Lưu dữ liệu vào localStorage dưới tên "data"
                     localStorage.setItem('data', JSON.stringify(roomData));
 
-                    // Lưu dữ liệu vào localStorage
                     const savedUserList = JSON.parse(localStorage.getItem('userList')) || [];
                     const existingRoom = savedUserList.find(room => room.name === roomName);
                     if (!existingRoom) {
@@ -510,14 +279,24 @@ export default function ChatRoom() {
                                             checked={isCheckboxChecked}
                                             onChange={handleCheckboxChange}
                                         />
-                                        <input
+                                        <MDBInput
                                             type="text"
                                             placeholder="Search..."
-                                            name=""
+                                            name="searchInput"
                                             className="form-control search"
                                             value={searchInput}
                                             onChange={handleSearchInputChange}
+                                            list="datalistOptions"
                                         />
+                                        <datalist id="datalistOptions">
+                                            {userList
+                                                .filter(user => !isCheckboxChecked ? user.type === 0 : user.type === 1)
+                                                .map((user, index) => (
+                                                    <option key={index} value={user.name}/>
+                                                ))
+                                            }
+                                        </datalist>
+
                                         <div className="input-group-prepend">
                                             <span
                                                 className="input-group-text search_btn"

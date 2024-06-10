@@ -39,7 +39,7 @@
     "yet-another-react-lightbox": "^3.11.1"
   },
   "scripts": {
-    "start": "react-scripts start --open http://localhost:3000/login",
+    "start": "react-scripts start ",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build",
     "build": "react-scripts build",

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+
 import './logoutStyle.css';
 import {Link, useNavigate} from 'react-router-dom';
 import Swal from "sweetalert2";
@@ -9,8 +10,14 @@ import Swal from "sweetalert2";
 
 
 const Logout = () => {
+    const navigate = useNavigate();
 
-    const history = useNavigate();
+    // useEffect(() => {
+    //     localStorage.removeItem('sessionData');
+    //     localStorage.removeItem('userList');
+    //     navigate('/login');
+    // }, [navigate]);
+
 
     return (
         <div id="body">
@@ -24,12 +31,12 @@ const Logout = () => {
                     <h1 className="text-logout">
                         Bạn đã đăng xuất
                     </h1>
-                    <p className="text-thank" >
+                    <p className="text-thank">
                         Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi
                     </p>
-                    <button id="login-again-btn" >
+                    <button id="login-again-btn">
 
-                        <Link to="/login" className="link" >Đăng nhập</Link>
+                        <Link to="/login" className="link">Đăng nhập</Link>
                     </button>
 
                 </div>
@@ -37,7 +44,7 @@ const Logout = () => {
 
         </div>
     );
-};
+}
 
 
 export default Logout;

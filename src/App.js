@@ -8,28 +8,24 @@ import Register from "./componemts/Register";
 import Logout from "./componemts/Logout";
 import Home from "./componemts/Home";
 
-import {WebSocketProvider} from "./componemts/WebSocket/WebSocketContext"
+import { WebSocketProvider } from "./componemts/WebSocket/WebSocketContext";
 import ProtectedRoute from "./componemts/auth";
 
 function App() {
-    const isAuthenticated = !!localStorage.getItem('sessionData');
-
     return (
         <WebSocketProvider>
             <BrowserRouter>
                 <Routes>
-                    <Route path="/login" element={isAuthenticated ? <Navigate to="/home" replace/> : <Login/>}/>
-
                     <Route path="/home" element={<Home/>}/>
-                    <Route path="/register" element={<Register/>}/>
-                    <Route path="/chat" element={<ProtectedRoute element={ChatRoom}/>}/>
-                    <Route path="/logout" element={<Logout/>}/>
-                    <Route path="/" element={<Navigate to="/login" replace/>}/>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/chat" element={<ProtectedRoute component={ChatRoom} />} />
+                    <Route path="/logout" element={<Logout />} />
+                    <Route path="/" element={<Navigate to="/home" replace />} />
                 </Routes>
             </BrowserRouter>
         </WebSocketProvider>
     );
 }
-
 
 export default App;
