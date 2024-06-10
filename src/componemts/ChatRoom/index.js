@@ -37,6 +37,22 @@ export default function ChatRoom() {
     const [displayName, setDisplayName] = useState(username);
     const [searchType, setSearchType] = useState('');
 
+
+    const [darkMode, setDarkMode] = useState(false);
+
+    useEffect(() => {
+        if (darkMode) {
+            document.documentElement.classList.add('dark-mode');
+        } else {
+            document.documentElement.classList.remove('dark-mode');
+        }
+    }, [darkMode]);
+
+    const handleToggleDarkMode = () => {
+        setDarkMode(prevMode => !prevMode);
+    };
+
+
     useEffect(() => {
         if (!socket) return;
 
@@ -307,7 +323,8 @@ export default function ChatRoom() {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="card-body contacts_body">
+                                <div className="card-body contacts_body"
+                                     style={{overflowY: 'auto',overflowX:'auto', maxHeight:'600px'}}>
                                     <ul className="contacts">
                                         {userList.length > 0 ? (
                                             userList.map((user, index) => (
@@ -343,7 +360,7 @@ export default function ChatRoom() {
                                     <div className="d-flex bd-highlight">
                                         <div className="img_cont">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img" />
+                                                 className="rounded-circle user_img"/>
                                             <span className="online_icon"></span>
                                         </div>
                                         <div className="user_info">
@@ -359,9 +376,9 @@ export default function ChatRoom() {
                                                     size="sm"
                                                     color="primary"
                                                     onClick={toggleOpen}
-                                                    style={{ marginBottom: "3px" }}
+                                                    style={{marginBottom: "3px"}}
                                                 >
-                                                    <MDBIcon fas icon="plus-circle" />
+                                                    <MDBIcon fas icon="plus-circle"/>
                                                 </MDBBtn>
                                             </span>
                                         </div>
@@ -371,22 +388,26 @@ export default function ChatRoom() {
                                     </span>
                                     <div className={`action_menu ${isOpen ? 'open' : ''}`}>
                                         <ul>
-                                            <li id="toggle-dark-mode"><i className="fa-regular fa-moon"
-                                                                         id="icontype"></i> <span className="dark">Dark mode</span>
+                                            <li id="toggle-dark-mode" onClick={handleToggleDarkMode}>
+                                                <i className={`fa-regular ${darkMode ? 'fa-sun' : 'fa-moon'}`}
+                                                   id="icontype"></i>
+                                                <span
+                                                    className={`${darkMode ? 'light' : 'dark'}`}>{darkMode ? 'Light mode' : 'Dark mode'}</span>
                                             </li>
                                             <li><i className="fas fa-user-circle"></i> View profile</li>
-                                            <li><i className="fas fa-plus"></i> Add to group</li>
+                                            <li><i className="fas fa-plus"></i> Join room</li>
                                             <li id="logout-button" onClick={handleLogout}><i
                                                 className="fas fa-ban"></i> Logout
                                             </li>
                                         </ul>
                                     </div>
                                 </div>
-                                <div className="card-body msg_card_body">
+                                <div className="card-body msg_card_body"
+                                     style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
                                     <div className="d-flex justify-content-start mb-4">
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg" />
+                                                 className="rounded-circle user_img_msg"/>
                                         </div>
                                         <div className="msg_cotainer">
                                             Hi, how are you samim?
@@ -400,13 +421,13 @@ export default function ChatRoom() {
                                         </div>
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg" />
+                                                 className="rounded-circle user_img_msg"/>
                                         </div>
                                     </div>
                                     <div className="d-flex justify-content-start mb-4">
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg" />
+                                                 className="rounded-circle user_img_msg"/>
                                         </div>
                                         <div className="msg_cotainer">
                                             I am good too, thank you for your chat template
@@ -420,13 +441,13 @@ export default function ChatRoom() {
                                         </div>
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg" />
+                                                 className="rounded-circle user_img_msg"/>
                                         </div>
                                     </div>
                                     <div className="d-flex justify-content-start mb-4">
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg" />
+                                                 className="rounded-circle user_img_msg"/>
                                         </div>
                                         <div className="msg_cotainer">
                                             I am looking for your next templates
@@ -440,13 +461,13 @@ export default function ChatRoom() {
                                         </div>
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg" />
+                                                 className="rounded-circle user_img_msg"/>
                                         </div>
                                     </div>
                                     <div className="d-flex justify-content-start mb-4">
                                         <div className="img_cont_msg">
                                             <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg" />
+                                                 className="rounded-circle user_img_msg"/>
                                         </div>
                                         <div className="msg_cotainer">
                                             Bye, see you

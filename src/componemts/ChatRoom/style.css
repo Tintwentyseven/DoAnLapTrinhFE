@@ -4,6 +4,8 @@
     background: #7F7FD5;
     background: -webkit-linear-gradient(to right, #91EAE4, #86A8E7, #7F7FD5);
     background: linear-gradient(to right, #91EAE4, #86A8E7, #7F7FD5);
+    /*background: black;*/
+    /*color: white;*/
 }
 
 .chat{
@@ -337,5 +339,69 @@
 }
 input.form-control.search:focus {
     outline: none;
+}
+.dark-mode .maincontainer{
+    background: #404345; /* Darker background color */
+    color: #c5c5c5; /* Light text color */
+}
+
+.dark-mode .card{
+    background-color: #404345 !important; /* Even darker card background */
+}
+
+.dark-mode .search,
+.dark-mode .type_msg,
+.dark-mode .attach_btn,
+.dark-mode .send_btn,
+.dark-mode .search_btn {
+    background-color: #404345 !important; /* Even darker input/button background */
+    color: white;
+}
+
+.dark-mode .msg_cotainer,
+.dark-mode .msg_cotainer_send {
+    background-color: #17202a; /* Even darker message container background */
+    color: white;
+}
+
+.dark-mode .msg_time,
+.dark-mode .msg_time_send {
+    color: rgba(255,255,255,0.5); /* Darker message time color */
+}
+
+.dark-mode .action_menu {
+    background-color: #34495E; /* Darker action menu background */
+}
+
+.dark-mode .action_menu li:hover {
+    background-color: #2C3E50; /* Dark hover background */
+}
+
+.dark-mode .fa-regular.fa-sun {
+    color: #FFD700; /* Sun icon color */
+}
+
+.dark-mode .fa-regular.fa-moon {
+    color: #FFD700; /* Moon icon color */
+}
+.dark-mode .col-md-4.col-xl-3.chat{
+    background: #464749;
+}
+.dark-mode .col-md-8.col-xl-6.chat{
+    background: #464749;
+}
+.dark-mode .card-footer{
+    background: #464749;
+}
+.dark-mode ::-webkit-scrollbar {
+    background-color: #333; /* Màu nền của thanh cuộn */
+}
+
+.dark-mode ::-webkit-scrollbar-thumb {
+    background: #666; /* Màu của thanh cuộn */
+}
+
+.dark-mode ::-webkit-scrollbar-thumb:hover {
+    background: #888; /* Màu của thanh cuộn khi di chuột qua */
 }
 /* Modal Overlay */
