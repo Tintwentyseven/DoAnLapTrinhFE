@@ -345,8 +345,8 @@ export default function ChatRoom() {
                 } else {
                     // Hiển thị thông báo lỗi
                     Swal.fire({
-                        icon: 'error',
-                        title: response.status,
+                        icon: 'warning',
+                        // title: response.status,
                         text: 'Tên phòng đã tồn tại!',
                     });
                     console.error('Create room error details:', response);
