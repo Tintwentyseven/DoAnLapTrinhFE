@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
     MDBBtn,
     MDBModal,
@@ -12,134 +12,59 @@ import {
     MDBInput
 } from 'mdb-react-ui-kit';
 import './style.css';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Swal from "sweetalert2";
 import { useWebSocket } from "../WebSocket/WebSocketContext";
 
 export default function ChatRoom() {
-// <<<<<<< HEAD
-    // const [basicModal, setBasicModal] = useState(false);// mở Menu Item
-    // const location = useLocation();// lấy dữ liệu trang
-    // const { username, password } = location.state || { username: 'Guest' }; // Default to 'Guest' if username is not available
-    //
-    // const toggleOpen = () => setBasicModal(!basicModal);
-    // const  history = useNavigate();// điều hướng và gửi dữ liệu đến trang khác
-    // const socket = useWebSocket();
-    // // console.log("socket1: "+socket);
-    // console.log("user: "+ username);
-    // const [isOpen, setIsOpen] = useState(false);
-    //
-    // const toggleMenu = () => {
-    //     setIsOpen(!isOpen);
-    // };
-    //
-    //
-    // const handleLogout = () => {
-    //     console.log("da vao dang xuat")
-    //     console.log("socket: "+socket);
-    //     if (!socket || socket.readyState !== WebSocket.OPEN) {
-    //         console.error('WebSocket connection is not open');
-    //         return;
-    //     }
-    //
-    //
-    //         const requestData = {
-    //             action: "onchat",
-    //             data: {
-    //                 event: "LOGOUT",
-    //             }
-    //         };
-    //         socket.send(JSON.stringify(requestData));
-    //     // };
-    //
-    //     socket.onmessage = (event) => {
-    //         console.log("da vao dang xuat onmess")
-    //         const response = JSON.parse(event.data);
-    //         console.log(response);
-    //         if (response.status === "success") {
-    //             console.log("da vao dang xuat success")
-    //             localStorage.removeItem('sessionData');
-    //             Swal.fire({
-    //                 position: 'center',
-    //                 icon: response.status,
-    //                 title: response.status,
-    //                 showConfirmButton: false,
-    //                 timer: 1500
-    //             }).then(() => {
-    //                 history('/logout'); // Điều chỉnh URL tới trang logout của bạn
-    //             });
-    //         } else {
-    //             Swal.fire({
-    //                 icon: 'error',
-    //                 title: response.status,
-    //                 text: response.mes,
-    //             });
-    //         }
-    //         // socket.close();
-    //     };
-    //
-    //     socket.onerror = (error) => {
-    //         Swal.fire({
-    //             icon: 'error',
-    //             title: 'Lỗi WebSocket',
-    //             text: 'Không thể thiết lập kết nối WebSocket',
-    //         });
-    //     };
-    // };
-
-    //chat
     const [basicModal, setBasicModal] = useState(false);
-    const location = useLocation();
     const navigate = useNavigate();
     const [isOpen, setIsOpen] = useState(false);
     const socket = useWebSocket();
 
     const sessionData = JSON.parse(localStorage.getItem('sessionData')) || {};
-    // console.log("session1: "+ sessionData);
-    const { username, code ,userList:initialUserList} =  sessionData;
-    // console.log("user cua m do: "+userList);
-
-    console.log("user: " + username);
+// // <<<<<<< HEAD
+//     // console.log("session1: "+ sessionData);
+//     const { username, code ,userList:initialUserList} =  sessionData;
+//     // console.log("user cua m do: "+userList);
+//
+//     console.log("user: " + username);
+// =======chu y
+    const {username, code} = sessionData;
+    const initialUserList = JSON.parse(localStorage.getItem('userList')) || [];
+// >>>>>>> main
 
     const toggleOpen = () => setBasicModal(!basicModal);
     const toggleMenu = () => setIsOpen(!isOpen);
 
-    //search
-    const [searchInput, setSearchInput] = useState(''); // State to manage the search input value
-    const [isCheckboxChecked, setIsCheckboxChecked] = useState(false); // State to manage the checkbox state
-    const [userList, setUserList] = useState(initialUserList || []); // State to store the user list
-    const [roomOwner, setRoomOwner] = useState(''); // State to store room owner
-    const [messageContent, setMessageContent] = useState(''); // State to store the message content
-    const [displayName, setDisplayName] = useState(username); // State to store the display name
-    const [searchType, setSearchType] = useState(''); // State to store the type of search (room or user)
-    const existingSocketRef = useRef(null);
-// =======
-//     const [basicModal, setBasicModal] = useState(false); // mở Menu Item -----
-//     const [searchInput, setSearchInput] = useState(''); // State to manage the search input value
-//     const [isCheckboxChecked, setIsCheckboxChecked] = useState(false); // State to manage the checkbox state
-//     const location = useLocation(); // lấy dữ liệu trang
-//     const { username, password, userList: initialUserList } = location.state || {};
-//     const [userList, setUserList] = useState(initialUserList || []); // State to store the user list
-//     const [roomOwner, setRoomOwner] = useState(''); // State to store room owner
-//     const [messageContent, setMessageContent] = useState(''); // State to store the message content
-//     const [displayName, setDisplayName] = useState(username); // State to store the display name
-//     const [searchType, setSearchType] = useState(''); // State to store the type of search (room or user)
-//
-//     const toggleOpen = () => setBasicModal(!basicModal);
-//     const history = useNavigate(); // điều hướng và gửi dữ liệu đến trang khác
-//     const socket = useWebSocket();
-//     const existingSocketRef = useRef(null);
-//
-//     const [isOpen, setIsOpen] = useState(false);
-// >>>>>>> main
+    const [searchInput, setSearchInput] = useState('');
+    const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
+    const [userList, setUserList] = useState(initialUserList);
+    const [roomOwner, setRoomOwner] = useState('');
+    const [messageContent, setMessageContent] = useState('');
+    const [displayName, setDisplayName] = useState(username);
+    const [searchType, setSearchType] = useState('');
+    const [messages, setMessages] = useState([]); // New state variable for messages
+
+    const [darkMode, setDarkMode] = useState(false);
+
+    useEffect(() => {
+        if (darkMode) {
+            document.documentElement.classList.add('dark-mode');
+        } else {
+            document.documentElement.classList.remove('dark-mode');
+        }
+    }, [darkMode]);
+
+    const handleToggleDarkMode = () => {
+        setDarkMode(prevMode => !prevMode);
+    };
 
     useEffect(() => {
         if (!socket) return;
 
         const handleReload = () => {
-            console.log("Preparing to reload...");
             if (username && code) {
-                console.log("Preparing to reload... " + code + " " + username);
                 const requestData = {
                     action: "onchat",
                     data: {
@@ -151,14 +76,12 @@ export default function ChatRoom() {
                     }
                 };
 
-
-
                 if (socket.readyState === WebSocket.OPEN) {
                     socket.send(JSON.stringify(requestData));
                 } else {
                     socket.addEventListener('open', () => {
                         socket.send(JSON.stringify(requestData));
-                    }, { once: true });
+                    }, {once: true});
                 }
             }
         };
@@ -171,22 +94,12 @@ export default function ChatRoom() {
                         username: username,
                         code: response.data.RE_LOGIN_CODE
                     }));
-                    // Swal.fire({
-                    //     position: 'center',
-                    //     icon: 'success',
-                    //     title: response.status,
-                    //     text: response.mes,
-                    //     showConfirmButton: false,
-                    //     timer: 1500
-                    // });
-                    // console.log("relogin thanh cong: "+response.data.RE_LOGIN_CODE);
                 } else {
                     Swal.fire({
                         icon: 'error',
                         title: response.status,
                         text: response.mes,
                     });
-                    console.error('Relogin error details:', response);
                 }
             }
         };
@@ -217,12 +130,6 @@ export default function ChatRoom() {
     }, [username]);
 
     const handleLogout = () => {
-// <<<<<<< HEAD
-//         console.log("Đã vào đăng xuất");
-//
-// =======
-//         console.log("Logging out...");
-// >>>>>>> main
         if (!socket || socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket connection is not open');
             Swal.fire({
@@ -241,40 +148,23 @@ export default function ChatRoom() {
         };
         socket.send(JSON.stringify(requestData));
 
-// <<<<<<< HEAD
         const handleLogoutMessage = (event) => {
-            console.log("Đã vào đăng xuất onmessage");
-// =======
-//         socket.onmessage = (event) => {
-//             console.log("Logout response received");
-// >>>>>>> main
             const response = JSON.parse(event.data);
-            console.log(response);
 
             if (response.status === "success") {
-// <<<<<<< HEAD
-                console.log("Đã vào đăng xuất success");
-                localStorage.removeItem('sessionData');
-// =======
-//                 console.log("Logout success");
-//                 localStorage.removeItem('sessionData'); // Remove session data only when logout is successful
-                localStorage.removeItem('userList'); // Remove userList from localStorage
-                localStorage.removeItem('data');
-                sessionStorage.removeItem('userList'); // Remove userList from sessionStorage
-                setUserList([]); // Clear the user list
-// >>>>>>> main
+                localStorage.clear();
+                sessionStorage.removeItem('userList');
+                setUserList([]);
+                setDisplayName(''); // Clear display name
+                setMessages([]); // Clear messages
                 Swal.fire({
                     position: 'center',
-                    icon: response.status,
-                    title: response.status,
+                    icon: 'success',
+                    title: 'Logout successful',
                     showConfirmButton: false,
                     timer: 1500
                 }).then(() => {
-// <<<<<<< HEAD
-                    navigate('/logout'); // Điều chỉnh URL tới trang logout của bạn
-// =======
-//                     history('/logout'); // Navigate to logout page
-// >>>>>>> main
+                    navigate('/logout'); // Navigate to logout page after successful logout
                 });
             } else {
                 Swal.fire({
@@ -283,25 +173,14 @@ export default function ChatRoom() {
                     text: response.mes,
                 });
             }
-// <<<<<<< HEAD
 
-            // Dọn dẹp listener sau khi xử lý tin nhắn
             socket.removeEventListener('message', handleLogoutMessage);
-// =======
-// >>>>>>> main
         };
 
         socket.addEventListener('message', handleLogoutMessage);
-
-        socket.onerror = (error) => {
-            Swal.fire({
-                icon: 'error',
-                title: 'WebSocket Error',
-                text: 'Unable to establish WebSocket connection',
-            });
-        };
     };
 
+// <<<<<<< HEAD
 
     //==========================create room======================
 
@@ -371,10 +250,11 @@ export default function ChatRoom() {
 
 // =======
     //chuc nang search
+// =======
+// >>>>>>> main
     const handleSearchInputChange = (event) => {
         setSearchInput(event.target.value);
     };
-// >>>>>>> main
 
     const handleCheckboxChange = (event) => {
         setIsCheckboxChecked(event.target.checked);
@@ -406,16 +286,18 @@ export default function ChatRoom() {
 
             socket.onmessage = (event) => {
                 const response = JSON.parse(event.data);
-                console.log("Check User response: ", response);
                 if (response.status === "success") {
                     if (response.data.status) {
                         setDisplayName(searchInput.trim());
-                        setMessageContent(''); // Clear the message content for user search
+                        setMessageContent('');
                         setSearchType('user');
                         Swal.fire({
                             text: `User ${searchInput} has logged in before.`,
                             icon: 'success',
                         });
+
+                        // Fetch messages for the user
+                        fetchMessages('GET_PEOPLE_CHAT_MES', searchInput.trim());
                     } else {
                         Swal.fire({
                             text: `User ${searchInput} has not logged in before.`,
@@ -445,16 +327,12 @@ export default function ChatRoom() {
 
             socket.onmessage = (event) => {
                 const response = JSON.parse(event.data);
-                console.log("Get Room Chat Mes response: ", response);
                 if (response.status === "success") {
                     const roomData = response.data;
                     const roomName = roomData.name;
-                    const chatData = roomData.chatData;
 
-                    // Lưu dữ liệu vào localStorage dưới tên "data"
                     localStorage.setItem('data', JSON.stringify(roomData));
 
-                    // Lưu dữ liệu vào localStorage
                     const savedUserList = JSON.parse(localStorage.getItem('userList')) || [];
                     const existingRoom = savedUserList.find(room => room.name === roomName);
                     if (!existingRoom) {
@@ -471,6 +349,9 @@ export default function ChatRoom() {
                         text: `Room ${roomName} tồn tại`,
                         icon: 'success',
                     });
+
+                    // Fetch messages for the room
+                    fetchMessages('GET_ROOM_CHAT_MES', roomName);
                 } else {
                     Swal.fire({
                         text: `Room ${searchInput} không tồn tại`,
@@ -481,8 +362,108 @@ export default function ChatRoom() {
         }
     };
 
+// <<<<<<< HEAD
+//
+//
+// =======
+    const fetchMessages = (event, name) => {
+        const requestData = {
+            action: "onchat",
+            data: {
+                event: event,
+                data: {
+                    name: name,
+                    page: 1
+                }
+            }
+        };
 
+        socket.send(JSON.stringify(requestData));
 
+        socket.onmessage = (event) => {
+            const response = JSON.parse(event.data);
+            if (response.status === "success") {
+                const fetchedMessages = event === 'GET_PEOPLE_CHAT_MES' ?
+                    response.data?.reverse() || [] :
+                    response.data?.chatData?.reverse() || [];
+                setMessages(fetchedMessages);
+            } else {
+                Swal.fire({
+                    text: `Failed to fetch messages for ${name}.`,
+                    icon: 'error',
+                });
+            }
+        };
+    };
+
+    const handleLiClick = (name, type, roomOwner) => {
+        setDisplayName(name);
+        setMessageContent(type === 0 ? 'Người dùng' : 'Phòng');
+        setSearchType(type === 0 ? 'user' : 'room');
+
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            console.error('WebSocket connection is not open');
+            Swal.fire({
+                icon: 'error',
+                title: 'WebSocket Error',
+                text: 'Unable to establish WebSocket connection',
+            });
+            return;
+        }
+
+        const requestData = {
+            action: "onchat",
+            data: {
+                event: type === 0 ? "GET_PEOPLE_CHAT_MES" : "GET_ROOM_CHAT_MES",
+                data: {
+                    name: name,
+                    page: 1
+                }
+            }
+        };
+
+        socket.send(JSON.stringify(requestData));
+
+        socket.onmessage = (event) => {
+            const response = JSON.parse(event.data);
+            if (response.status === "success") {
+                let fetchedMessages = [];
+
+                if (type === 0 && Array.isArray(response.data)) {
+                    fetchedMessages = response.data.reverse();
+                } else if (type === 1 && response.data && Array.isArray(response.data.chatData)) {
+                    fetchedMessages = response.data.chatData.reverse();
+                }
+
+                setMessages(fetchedMessages);
+            } else {
+                Swal.fire({
+                    text: `Failed to fetch messages for ${name}.`,
+                    icon: 'error',
+                });
+            }
+        };
+    };
+
+    // Helper function to add 7 hours to a date
+    const add7Hours = (dateString) => {
+        const date = new Date(dateString);
+        date.setHours(date.getHours() + 7);
+        return date;
+    };
+
+    // Function to render formatted date and time
+    const renderDateTime = (dateString) => {
+        const date = add7Hours(dateString);
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const seconds = date.getSeconds().toString().padStart(2, '0');
+        return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+    };
+// >>>>>>> main
 
     return (
         <>
@@ -502,14 +483,24 @@ export default function ChatRoom() {
                                             checked={isCheckboxChecked}
                                             onChange={handleCheckboxChange}
                                         />
-                                        <input
+                                        <MDBInput
                                             type="text"
                                             placeholder="Search..."
-                                            name=""
+                                            name="searchInput"
                                             className="form-control search"
                                             value={searchInput}
                                             onChange={handleSearchInputChange}
+                                            list="datalistOptions"
                                         />
+                                        <datalist id="datalistOptions">
+                                            {userList
+                                                .filter(user => !isCheckboxChecked ? user.type === 0 : user.type === 1)
+                                                .map((user, index) => (
+                                                    <option key={index} value={user.name}/>
+                                                ))
+                                            }
+                                        </datalist>
+
                                         <div className="input-group-prepend">
                                             <span
                                                 className="input-group-text search_btn"
@@ -520,11 +511,14 @@ export default function ChatRoom() {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="card-body contacts_body">
+                                <div className="card-body contacts_body"
+                                     style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
                                     <ul className="contacts">
                                         {userList.length > 0 ? (
                                             userList.map((user, index) => (
-                                                <li key={index} className="active">
+                                                <li key={index}
+                                                    className={user.name === displayName ? 'active' : ''}
+                                                    onClick={() => handleLiClick(user.name, user.type, user.roomOwner)}>
                                                     <div className="d-flex bd-highlight">
                                                         <div className="img_cont">
                                                             <img
@@ -536,8 +530,8 @@ export default function ChatRoom() {
                                                         </div>
                                                         <div className="user_info">
                                                             <span>{user.name}</span>
-                                                            <p>Type: {user.type}</p>
-                                                            <p>Last Action: {user.actionTime}</p>
+                                                            <p className="typechat">Type: {user.type}</p>
+                                                            <p>Last Action: {renderDateTime(user.actionTime)}</p>
                                                         </div>
                                                     </div>
                                                 </li>
@@ -551,12 +545,13 @@ export default function ChatRoom() {
                             </div>
                         </div>
                         <div className="col-md-8 col-xl-6 chat">
-                            <div className="card">
+                            <div className="card" id="chatcenter">
                                 <div className="card-header msg_head">
                                     <div className="d-flex bd-highlight">
                                         <div className="img_cont">
-                                            <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img" />
+                                            <img
+                                                src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
+                                                className="rounded-circle user_img"/>
                                             <span className="online_icon"></span>
                                         </div>
                                         <div className="user_info">
@@ -572,9 +567,9 @@ export default function ChatRoom() {
                                                     size="sm"
                                                     color="primary"
                                                     onClick={toggleOpen}
-                                                    style={{ marginBottom: "3px" }}
+                                                    style={{marginBottom: "3px"}}
                                                 >
-                                                    <MDBIcon fas icon="plus-circle" />
+                                                    <MDBIcon fas icon="plus-circle"/>
                                                 </MDBBtn>
                                             </span>
                                         </div>
@@ -584,88 +579,44 @@ export default function ChatRoom() {
                                     </span>
                                     <div className={`action_menu ${isOpen ? 'open' : ''}`}>
                                         <ul>
-                                            <li id="toggle-dark-mode"><i className="fa-regular fa-moon"
-                                                                         id="icontype"></i> <span className="dark">Dark mode</span>
+                                            <li id="toggle-dark-mode" onClick={handleToggleDarkMode}>
+                                                <i className={`fa-regular ${darkMode ? 'fa-sun' : 'fa-moon'}`}
+                                                   id="icontype"></i>
+                                                <span
+                                                    className={`${darkMode ? 'light' : 'dark'}`}>{darkMode ? 'Light mode' : 'Dark mode'}</span>
                                             </li>
                                             <li><i className="fas fa-user-circle"></i> View profile</li>
-                                            <li><i className="fas fa-plus"></i> Add to group</li>
+                                            <li><i className="fas fa-plus"></i> Join room</li>
                                             <li id="logout-button" onClick={handleLogout}><i
                                                 className="fas fa-ban"></i> Logout
                                             </li>
                                         </ul>
                                     </div>
                                 </div>
-                                <div className="card-body msg_card_body">
-                                    <div className="d-flex justify-content-start mb-4">
-                                        <div className="img_cont_msg">
-                                            <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg" />
+                                <div className="card-body msg_card_body"
+                                     style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
+                                    {messages.map((message, index) => (
+                                        <div key={index}
+                                             className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`}>
+                                            {searchType === 'room' && message.name !== username && (
+                                                <span className="sender">{message.name} </span>
+                                            )}
+                                            <div className="img_cont_msg">
+                                                <img
+
+                                                    src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
+                                                    className="rounded-circle user_img_msg"/>
+                                            </div>
+                                            <div
+                                                className={`msg_cotainer${message.name === username ? '_send' : ''}`}>
+                                                <div className="message-content">
+                                                    {message.mes}
+                                                    <span
+                                                        className={`msg_time${message.name === username ? '_send' : ''}`}>{renderDateTime(message.createAt)}</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="msg_cotainer">
-                                            Hi, how are you samim?
-                                            <span className="msg_time">8:40 AM, Today</span>
-                                        </div>
-                                    </div>
-                                    <div className="d-flex justify-content-end mb-4">
-                                        <div className="msg_cotainer_send">
-                                            Hi jassa i am good tnx how about you?
-                                            <span className="msg_time_send">8:55 AM, Today</span>
-                                        </div>
-                                        <div className="img_cont_msg">
-                                            <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg" />
-                                        </div>
-                                    </div>
-                                    <div className="d-flex justify-content-start mb-4">
-                                        <div className="img_cont_msg">
-                                            <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg" />
-                                        </div>
-                                        <div className="msg_cotainer">
-                                            I am good too, thank you for your chat template
-                                            <span className="msg_time">9:00 AM, Today</span>
-                                        </div>
-                                    </div>
-                                    <div className="d-flex justify-content-end mb-4">
-                                        <div className="msg_cotainer_send">
-                                            You are welcome
-                                            <span className="msg_time_send">9:05 AM, Today</span>
-                                        </div>
-                                        <div className="img_cont_msg">
-                                            <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg" />
-                                        </div>
-                                    </div>
-                                    <div className="d-flex justify-content-start mb-4">
-                                        <div className="img_cont_msg">
-                                            <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg" />
-                                        </div>
-                                        <div className="msg_cotainer">
-                                            I am looking for your next templates
-                                            <span className="msg_time">9:07 AM, Today</span>
-                                        </div>
-                                    </div>
-                                    <div className="d-flex justify-content-end mb-4">
-                                        <div className="msg_cotainer_send">
-                                            Ok, thank you have a good day
-                                            <span className="msg_time_send">9:10 AM, Today</span>
-                                        </div>
-                                        <div className="img_cont_msg">
-                                            <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg" />
-                                        </div>
-                                    </div>
-                                    <div className="d-flex justify-content-start mb-4">
-                                        <div className="img_cont_msg">
-                                            <img src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                 className="rounded-circle user_img_msg" />
-                                        </div>
-                                        <div className="msg_cotainer">
-                                            Bye, see you
-                                            <span className="msg_time">9:12 AM, Today</span>
-                                        </div>
-                                    </div>
+                                    ))}
                                 </div>
                                 <div className="card-footer">
                                     <div className="input-group">
@@ -685,13 +636,15 @@ export default function ChatRoom() {
                         </div>
                     </div>
                 </div>
+
+
             </div>
             <MDBModal show={basicModal} onHide={() => setBasicModal(false)}>
                 <MDBModalDialog>
                     <MDBModalContent>
                         <MDBModalHeader>
                             <MDBModalTitle>Create Room</MDBModalTitle>
-                            <MDBBtn className="btn-close" color="none" onClick={toggleOpen} />
+                            <MDBBtn className="btn-close" color="none" onClick={toggleOpen}/>
                         </MDBModalHeader>
                         <MDBModalBody>
                             <MDBInput
@@ -713,3 +666,4 @@ export default function ChatRoom() {
         </>
     );
 }
+
