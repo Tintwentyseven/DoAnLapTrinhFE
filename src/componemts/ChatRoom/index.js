@@ -144,11 +144,11 @@ export default function ChatRoom() {
             const response = JSON.parse(event.data);
 
             if (response.status === "success") {
-                localStorage.removeItem('sessionData');
-                localStorage.removeItem('userList');
-                localStorage.removeItem('data');
+                localStorage.clear();
                 sessionStorage.removeItem('userList');
                 setUserList([]);
+                setDisplayName(''); // Clear display name
+                setMessages([]); // Clear messages
                 Swal.fire({
                     position: 'center',
                     icon: 'success',
@@ -215,6 +215,9 @@ export default function ChatRoom() {
                             text: `User ${searchInput} has logged in before.`,
                             icon: 'success',
                         });
+
+                        // Fetch messages for the user
+                        fetchMessages('GET_PEOPLE_CHAT_MES', searchInput.trim());
                     } else {
                         Swal.fire({
                             text: `User ${searchInput} has not logged in before.`,
@@ -266,6 +269,9 @@ export default function ChatRoom() {
                         text: `Room ${roomName} tồn tại`,
                         icon: 'success',
                     });
+
+                    // Fetch messages for the room
+                    fetchMessages('GET_ROOM_CHAT_MES', roomName);
                 } else {
                     Swal.fire({
                         text: `Room ${searchInput} không tồn tại`,
@@ -274,6 +280,36 @@ export default function ChatRoom() {
                 }
             };
         }
+    };
+
+    const fetchMessages = (event, name) => {
+        const requestData = {
+            action: "onchat",
+            data: {
+                event: event,
+                data: {
+                    name: name,
+                    page: 1
+                }
+            }
+        };
+
+        socket.send(JSON.stringify(requestData));
+
+        socket.onmessage = (event) => {
+            const response = JSON.parse(event.data);
+            if (response.status === "success") {
+                const fetchedMessages = event === 'GET_PEOPLE_CHAT_MES' ?
+                    response.data?.reverse() || [] :
+                    response.data?.chatData?.reverse() || [];
+                setMessages(fetchedMessages);
+            } else {
+                Swal.fire({
+                    text: `Failed to fetch messages for ${name}.`,
+                    icon: 'error',
+                });
+            }
+        };
     };
 
     const handleLiClick = (name, type, roomOwner) => {
@@ -307,13 +343,15 @@ export default function ChatRoom() {
         socket.onmessage = (event) => {
             const response = JSON.parse(event.data);
             if (response.status === "success") {
-                if (response.data) {
-                    const fetchedMessages = type === 0 ? response.data.reverse() : response.data.chatData.reverse();
-                    setMessages(fetchedMessages);
-                } else {
-                    // Handle the case where response.data is undefined
-                    console.error('Data is undefined in the response.');
+                let fetchedMessages = [];
+
+                if (type === 0 && Array.isArray(response.data)) {
+                    fetchedMessages = response.data.reverse();
+                } else if (type === 1 && response.data && Array.isArray(response.data.chatData)) {
+                    fetchedMessages = response.data.chatData.reverse();
                 }
+
+                setMessages(fetchedMessages);
             } else {
                 Swal.fire({
                     text: `Failed to fetch messages for ${name}.`,
@@ -321,104 +359,124 @@ export default function ChatRoom() {
                 });
             }
         };
-    }
-        return (
-            <>
-                <div className="maincontainer">
-                    <div className="container-fluid h-50">
-                        <div className="row justify-content-center h-100">
-                            <div className="col-md-4 col-xl-3 chat">
-                                <div className="card mb-sm-3 mb-md-0 contacts_card">
-                                    <div className="card-header">
-                                        <div className="input-group">
-                                            <div className="input-group-prepend">
-                                            </div>
-                                            <input
-                                                type="checkbox"
-                                                className="cbox"
-                                                aria-label="Checkbox for search"
-                                                checked={isCheckboxChecked}
-                                                onChange={handleCheckboxChange}
-                                            />
-                                            <MDBInput
-                                                type="text"
-                                                placeholder="Search..."
-                                                name="searchInput"
-                                                className="form-control search"
-                                                value={searchInput}
-                                                onChange={handleSearchInputChange}
-                                                list="datalistOptions"
-                                            />
-                                            <datalist id="datalistOptions">
-                                                {userList
-                                                    .filter(user => !isCheckboxChecked ? user.type === 0 : user.type === 1)
-                                                    .map((user, index) => (
-                                                        <option key={index} value={user.name}/>
-                                                    ))
-                                                }
-                                            </datalist>
+    };
 
-                                            <div className="input-group-prepend">
+    // Helper function to add 7 hours to a date
+    const add7Hours = (dateString) => {
+        const date = new Date(dateString);
+        date.setHours(date.getHours() + 7);
+        return date;
+    };
+
+    // Function to render formatted date and time
+    const renderDateTime = (dateString) => {
+        const date = add7Hours(dateString);
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const seconds = date.getSeconds().toString().padStart(2, '0');
+        return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+    };
+
+    return (
+        <>
+            <div className="maincontainer">
+                <div className="container-fluid h-50">
+                    <div className="row justify-content-center h-100">
+                        <div className="col-md-4 col-xl-3 chat">
+                            <div className="card mb-sm-3 mb-md-0 contacts_card">
+                                <div className="card-header">
+                                    <div className="input-group">
+                                        <div className="input-group-prepend">
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            className="cbox"
+                                            aria-label="Checkbox for search"
+                                            checked={isCheckboxChecked}
+                                            onChange={handleCheckboxChange}
+                                        />
+                                        <MDBInput
+                                            type="text"
+                                            placeholder="Search..."
+                                            name="searchInput"
+                                            className="form-control search"
+                                            value={searchInput}
+                                            onChange={handleSearchInputChange}
+                                            list="datalistOptions"
+                                        />
+                                        <datalist id="datalistOptions">
+                                            {userList
+                                                .filter(user => !isCheckboxChecked ? user.type === 0 : user.type === 1)
+                                                .map((user, index) => (
+                                                    <option key={index} value={user.name}/>
+                                                ))
+                                            }
+                                        </datalist>
+
+                                        <div className="input-group-prepend">
                                             <span
                                                 className="input-group-text search_btn"
                                                 onClick={handleSearch}
                                             >
                                                 <i className="fas fa-search"></i>
                                             </span>
-                                            </div>
                                         </div>
                                     </div>
-                                    <div className="card-body contacts_body"
-                                         style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
-                                        <ul className="contacts">
-                                            {userList.length > 0 ? (
-                                                userList.map((user, index) => (
-                                                    <li key={index}
-                                                        className={user.name === displayName ? 'active' : ''}
-                                                        onClick={() => handleLiClick(user.name, user.type, user.roomOwner)}>
-                                                        <div className="d-flex bd-highlight">
-                                                            <div className="img_cont">
-                                                                <img
-                                                                    src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                                    alt="avatar"
-                                                                    className="rounded-circle user_img"
-                                                                />
-                                                                <span className="online_icon"></span>
-                                                            </div>
-                                                            <div className="user_info">
-                                                                <span>{user.name}</span>
-                                                                <p className="typechat">Type: {user.type}</p>
-                                                                <p>Last Action: {user.actionTime}</p>
-                                                            </div>
-                                                        </div>
-                                                    </li>
-                                                ))
-                                            ) : (
-                                                <li>No users found.</li>
-                                            )}
-                                        </ul>
-                                    </div>
-                                    <div className="card-footer"></div>
                                 </div>
+                                <div className="card-body contacts_body"
+                                     style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
+                                    <ul className="contacts">
+                                        {userList.length > 0 ? (
+                                            userList.map((user, index) => (
+                                                <li key={index}
+                                                    className={user.name === displayName ? 'active' : ''}
+                                                    onClick={() => handleLiClick(user.name, user.type, user.roomOwner)}>
+                                                    <div className="d-flex bd-highlight">
+                                                        <div className="img_cont">
+                                                            <img
+                                                                src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
+                                                                alt="avatar"
+                                                                className="rounded-circle user_img"
+                                                            />
+                                                            <span className="online_icon"></span>
+                                                        </div>
+                                                        <div className="user_info">
+                                                            <span>{user.name}</span>
+                                                            <p className="typechat">Type: {user.type}</p>
+                                                            <p>Last Action: {renderDateTime(user.actionTime)}</p>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            ))
+                                        ) : (
+                                            <li>No users found.</li>
+                                        )}
+                                    </ul>
+                                </div>
+                                <div className="card-footer"></div>
                             </div>
-                            <div className="col-md-8 col-xl-6 chat">
-                                <div className="card" id="chatcenter">
-                                    <div className="card-header msg_head">
-                                        <div className="d-flex bd-highlight">
-                                            <div className="img_cont">
-                                                <img
-                                                    src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                    className="rounded-circle user_img"/>
-                                                <span className="online_icon"></span>
-                                            </div>
-                                            <div className="user_info">
-                                                <span>{displayName}</span>
-                                                {searchType === 'room' && messageContent && <p>{messageContent}</p>}
-                                            </div>
-                                            <div className="video_cam">
-                                                <span><i className="fas fa-video"></i></span>
-                                                <span><i className="fas fa-phone"></i></span>
-                                                <span>
+                        </div>
+                        <div className="col-md-8 col-xl-6 chat">
+                            <div className="card" id="chatcenter">
+                                <div className="card-header msg_head">
+                                    <div className="d-flex bd-highlight">
+                                        <div className="img_cont">
+                                            <img
+                                                src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
+                                                className="rounded-circle user_img"/>
+                                            <span className="online_icon"></span>
+                                        </div>
+                                        <div className="user_info">
+                                            <span>{displayName}</span>
+                                            {searchType === 'room' && messageContent && <p>{messageContent}</p>}
+                                        </div>
+                                        <div className="video_cam">
+                                            <span><i className="fas fa-video"></i></span>
+                                            <span><i className="fas fa-phone"></i></span>
+                                            <span>
                                                 <MDBBtn
                                                     rounded
                                                     size="sm"
@@ -429,64 +487,63 @@ export default function ChatRoom() {
                                                     <MDBIcon fas icon="plus-circle"/>
                                                 </MDBBtn>
                                             </span>
-                                            </div>
                                         </div>
-                                        <span id="action_menu_btn" onClick={toggleMenu}>
+                                    </div>
+                                    <span id="action_menu_btn" onClick={toggleMenu}>
                                         <i className="fas fa-ellipsis-v"></i>
                                     </span>
-                                        <div className={`action_menu ${isOpen ? 'open' : ''}`}>
-                                            <ul>
-                                                <li id="toggle-dark-mode" onClick={handleToggleDarkMode}>
-                                                    <i className={`fa-regular ${darkMode ? 'fa-sun' : 'fa-moon'}`}
-                                                       id="icontype"></i>
-                                                    <span
-                                                        className={`${darkMode ? 'light' : 'dark'}`}>{darkMode ? 'Light mode' : 'Dark mode'}</span>
-                                                </li>
-                                                <li><i className="fas fa-user-circle"></i> View profile</li>
-                                                <li><i className="fas fa-plus"></i> Join room</li>
-                                                <li id="logout-button" onClick={handleLogout}><i
-                                                    className="fas fa-ban"></i> Logout
-                                                </li>
-                                            </ul>
-                                        </div>
+                                    <div className={`action_menu ${isOpen ? 'open' : ''}`}>
+                                        <ul>
+                                            <li id="toggle-dark-mode" onClick={handleToggleDarkMode}>
+                                                <i className={`fa-regular ${darkMode ? 'fa-sun' : 'fa-moon'}`}
+                                                   id="icontype"></i>
+                                                <span
+                                                    className={`${darkMode ? 'light' : 'dark'}`}>{darkMode ? 'Light mode' : 'Dark mode'}</span>
+                                            </li>
+                                            <li><i className="fas fa-user-circle"></i> View profile</li>
+                                            <li><i className="fas fa-plus"></i> Join room</li>
+                                            <li id="logout-button" onClick={handleLogout}><i
+                                                className="fas fa-ban"></i> Logout
+                                            </li>
+                                        </ul>
                                     </div>
-                                    <div className="card-body msg_card_body"
-                                         style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
-                                        {messages.map((message, index) => (
-                                            <div key={index}
-                                                 className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`}>
-                                                {searchType === 'room' && message.name !== username && (
-                                                    <span className="sender">{message.name} </span>
-                                                )}
-                                                <div className="img_cont_msg">
-                                                    <img
+                                </div>
+                                <div className="card-body msg_card_body"
+                                     style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
+                                    {messages.map((message, index) => (
+                                        <div key={index}
+                                             className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`}>
+                                            {searchType === 'room' && message.name !== username && (
+                                                <span className="sender">{message.name} </span>
+                                            )}
+                                            <div className="img_cont_msg">
+                                                <img
 
-                                                        src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                        className="rounded-circle user_img_msg"/>
-                                                </div>
-                                                <div
-                                                    className={`msg_cotainer${message.name === username ? '_send' : ''}`}>
-                                                    <div className="message-content">
-                                                        {message.mes}
-                                                        <span
-                                                            className={`msg_time${message.name === username ? '_send' : ''}`}>{message.createAt}</span>
-                                                    </div>
+                                                    src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
+                                                    className="rounded-circle user_img_msg"/>
+                                            </div>
+                                            <div
+                                                className={`msg_cotainer${message.name === username ? '_send' : ''}`}>
+                                                <div className="message-content">
+                                                    {message.mes}
+                                                    <span
+                                                        className={`msg_time${message.name === username ? '_send' : ''}`}>{renderDateTime(message.createAt)}</span>
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                    <div className="card-footer">
-                                        <div className="input-group">
-                                            <div className="input-group-append">
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="card-footer">
+                                    <div className="input-group">
+                                        <div className="input-group-append">
                                             <span className="input-group-text attach_btn"><i
                                                 className="fas fa-paperclip"></i></span>
-                                            </div>
-                                            <textarea name="" className="form-control type_msg"
-                                                      placeholder="Type your message..."></textarea>
-                                            <div className="input-group-append">
+                                        </div>
+                                        <textarea name="" className="form-control type_msg"
+                                                  placeholder="Type your message..."></textarea>
+                                        <div className="input-group-append">
                                             <span className="input-group-text send_btn"><i
                                                 className="fas fa-location-arrow"></i></span>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -494,26 +551,29 @@ export default function ChatRoom() {
                         </div>
                     </div>
                 </div>
-                <MDBModal show={basicModal} onHide={() => setBasicModal(false)}>
-                    <MDBModalDialog>
-                        <MDBModalContent>
-                            <MDBModalHeader>
-                                <MDBModalTitle>Create Room</MDBModalTitle>
-                                <MDBBtn className="btn-close" color="none" onClick={toggleOpen}/>
-                            </MDBModalHeader>
-                            <MDBModalBody>
-                                <MDBInput type={"text"}></MDBInput>
-                            </MDBModalBody>
-                            <MDBModalFooter>
-                                <MDBBtn color="secondary" onClick={toggleOpen}>
-                                    Close
-                                </MDBBtn>
-                                <MDBBtn>Create</MDBBtn>
-                            </MDBModalFooter>
-                        </MDBModalContent>
-                    </MDBModalDialog>
-                </MDBModal>
-            </>
-        );
-    }
+
+
+            </div>
+            <MDBModal show={basicModal} onHide={() => setBasicModal(false)}>
+                <MDBModalDialog>
+                    <MDBModalContent>
+                        <MDBModalHeader>
+                            <MDBModalTitle>Create Room</MDBModalTitle>
+                            <MDBBtn className="btn-close" color="none" onClick={toggleOpen}/>
+                        </MDBModalHeader>
+                        <MDBModalBody>
+                            <MDBInput type={"text"}></MDBInput>
+                        </MDBModalBody>
+                        <MDBModalFooter>
+                            <MDBBtn color="secondary" onClick={toggleOpen}>
+                                Close
+                            </MDBBtn>
+                            <MDBBtn>Create</MDBBtn>
+                        </MDBModalFooter>
+                    </MDBModalContent>
+                </MDBModalDialog>
+            </MDBModal>
+        </>
+    );
+}
 
