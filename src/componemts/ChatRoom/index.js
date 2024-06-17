@@ -60,6 +60,17 @@ export default function ChatRoom() {
             document.documentElement.classList.remove('dark-mode');
         }
     }, [darkMode]);
+    useEffect(() => {
+        const handleBeforeUnload = () => {
+            localStorage.clear();
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, []);
 
 
     const handleToggleDarkMode = () => {
@@ -468,6 +479,7 @@ export default function ChatRoom() {
         const minutes = date.getMinutes().toString().padStart(2, '0');
         const seconds = date.getSeconds().toString().padStart(2, '0');
         return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+
     };
 
     return (
