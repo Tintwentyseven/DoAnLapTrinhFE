@@ -185,6 +185,68 @@ export default function ChatRoom() {
     //==========================create room======================
 
     const [roomNames, setRoomNames] = useState('');
+    // const handleCreateRoom = () => {
+    //     const createRoom = {
+    //         action: "onchat",
+    //         data: {
+    //             event: "CREATE_ROOM",
+    //             data: {
+    //                 name: roomNames
+    //             }
+    //         }
+    //     };
+    //
+    //     if (socket && socket.readyState === WebSocket.OPEN) {
+    //         socket.send(JSON.stringify(createRoom));
+    //         console.log('Room creation message sent');
+    //     } else {
+    //         console.error('WebSocket is not open. Unable to send message.');
+    //     }
+    //
+    //     toggleOpen(); // Đóng modal sau khi gửi yêu cầu tạo phòng
+    // };
+    // useEffect(() => {
+    //     const handleCreateRoomResponse = (event) => {
+    //         console.log("da vo create room thong bao...")
+    //         const response = JSON.parse(event.data);
+    //         if (response.event === "CREATE_ROOM") {
+    //             if (response.status === "success") {
+    //                 // Hiển thị thông báo thành công
+    //                 Swal.fire({
+    //                     position: 'center',
+    //                     icon: 'success',
+    //                     title: response.status,
+    //                     text: response.message,
+    //                     showConfirmButton: false,
+    //                     timer: 1500
+    //                 });
+    //                 // Xử lý các hành động khác nếu cần
+    //             } else {
+    //                 // Hiển thị thông báo lỗi
+    //                 Swal.fire({
+    //                     icon: 'warning',
+    //                     // title: response.status,
+    //                     text: 'Tên phòng đã tồn tại!',
+    //                 });
+    //                 console.error('Create room error details:', response);
+    //             }
+    //         }
+    //     };
+    //
+    //     // Thêm sự kiện lắng nghe cho WebSocket
+    //     if (socket) {
+    //         socket.addEventListener('message', handleCreateRoomResponse);
+    //     }
+    //
+    //     // Cleanup function
+    //     return () => {
+    //         // Xóa sự kiện lắng nghe khi component unmount
+    //         if (socket) {
+    //             socket.removeEventListener('message', handleCreateRoomResponse);
+    //         }
+    //     };
+    // }, [socket]);
+    //sua create
     const handleCreateRoom = () => {
         const createRoom = {
             action: "onchat",
@@ -205,9 +267,10 @@ export default function ChatRoom() {
 
         toggleOpen(); // Đóng modal sau khi gửi yêu cầu tạo phòng
     };
+
     useEffect(() => {
         const handleCreateRoomResponse = (event) => {
-            console.log("da vo create room thong bao...")
+            console.log("Đã vào hàm xử lý tạo phòng...");
             const response = JSON.parse(event.data);
             if (response.event === "CREATE_ROOM") {
                 if (response.status === "success") {
@@ -228,7 +291,7 @@ export default function ChatRoom() {
                         // title: response.status,
                         text: 'Tên phòng đã tồn tại!',
                     });
-                    console.error('Create room error details:', response);
+                    console.error('Chi tiết lỗi tạo phòng:', response);
                 }
             }
         };
@@ -247,11 +310,8 @@ export default function ChatRoom() {
         };
     }, [socket]);
 
-
 // =======
-    //chuc nang search
-// =======
-// >>>>>>> main
+//     chuc nang search
     const handleSearchInputChange = (event) => {
         setSearchInput(event.target.value);
     };
@@ -361,6 +421,148 @@ export default function ChatRoom() {
             };
         }
     };
+    //================sua hàm search
+    // const handleSearchInputChange = (event) => {
+    //     setSearchInput(event.target.value);
+    // };
+    //
+    // const handleCheckboxChange = (event) => {
+    //     setIsCheckboxChecked(event.target.checked);
+    // };
+    //
+    // const handleSearch = () => {
+    //     // Kiểm tra WebSocket có sẵn và đang mở không
+    //     if (!socket || socket.readyState !== WebSocket.OPEN) {
+    //         console.error('WebSocket connection is not open');
+    //         // Hiển thị thông báo lỗi nếu WebSocket không sẵn sàng
+    //         Swal.fire({
+    //             icon: 'error',
+    //             title: 'WebSocket Error',
+    //             text: 'Unable to establish WebSocket connection',
+    //         });
+    //         return;
+    //     }
+    //
+    //     // Tạo requestData dựa trên trạng thái của isCheckboxChecked
+    //     const requestData = isCheckboxChecked
+    //         ? {
+    //             action: "onchat",
+    //             data: {
+    //                 event: "GET_ROOM_CHAT_MES",
+    //                 data: {
+    //                     name: searchInput.trim(),
+    //                     page: 1
+    //                 }
+    //             }
+    //         }
+    //         : {
+    //             action: "onchat",
+    //             data: {
+    //                 event: "CHECK_USER",
+    //                 data: {
+    //                     user: searchInput.trim()
+    //                 }
+    //             }
+    //         };
+    //
+    //     // Gửi requestData qua WebSocket
+    //     socket.send(JSON.stringify(requestData));
+    // };
+    //
+    // useEffect(() => {
+    //     // Hàm xử lý message từ WebSocket
+    //     const handleMessage = (event) => {
+    //         // Parse dữ liệu nhận được từ event
+    //         const response = JSON.parse(event.data);
+    //
+    //         // Xử lý dựa trên event nhận được từ server
+    //         if (response.event === "CHECK_USER") {
+    //             // Xử lý response khi kiểm tra người dùng
+    //             if (response.status === "success") {
+    //                 if (response.data.status) {
+    //                     // Nếu người dùng đã từng đăng nhập, set state và hiển thị thông báo
+    //                     setDisplayName(searchInput.trim());
+    //                     setMessageContent('');
+    //                     setSearchType('user');
+    //                     Swal.fire({
+    //                         text: `User ${searchInput} has logged in before.`,
+    //                         icon: 'success',
+    //                     });
+    //
+    //                     // Fetch messages cho người dùng
+    //                     fetchMessages('GET_PEOPLE_CHAT_MES', searchInput.trim());
+    //                 } else {
+    //                     // Nếu người dùng chưa từng đăng nhập, hiển thị thông báo cảnh báo
+    //                     Swal.fire({
+    //                         text: `User ${searchInput} has not logged in before.`,
+    //                         icon: 'warning',
+    //                     });
+    //                 }
+    //             } else {
+    //                 // Xử lý khi kiểm tra người dùng thất bại
+    //                 Swal.fire({
+    //                     text: `Failed to check user ${searchInput}.`,
+    //                     icon: 'error',
+    //                 });
+    //             }
+    //         } else if (response.event === "GET_ROOM_CHAT_MES") {
+    //             // Xử lý response khi lấy tin nhắn của phòng chat
+    //             if (response.status === "success") {
+    //                 const roomData = response.data;
+    //                 const roomName = roomData.name;
+    //
+    //                 // Lưu roomData vào localStorage
+    //                 localStorage.setItem('data', JSON.stringify(roomData));
+    //
+    //                 // Lấy danh sách user từ localStorage
+    //                 const savedUserList = JSON.parse(localStorage.getItem('userList')) || [];
+    //                 // Kiểm tra nếu phòng chưa tồn tại trong danh sách, thêm mới
+    //                 const existingRoom = savedUserList.find(room => room.name === roomName);
+    //                 if (!existingRoom) {
+    //                     savedUserList.push(roomData);
+    //                     localStorage.setItem('userList', JSON.stringify(savedUserList));
+    //                 }
+    //
+    //                 // Set state với thông tin phòng
+    //                 setRoomOwner(roomData.own);
+    //                 setMessageContent(username === roomData.own ? 'Người tạo phòng' : 'Người tham gia');
+    //                 setDisplayName(roomName);
+    //                 setSearchType('room');
+    //
+    //                 // Hiển thị thông báo thành công
+    //                 Swal.fire({
+    //                     text: `Room ${roomName} tồn tại`,
+    //                     icon: 'success',
+    //                 });
+    //
+    //                 // Fetch messages cho phòng chat
+    //                 fetchMessages('GET_ROOM_CHAT_MES', roomName);
+    //             } else {
+    //                 // Xử lý khi lấy tin nhắn phòng chat thất bại
+    //                 Swal.fire({
+    //                     text: `Room ${searchInput} không tồn tại`,
+    //                     icon: 'warning',
+    //                 });
+    //             }
+    //         }
+    //     };
+    //
+    //     // Thêm listener để lắng nghe message từ WebSocket, chỉ thêm một lần
+    //     if (socket) {
+    //         socket.addEventListener('message', handleMessage);
+    //     }
+    //
+    //     // Cleanup function để loại bỏ listener khi component unmount hoặc dependencies thay đổi
+    //     return () => {
+    //         if (socket) {
+    //             socket.removeEventListener('message', handleMessage);
+    //         }
+    //     };
+    // }, [socket, searchInput, isCheckboxChecked]);
+
+
+
+// // ====================end
 
 // <<<<<<< HEAD
 //
@@ -395,6 +597,51 @@ export default function ChatRoom() {
             }
         };
     };
+    //sua hàm fect
+    // const fetchMessages = (event, name) => {
+    //     const requestData = {
+    //         action: "onchat",
+    //         data: {
+    //             event: event,
+    //             data: {
+    //                 name: name,
+    //                 page: 1
+    //             }
+    //         }
+    //     };
+    //
+    //     const handleMessage = (event) => {
+    //         const response = JSON.parse(event.data);
+    //         if (response.event === event) {
+    //             if (response.status === "success") {
+    //                 const fetchedMessages = event === 'GET_PEOPLE_CHAT_MES' ?
+    //                     response.data?.reverse() || [] :
+    //                     response.data?.chatData?.reverse() || [];
+    //                 setMessages(fetchedMessages);
+    //             } else {
+    //                 Swal.fire({
+    //                     text: `Failed to fetch messages for ${name}.`,
+    //                     icon: 'error',
+    //                 });
+    //             }
+    //             // Remove the event listener once the response is received
+    //             socket.removeEventListener('message', handleMessage);
+    //         }
+    //     };
+    //
+    //     if (socket && socket.readyState === WebSocket.OPEN) {
+    //         socket.send(JSON.stringify(requestData));
+    //         socket.addEventListener('message', handleMessage);
+    //     } else {
+    //         Swal.fire({
+    //             icon: 'error',
+    //             title: 'WebSocket Error',
+    //             text: 'Unable to establish WebSocket connection',
+    //         });
+    //     }
+    // };
+
+//     // ================end fect
 
     const handleLiClick = (name, type, roomOwner) => {
         setDisplayName(name);
@@ -444,6 +691,61 @@ export default function ChatRoom() {
             }
         };
     };
+
+    // //sua click
+    // const handleLiClick = (name, type, roomOwner) => {
+    //     setDisplayName(name);
+    //     setMessageContent(type === 0 ? 'Người dùng' : 'Phòng');
+    //     setSearchType(type === 0 ? 'user' : 'room');
+    //
+    //     if (!socket || socket.readyState !== WebSocket.OPEN) {
+    //         console.error('WebSocket connection is not open');
+    //         Swal.fire({
+    //             icon: 'error',
+    //             title: 'WebSocket Error',
+    //             text: 'Unable to establish WebSocket connection',
+    //         });
+    //         return;
+    //     }
+    //
+    //     const requestData = {
+    //         action: "onchat",
+    //         data: {
+    //             event: type === 0 ? "GET_PEOPLE_CHAT_MES" : "GET_ROOM_CHAT_MES",
+    //             data: {
+    //                 name: name,
+    //                 page: 1
+    //             }
+    //         }
+    //     };
+    //
+    //     const handleMessage = (event) => {
+    //         const response = JSON.parse(event.data);
+    //         if (response.status === "success") {
+    //             let fetchedMessages = [];
+    //
+    //             if (type === 0 && Array.isArray(response.data)) {
+    //                 fetchedMessages = response.data.reverse();
+    //             } else if (type === 1 && response.data && Array.isArray(response.data.chatData)) {
+    //                 fetchedMessages = response.data.chatData.reverse();
+    //             }
+    //
+    //             setMessages(fetchedMessages);
+    //         } else {
+    //             Swal.fire({
+    //                 text: `Failed to fetch messages for ${name}.`,
+    //                 icon: 'error',
+    //             });
+    //         }
+    //
+    //         // Remove the event listener once the response is received
+    //         socket.removeEventListener('message', handleMessage);
+    //     };
+    //
+    //     socket.send(JSON.stringify(requestData));
+    //     socket.addEventListener('message', handleMessage);
+    // };
+//========================endclick
 
     // Helper function to add 7 hours to a date
     const add7Hours = (dateString) => {
