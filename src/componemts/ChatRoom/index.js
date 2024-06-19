@@ -470,15 +470,22 @@ export default function ChatRoom() {
 
     // join room
     const handleJoinRoom = () => {
+        if (!joinRoomCode) {
+            console.error('Join room code is null or undefined.');
+            return;
+        }
+
         const joinRoomRequest = {
             action: "onchat",
             data: {
                 event: "JOIN_ROOM",
                 data: {
-                    code: joinRoomCode
+                    name: joinRoomCode // Thay đổi từ code thành name
                 }
             }
         };
+
+        console.log('Sending join room request:', JSON.stringify(joinRoomRequest)); // Log toàn bộ request
 
         if (socket && socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify(joinRoomRequest));
@@ -492,6 +499,7 @@ export default function ChatRoom() {
     useEffect(() => {
         const handleJoinRoomResponse = (event) => {
             const response = JSON.parse(event.data);
+            console.log('Received response:', response); // Debug phản hồi nhận được
             if (response.event === "JOIN_ROOM") {
                 if (response.status === "success") {
                     Swal.fire({
@@ -523,6 +531,9 @@ export default function ChatRoom() {
             }
         };
     }, [socket]);
+
+
+
 
 // >>>>>>> main
 
