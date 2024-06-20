@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     MDBBtn,
     MDBModal,
@@ -23,16 +23,8 @@ export default function ChatRoom() {
     const socket = useWebSocket();
 
     const sessionData = JSON.parse(localStorage.getItem('sessionData')) || {};
-// // <<<<<<< HEAD
-//     // console.log("session1: "+ sessionData);
-//     const { username, code ,userList:initialUserList} =  sessionData;
-//     // console.log("user cua m do: "+userList);
-//
-//     console.log("user: " + username);
-// =======chu y
-    const {username, code} = sessionData;
+    const { username, code } = sessionData;
     const initialUserList = JSON.parse(localStorage.getItem('userList')) || [];
-// >>>>>>> main
 
     const toggleOpen = () => setBasicModal(!basicModal);
     const toggleMenu = () => setIsOpen(!isOpen);
@@ -42,11 +34,25 @@ export default function ChatRoom() {
     const [userList, setUserList] = useState(initialUserList);
     const [roomOwner, setRoomOwner] = useState('');
     const [messageContent, setMessageContent] = useState('');
+    const [messageContentChat, setMessageContentChat] = useState('');
     const [displayName, setDisplayName] = useState(username);
     const [searchType, setSearchType] = useState('');
-    const [messages, setMessages] = useState([]); // New state variable for messages
-
+    const [messages, setMessages] = useState([]);
     const [darkMode, setDarkMode] = useState(false);
+    const [roomNames, setRoomNames] = useState('');
+    const messagesEndRef = useRef(null);
+    const [scrollToBottom, setScrollToBottom] = useState(false); // State để xác định cuộn xuống dưới cùng
+
+    // Sử dụng useEffect để cuộn xuống dưới cùng khi có tin nhắn mới
+    useEffect(() => {
+        if (scrollToBottom) {
+            const msgCardBody = document.querySelector('.msg_card_body');
+            if (msgCardBody) {
+                msgCardBody.scrollTop = msgCardBody.scrollHeight;
+            }
+            setScrollToBottom(false); // Đặt lại trạng thái sau khi cuộn xuống
+        }
+    }, [messages, scrollToBottom]);
 
     useEffect(() => {
         if (darkMode) {
@@ -55,6 +61,18 @@ export default function ChatRoom() {
             document.documentElement.classList.remove('dark-mode');
         }
     }, [darkMode]);
+    useEffect(() => {
+        const handleBeforeUnload = () => {
+            localStorage.clear();
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, []);
+
 
     const handleToggleDarkMode = () => {
         setDarkMode(prevMode => !prevMode);
@@ -81,7 +99,7 @@ export default function ChatRoom() {
                 } else {
                     socket.addEventListener('open', () => {
                         socket.send(JSON.stringify(requestData));
-                    }, {once: true});
+                    }, { once: true });
                 }
             }
         };
@@ -155,8 +173,8 @@ export default function ChatRoom() {
                 localStorage.clear();
                 sessionStorage.removeItem('userList');
                 setUserList([]);
-                setDisplayName(''); // Clear display name
-                setMessages([]); // Clear messages
+                setDisplayName('');
+                setMessages([]);
                 Swal.fire({
                     position: 'center',
                     icon: 'success',
@@ -164,7 +182,7 @@ export default function ChatRoom() {
                     showConfirmButton: false,
                     timer: 1500
                 }).then(() => {
-                    navigate('/logout'); // Navigate to logout page after successful logout
+                    navigate('/logout');
                 });
             } else {
                 Swal.fire({
@@ -180,73 +198,7 @@ export default function ChatRoom() {
         socket.addEventListener('message', handleLogoutMessage);
     };
 
-// <<<<<<< HEAD
 
-    //==========================create room======================
-
-    const [roomNames, setRoomNames] = useState('');
-    // const handleCreateRoom = () => {
-    //     const createRoom = {
-    //         action: "onchat",
-    //         data: {
-    //             event: "CREATE_ROOM",
-    //             data: {
-    //                 name: roomNames
-    //             }
-    //         }
-    //     };
-    //
-    //     if (socket && socket.readyState === WebSocket.OPEN) {
-    //         socket.send(JSON.stringify(createRoom));
-    //         console.log('Room creation message sent');
-    //     } else {
-    //         console.error('WebSocket is not open. Unable to send message.');
-    //     }
-    //
-    //     toggleOpen(); // Đóng modal sau khi gửi yêu cầu tạo phòng
-    // };
-    // useEffect(() => {
-    //     const handleCreateRoomResponse = (event) => {
-    //         console.log("da vo create room thong bao...")
-    //         const response = JSON.parse(event.data);
-    //         if (response.event === "CREATE_ROOM") {
-    //             if (response.status === "success") {
-    //                 // Hiển thị thông báo thành công
-    //                 Swal.fire({
-    //                     position: 'center',
-    //                     icon: 'success',
-    //                     title: response.status,
-    //                     text: response.message,
-    //                     showConfirmButton: false,
-    //                     timer: 1500
-    //                 });
-    //                 // Xử lý các hành động khác nếu cần
-    //             } else {
-    //                 // Hiển thị thông báo lỗi
-    //                 Swal.fire({
-    //                     icon: 'warning',
-    //                     // title: response.status,
-    //                     text: 'Tên phòng đã tồn tại!',
-    //                 });
-    //                 console.error('Create room error details:', response);
-    //             }
-    //         }
-    //     };
-    //
-    //     // Thêm sự kiện lắng nghe cho WebSocket
-    //     if (socket) {
-    //         socket.addEventListener('message', handleCreateRoomResponse);
-    //     }
-    //
-    //     // Cleanup function
-    //     return () => {
-    //         // Xóa sự kiện lắng nghe khi component unmount
-    //         if (socket) {
-    //             socket.removeEventListener('message', handleCreateRoomResponse);
-    //         }
-    //     };
-    // }, [socket]);
-    //sua create
     const handleCreateRoom = () => {
         const createRoom = {
             action: "onchat",
@@ -260,21 +212,20 @@ export default function ChatRoom() {
 
         if (socket && socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify(createRoom));
-            console.log('Room creation message sent');
         } else {
             console.error('WebSocket is not open. Unable to send message.');
+            return;
         }
 
-        toggleOpen(); // Đóng modal sau khi gửi yêu cầu tạo phòng
+        toggleOpen();
     };
 
     useEffect(() => {
         const handleCreateRoomResponse = (event) => {
-            console.log("Đã vào hàm xử lý tạo phòng...");
+
             const response = JSON.parse(event.data);
             if (response.event === "CREATE_ROOM") {
                 if (response.status === "success") {
-                    // Hiển thị thông báo thành công
                     Swal.fire({
                         position: 'center',
                         icon: 'success',
@@ -283,12 +234,28 @@ export default function ChatRoom() {
                         showConfirmButton: false,
                         timer: 1500
                     });
-                    // Xử lý các hành động khác nếu cần
+
+                    const currentDate = new Date();
+                    currentDate.setHours(currentDate.getHours() - 7);
+                    const formattedDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')} ${String(currentDate.getHours()).padStart(2, '0')}:${String(currentDate.getMinutes()).padStart(2, '0')}:${String(currentDate.getSeconds()).padStart(2, '0')}`;
+
+                    const newUserList = [{
+                        name: roomNames,
+                        type: 1,
+                        actionTime: formattedDate,
+                        roomOwner: username
+                    }, ...userList];
+                    setUserList(newUserList);
+                    localStorage.setItem('userList', JSON.stringify(newUserList));
+
+                    // Save room data to localStorage
+                    const roomData = {
+                        own: username
+                    };
+                    localStorage.setItem('data', JSON.stringify(roomData));
                 } else {
-                    // Hiển thị thông báo lỗi
                     Swal.fire({
                         icon: 'warning',
-                        // title: response.status,
                         text: 'Tên phòng đã tồn tại!',
                     });
                     console.error('Chi tiết lỗi tạo phòng:', response);
@@ -296,22 +263,18 @@ export default function ChatRoom() {
             }
         };
 
-        // Thêm sự kiện lắng nghe cho WebSocket
         if (socket) {
             socket.addEventListener('message', handleCreateRoomResponse);
         }
 
-        // Cleanup function
         return () => {
-            // Xóa sự kiện lắng nghe khi component unmount
             if (socket) {
                 socket.removeEventListener('message', handleCreateRoomResponse);
             }
         };
-    }, [socket]);
+    }, [socket, userList, roomNames, username]);
 
-// =======
-//     chuc nang search
+
     const handleSearchInputChange = (event) => {
         setSearchInput(event.target.value);
     };
@@ -421,153 +384,8 @@ export default function ChatRoom() {
             };
         }
     };
-    //================sua hàm search
-    // const handleSearchInputChange = (event) => {
-    //     setSearchInput(event.target.value);
-    // };
-    //
-    // const handleCheckboxChange = (event) => {
-    //     setIsCheckboxChecked(event.target.checked);
-    // };
-    //
-    // const handleSearch = () => {
-    //     // Kiểm tra WebSocket có sẵn và đang mở không
-    //     if (!socket || socket.readyState !== WebSocket.OPEN) {
-    //         console.error('WebSocket connection is not open');
-    //         // Hiển thị thông báo lỗi nếu WebSocket không sẵn sàng
-    //         Swal.fire({
-    //             icon: 'error',
-    //             title: 'WebSocket Error',
-    //             text: 'Unable to establish WebSocket connection',
-    //         });
-    //         return;
-    //     }
-    //
-    //     // Tạo requestData dựa trên trạng thái của isCheckboxChecked
-    //     const requestData = isCheckboxChecked
-    //         ? {
-    //             action: "onchat",
-    //             data: {
-    //                 event: "GET_ROOM_CHAT_MES",
-    //                 data: {
-    //                     name: searchInput.trim(),
-    //                     page: 1
-    //                 }
-    //             }
-    //         }
-    //         : {
-    //             action: "onchat",
-    //             data: {
-    //                 event: "CHECK_USER",
-    //                 data: {
-    //                     user: searchInput.trim()
-    //                 }
-    //             }
-    //         };
-    //
-    //     // Gửi requestData qua WebSocket
-    //     socket.send(JSON.stringify(requestData));
-    // };
-    //
-    // useEffect(() => {
-    //     // Hàm xử lý message từ WebSocket
-    //     const handleMessage = (event) => {
-    //         // Parse dữ liệu nhận được từ event
-    //         const response = JSON.parse(event.data);
-    //
-    //         // Xử lý dựa trên event nhận được từ server
-    //         if (response.event === "CHECK_USER") {
-    //             // Xử lý response khi kiểm tra người dùng
-    //             if (response.status === "success") {
-    //                 if (response.data.status) {
-    //                     // Nếu người dùng đã từng đăng nhập, set state và hiển thị thông báo
-    //                     setDisplayName(searchInput.trim());
-    //                     setMessageContent('');
-    //                     setSearchType('user');
-    //                     Swal.fire({
-    //                         text: `User ${searchInput} has logged in before.`,
-    //                         icon: 'success',
-    //                     });
-    //
-    //                     // Fetch messages cho người dùng
-    //                     fetchMessages('GET_PEOPLE_CHAT_MES', searchInput.trim());
-    //                 } else {
-    //                     // Nếu người dùng chưa từng đăng nhập, hiển thị thông báo cảnh báo
-    //                     Swal.fire({
-    //                         text: `User ${searchInput} has not logged in before.`,
-    //                         icon: 'warning',
-    //                     });
-    //                 }
-    //             } else {
-    //                 // Xử lý khi kiểm tra người dùng thất bại
-    //                 Swal.fire({
-    //                     text: `Failed to check user ${searchInput}.`,
-    //                     icon: 'error',
-    //                 });
-    //             }
-    //         } else if (response.event === "GET_ROOM_CHAT_MES") {
-    //             // Xử lý response khi lấy tin nhắn của phòng chat
-    //             if (response.status === "success") {
-    //                 const roomData = response.data;
-    //                 const roomName = roomData.name;
-    //
-    //                 // Lưu roomData vào localStorage
-    //                 localStorage.setItem('data', JSON.stringify(roomData));
-    //
-    //                 // Lấy danh sách user từ localStorage
-    //                 const savedUserList = JSON.parse(localStorage.getItem('userList')) || [];
-    //                 // Kiểm tra nếu phòng chưa tồn tại trong danh sách, thêm mới
-    //                 const existingRoom = savedUserList.find(room => room.name === roomName);
-    //                 if (!existingRoom) {
-    //                     savedUserList.push(roomData);
-    //                     localStorage.setItem('userList', JSON.stringify(savedUserList));
-    //                 }
-    //
-    //                 // Set state với thông tin phòng
-    //                 setRoomOwner(roomData.own);
-    //                 setMessageContent(username === roomData.own ? 'Người tạo phòng' : 'Người tham gia');
-    //                 setDisplayName(roomName);
-    //                 setSearchType('room');
-    //
-    //                 // Hiển thị thông báo thành công
-    //                 Swal.fire({
-    //                     text: `Room ${roomName} tồn tại`,
-    //                     icon: 'success',
-    //                 });
-    //
-    //                 // Fetch messages cho phòng chat
-    //                 fetchMessages('GET_ROOM_CHAT_MES', roomName);
-    //             } else {
-    //                 // Xử lý khi lấy tin nhắn phòng chat thất bại
-    //                 Swal.fire({
-    //                     text: `Room ${searchInput} không tồn tại`,
-    //                     icon: 'warning',
-    //                 });
-    //             }
-    //         }
-    //     };
-    //
-    //     // Thêm listener để lắng nghe message từ WebSocket, chỉ thêm một lần
-    //     if (socket) {
-    //         socket.addEventListener('message', handleMessage);
-    //     }
-    //
-    //     // Cleanup function để loại bỏ listener khi component unmount hoặc dependencies thay đổi
-    //     return () => {
-    //         if (socket) {
-    //             socket.removeEventListener('message', handleMessage);
-    //         }
-    //     };
-    // }, [socket, searchInput, isCheckboxChecked]);
 
 
-
-// // ====================end
-
-// <<<<<<< HEAD
-//
-//
-// =======
     const fetchMessages = (event, name) => {
         const requestData = {
             action: "onchat",
@@ -597,51 +415,7 @@ export default function ChatRoom() {
             }
         };
     };
-    //sua hàm fect
-    // const fetchMessages = (event, name) => {
-    //     const requestData = {
-    //         action: "onchat",
-    //         data: {
-    //             event: event,
-    //             data: {
-    //                 name: name,
-    //                 page: 1
-    //             }
-    //         }
-    //     };
-    //
-    //     const handleMessage = (event) => {
-    //         const response = JSON.parse(event.data);
-    //         if (response.event === event) {
-    //             if (response.status === "success") {
-    //                 const fetchedMessages = event === 'GET_PEOPLE_CHAT_MES' ?
-    //                     response.data?.reverse() || [] :
-    //                     response.data?.chatData?.reverse() || [];
-    //                 setMessages(fetchedMessages);
-    //             } else {
-    //                 Swal.fire({
-    //                     text: `Failed to fetch messages for ${name}.`,
-    //                     icon: 'error',
-    //                 });
-    //             }
-    //             // Remove the event listener once the response is received
-    //             socket.removeEventListener('message', handleMessage);
-    //         }
-    //     };
-    //
-    //     if (socket && socket.readyState === WebSocket.OPEN) {
-    //         socket.send(JSON.stringify(requestData));
-    //         socket.addEventListener('message', handleMessage);
-    //     } else {
-    //         Swal.fire({
-    //             icon: 'error',
-    //             title: 'WebSocket Error',
-    //             text: 'Unable to establish WebSocket connection',
-    //         });
-    //     }
-    // };
 
-//     // ================end fect
 
     const handleLiClick = (name, type, roomOwner) => {
         setDisplayName(name);
@@ -683,6 +457,7 @@ export default function ChatRoom() {
                 }
 
                 setMessages(fetchedMessages);
+                setScrollToBottom(true); // Cuộn xuống dưới cùng khi có tin nhắn mới
             } else {
                 Swal.fire({
                     text: `Failed to fetch messages for ${name}.`,
@@ -690,71 +465,17 @@ export default function ChatRoom() {
                 });
             }
         };
+        setScrollToBottom(true); // Đặt trạng thái để cuộn xuống dưới cùng
+
     };
 
-    // //sua click
-    // const handleLiClick = (name, type, roomOwner) => {
-    //     setDisplayName(name);
-    //     setMessageContent(type === 0 ? 'Người dùng' : 'Phòng');
-    //     setSearchType(type === 0 ? 'user' : 'room');
-    //
-    //     if (!socket || socket.readyState !== WebSocket.OPEN) {
-    //         console.error('WebSocket connection is not open');
-    //         Swal.fire({
-    //             icon: 'error',
-    //             title: 'WebSocket Error',
-    //             text: 'Unable to establish WebSocket connection',
-    //         });
-    //         return;
-    //     }
-    //
-    //     const requestData = {
-    //         action: "onchat",
-    //         data: {
-    //             event: type === 0 ? "GET_PEOPLE_CHAT_MES" : "GET_ROOM_CHAT_MES",
-    //             data: {
-    //                 name: name,
-    //                 page: 1
-    //             }
-    //         }
-    //     };
-    //
-    //     const handleMessage = (event) => {
-    //         const response = JSON.parse(event.data);
-    //         if (response.status === "success") {
-    //             let fetchedMessages = [];
-    //
-    //             if (type === 0 && Array.isArray(response.data)) {
-    //                 fetchedMessages = response.data.reverse();
-    //             } else if (type === 1 && response.data && Array.isArray(response.data.chatData)) {
-    //                 fetchedMessages = response.data.chatData.reverse();
-    //             }
-    //
-    //             setMessages(fetchedMessages);
-    //         } else {
-    //             Swal.fire({
-    //                 text: `Failed to fetch messages for ${name}.`,
-    //                 icon: 'error',
-    //             });
-    //         }
-    //
-    //         // Remove the event listener once the response is received
-    //         socket.removeEventListener('message', handleMessage);
-    //     };
-    //
-    //     socket.send(JSON.stringify(requestData));
-    //     socket.addEventListener('message', handleMessage);
-    // };
-//========================endclick
 
-    // Helper function to add 7 hours to a date
     const add7Hours = (dateString) => {
         const date = new Date(dateString);
         date.setHours(date.getHours() + 7);
         return date;
     };
 
-    // Function to render formatted date and time
     const renderDateTime = (dateString) => {
         const date = add7Hours(dateString);
         const day = date.getDate().toString().padStart(2, '0');
@@ -764,8 +485,50 @@ export default function ChatRoom() {
         const minutes = date.getMinutes().toString().padStart(2, '0');
         const seconds = date.getSeconds().toString().padStart(2, '0');
         return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+
     };
-// >>>>>>> main
+
+    // Start of sendChat function
+    const sendChat = () => {
+        if (messageContentChat.trim() === '') return;
+
+        const chatMessage = {
+
+            "action": "onchat",
+            "data": {
+            "event": "SEND_CHAT",
+                "data": {
+                "type": "people",
+                    "to": displayName,
+                    "mes": messageContentChat.trim()
+            }
+
+        }
+        };
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(chatMessage));
+            setMessageContentChat(''); // Clear message input after sending
+        } else {
+            console.error('WebSocket is not open. Unable to send message.');
+        }
+    };
+
+    const handleInputChange = (event) => {
+        setMessageContentChat(event.target.value);
+    };
+
+    const handleSendClick = () => {
+        sendChat();
+    };
+
+    const handleKeyDown = (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            sendChat();
+        }
+    };
+    // End of sendChat function
 
     return (
         <>
@@ -896,6 +659,7 @@ export default function ChatRoom() {
                                     </div>
                                 </div>
                                 <div className="card-body msg_card_body"
+                                     ref={messagesEndRef}
                                      style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
                                     {messages.map((message, index) => (
                                         <div key={index}
@@ -919,6 +683,8 @@ export default function ChatRoom() {
                                             </div>
                                         </div>
                                     ))}
+                                    <div ref={messagesEndRef}></div>
+
                                 </div>
                                 <div className="card-footer">
                                     <div className="input-group">
@@ -927,9 +693,14 @@ export default function ChatRoom() {
                                                 className="fas fa-paperclip"></i></span>
                                         </div>
                                         <textarea name="" className="form-control type_msg"
-                                                  placeholder="Type your message..."></textarea>
+                                                  placeholder="Type your message..."
+                                                  value={messageContentChat}
+                                                  onChange={handleInputChange}
+                                                  onKeyDown={handleKeyDown}// Listen for Enter key press>
+                                             ></textarea>
                                         <div className="input-group-append">
-                                            <span className="input-group-text send_btn"><i
+                                            <span className="input-group-text send_btn"
+                                            onClick={handleSendClick}><i
                                                 className="fas fa-location-arrow"></i></span>
                                         </div>
                                     </div>
@@ -938,7 +709,6 @@ export default function ChatRoom() {
                         </div>
                     </div>
                 </div>
-
 
             </div>
             <MDBModal show={basicModal} onHide={() => setBasicModal(false)}>
@@ -960,7 +730,7 @@ export default function ChatRoom() {
                             <MDBBtn color="secondary" onClick={toggleOpen}>
                                 Close
                             </MDBBtn>
-                            <MDBBtn onClick={handleCreateRoom} >Create</MDBBtn>
+                            <MDBBtn onClick={handleCreateRoom}>Create</MDBBtn>
                         </MDBModalFooter>
                     </MDBModalContent>
                 </MDBModalDialog>
@@ -968,4 +738,3 @@ export default function ChatRoom() {
         </>
     );
 }
-
