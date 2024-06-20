@@ -53,6 +53,10 @@ export default function ChatRoom() {
         }
     }, [messages, scrollToBottom]);
 
+    const [joinRoomCode, setJoinRoomCode] = useState('');
+    const [joinRoomModal, setJoinRoomModal] = useState(false);
+
+
     useEffect(() => {
         if (darkMode) {
             document.documentElement.classList.add('dark-mode');
@@ -482,6 +486,77 @@ export default function ChatRoom() {
 
     };
 
+
+    // join room
+    const handleJoinRoom = () => {
+        if (!joinRoomCode) {
+            console.error('Join room code is null or undefined.');
+            return;
+        }
+
+        const joinRoomRequest = {
+            action: "onchat",
+            data: {
+                event: "JOIN_ROOM",
+                data: {
+                    name: joinRoomCode // Thay đổi từ code thành name
+                }
+            }
+        };
+
+        console.log('Sending join room request:', JSON.stringify(joinRoomRequest)); // Log toàn bộ request
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(joinRoomRequest));
+        } else {
+            console.error('WebSocket is not open. Unable to send message.');
+        }
+
+        setJoinRoomModal(false); // Đóng modal sau khi gửi yêu cầu tham gia phòng
+    };
+
+    useEffect(() => {
+        const handleJoinRoomResponse = (event) => {
+            const response = JSON.parse(event.data);
+            console.log('Received response:', response); // Debug phản hồi nhận được
+            if (response.event === "JOIN_ROOM") {
+                if (response.status === "success") {
+                    Swal.fire({
+                        position: 'center',
+                        icon: 'success',
+                        title: response.status,
+                        text: 'Joined room successfully',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                    // Xử lý các hành động khác nếu cần
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Join Room Error',
+                        text: response.message || 'Failed to join the room',
+                    });
+                }
+            }
+        };
+
+        if (socket) {
+            socket.addEventListener('message', handleJoinRoomResponse);
+        }
+
+        return () => {
+            if (socket) {
+                socket.removeEventListener('message', handleJoinRoomResponse);
+            }
+        };
+    }, [socket]);
+
+
+
+
+// >>>>>>> main
+
+
     return (
         <>
             <div className="maincontainer">
@@ -603,7 +678,10 @@ export default function ChatRoom() {
                                                     className={`${darkMode ? 'light' : 'dark'}`}>{darkMode ? 'Light mode' : 'Dark mode'}</span>
                                             </li>
                                             <li><i className="fas fa-user-circle"></i> View profile</li>
-                                            <li><i className="fas fa-plus"></i> Join room</li>
+                                            {/*<li><i className="fas fa-plus"></i> Join room</li>*/}
+                                            <li onClick={() => setJoinRoomModal(true)}>
+                                                <i className="fas fa-plus"></i> Join room
+                                            </li>
                                             <li id="logout-button" onClick={handleLogout}><i
                                                 className="fas fa-ban"></i> Logout
                                             </li>
@@ -678,6 +756,34 @@ export default function ChatRoom() {
                                 Close
                             </MDBBtn>
                             <MDBBtn onClick={handleCreateRoom}>Create</MDBBtn>
+                        </MDBModalFooter>
+                    </MDBModalContent>
+                </MDBModalDialog>
+            </MDBModal>
+
+            {/* Modal Join Room */}
+            <MDBModal show={joinRoomModal} onHide={() => setJoinRoomModal(false)}>
+                <MDBModalDialog>
+                    <MDBModalContent>
+                        <MDBModalHeader>
+                            <MDBModalTitle>Join Room</MDBModalTitle>
+                            <MDBBtn className="btn-close" color="none" onClick={() => setJoinRoomModal(false)} />
+                        </MDBModalHeader>
+                        <MDBModalBody>
+                            <MDBInput
+                                type="text"
+                                value={joinRoomCode}
+                                onChange={(e) => setJoinRoomCode(e.target.value)}
+                                label="Room Code"
+                            />
+                        </MDBModalBody>
+                        <MDBModalFooter>
+                            <MDBBtn color="secondary" onClick={() => setJoinRoomModal(false)}>
+                                Close
+                            </MDBBtn>
+                            <MDBBtn onClick={handleJoinRoom}>
+                                Join
+                            </MDBBtn>
                         </MDBModalFooter>
                     </MDBModalContent>
                 </MDBModalDialog>
