@@ -466,6 +466,7 @@ export default function ChatRoom() {
 
     };
 
+
     const add7Hours = (dateString) => {
         const date = new Date(dateString);
         date.setHours(date.getHours() + 7);
@@ -483,6 +484,7 @@ export default function ChatRoom() {
         return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
 
     };
+
 
     // join room
     const handleJoinRoom = () => {
