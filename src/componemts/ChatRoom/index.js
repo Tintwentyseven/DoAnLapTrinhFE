@@ -418,6 +418,7 @@ export default function ChatRoom() {
 
 
     const handleLiClick = (name, type, roomOwner) => {
+        console.log("toi da vao hien thi");
         setDisplayName(name);
         setMessageContent(type === 0 ? 'Người dùng' : 'Phòng');
         setSearchType(type === 0 ? 'user' : 'room');
@@ -489,6 +490,8 @@ export default function ChatRoom() {
     };
 
     // Start of sendChat function
+    const [shouldFetchMessages, setShouldFetchMessages] = useState(false);
+
     const sendChat = () => {
         if (messageContentChat.trim() === '') return;
 
@@ -507,12 +510,35 @@ export default function ChatRoom() {
         };
 
         if (socket && socket.readyState === WebSocket.OPEN) {
+            // socket.send(JSON.stringify(chatMessage));
+            // setMessageContentChat(''); // Clear message input after sending
+            const newMessage = {
+                from: username,
+                to: displayName,
+                mes: messageContentChat.trim(),
+                timestamp: new Date().toISOString()
+
+            };
+            console.log("time "+newMessage.timestamp);
+            setMessages((prevMessages) => [...prevMessages, newMessage]);
+            setMessageContentChat(''); // Xóa nội dung tin nhắn sau khi gửi
+            setScrollToBottom(true); // Kích hoạt cuộn xuống dưới
+
             socket.send(JSON.stringify(chatMessage));
-            setMessageContentChat(''); // Clear message input after sending
+            setShouldFetchMessages(true); // Kích hoạt việc tải lại tin nhắn
+
         } else {
             console.error('WebSocket is not open. Unable to send message.');
         }
     };
+    useEffect(() => {
+        if (shouldFetchMessages) {
+            handleLiClick(displayName, 0, roomOwner);
+            setShouldFetchMessages(false); // Đặt lại để ngăn không gọi lại khi messages thay đổi
+        }
+    }, [shouldFetchMessages]);
+
+
 
     const handleInputChange = (event) => {
         setMessageContentChat(event.target.value);
