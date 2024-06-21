@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     MDBBtn,
     MDBModal,
@@ -23,16 +23,8 @@ export default function ChatRoom() {
     const socket = useWebSocket();
 
     const sessionData = JSON.parse(localStorage.getItem('sessionData')) || {};
-// // <<<<<<< HEAD
-//     // console.log("session1: "+ sessionData);
-//     const { username, code ,userList:initialUserList} =  sessionData;
-//     // console.log("user cua m do: "+userList);
-//
-//     console.log("user: " + username);
-// =======chu y
-    const {username, code} = sessionData;
+    const { username, code } = sessionData;
     const initialUserList = JSON.parse(localStorage.getItem('userList')) || [];
-// >>>>>>> main
 
     const toggleOpen = () => setBasicModal(!basicModal);
     const toggleMenu = () => setIsOpen(!isOpen);
@@ -44,13 +36,25 @@ export default function ChatRoom() {
     const [messageContent, setMessageContent] = useState('');
     const [displayName, setDisplayName] = useState(username);
     const [searchType, setSearchType] = useState('');
-    const [messages, setMessages] = useState([]); // New state variable for messages
-
+    const [messages, setMessages] = useState([]);
     const [darkMode, setDarkMode] = useState(false);
+    const [roomNames, setRoomNames] = useState('');
+    const messagesEndRef = useRef(null);
+    const [scrollToBottom, setScrollToBottom] = useState(false); // State để xác định cuộn xuống dưới cùng
+
+    // Sử dụng useEffect để cuộn xuống dưới cùng khi có tin nhắn mới
+    useEffect(() => {
+        if (scrollToBottom) {
+            const msgCardBody = document.querySelector('.msg_card_body');
+            if (msgCardBody) {
+                msgCardBody.scrollTop = msgCardBody.scrollHeight;
+            }
+            setScrollToBottom(false); // Đặt lại trạng thái sau khi cuộn xuống
+        }
+    }, [messages, scrollToBottom]);
 
     const [joinRoomCode, setJoinRoomCode] = useState('');
     const [joinRoomModal, setJoinRoomModal] = useState(false);
-
 
     useEffect(() => {
         if (darkMode) {
@@ -59,6 +63,18 @@ export default function ChatRoom() {
             document.documentElement.classList.remove('dark-mode');
         }
     }, [darkMode]);
+    useEffect(() => {
+        const handleBeforeUnload = () => {
+            localStorage.clear();
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, []);
+
 
     const handleToggleDarkMode = () => {
         setDarkMode(prevMode => !prevMode);
@@ -85,7 +101,7 @@ export default function ChatRoom() {
                 } else {
                     socket.addEventListener('open', () => {
                         socket.send(JSON.stringify(requestData));
-                    }, {once: true});
+                    }, { once: true });
                 }
             }
         };
@@ -159,8 +175,8 @@ export default function ChatRoom() {
                 localStorage.clear();
                 sessionStorage.removeItem('userList');
                 setUserList([]);
-                setDisplayName(''); // Clear display name
-                setMessages([]); // Clear messages
+                setDisplayName('');
+                setMessages([]);
                 Swal.fire({
                     position: 'center',
                     icon: 'success',
@@ -168,7 +184,7 @@ export default function ChatRoom() {
                     showConfirmButton: false,
                     timer: 1500
                 }).then(() => {
-                    navigate('/logout'); // Navigate to logout page after successful logout
+                    navigate('/logout');
                 });
             } else {
                 Swal.fire({
@@ -184,11 +200,6 @@ export default function ChatRoom() {
         socket.addEventListener('message', handleLogoutMessage);
     };
 
-// <<<<<<< HEAD
-
-    //==========================create room======================
-
-    const [roomNames, setRoomNames] = useState('');
     const handleCreateRoom = () => {
         const createRoom = {
             action: "onchat",
@@ -202,20 +213,19 @@ export default function ChatRoom() {
 
         if (socket && socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify(createRoom));
-            console.log('Room creation message sent');
         } else {
             console.error('WebSocket is not open. Unable to send message.');
+            return;
         }
 
-        toggleOpen(); // Đóng modal sau khi gửi yêu cầu tạo phòng
+        toggleOpen();
     };
+
     useEffect(() => {
         const handleCreateRoomResponse = (event) => {
-            console.log("da vo create room thong bao...")
             const response = JSON.parse(event.data);
             if (response.event === "CREATE_ROOM") {
                 if (response.status === "success") {
-                    // Hiển thị thông báo thành công
                     Swal.fire({
                         position: 'center',
                         icon: 'success',
@@ -224,12 +234,28 @@ export default function ChatRoom() {
                         showConfirmButton: false,
                         timer: 1500
                     });
-                    // Xử lý các hành động khác nếu cần
+
+                    const currentDate = new Date();
+                    currentDate.setHours(currentDate.getHours() - 7);
+                    const formattedDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')} ${String(currentDate.getHours()).padStart(2, '0')}:${String(currentDate.getMinutes()).padStart(2, '0')}:${String(currentDate.getSeconds()).padStart(2, '0')}`;
+
+                    const newUserList = [{
+                        name: roomNames,
+                        type: 1,
+                        actionTime: formattedDate,
+                        roomOwner: username
+                    }, ...userList];
+                    setUserList(newUserList);
+                    localStorage.setItem('userList', JSON.stringify(newUserList));
+
+                    // Save room data to localStorage
+                    const roomData = {
+                        own: username
+                    };
+                    localStorage.setItem('data', JSON.stringify(roomData));
                 } else {
-                    // Hiển thị thông báo lỗi
                     Swal.fire({
                         icon: 'warning',
-                        // title: response.status,
                         text: 'Tên phòng đã tồn tại!',
                     });
                     console.error('Create room error details:', response);
@@ -237,25 +263,17 @@ export default function ChatRoom() {
             }
         };
 
-        // Thêm sự kiện lắng nghe cho WebSocket
         if (socket) {
             socket.addEventListener('message', handleCreateRoomResponse);
         }
 
-        // Cleanup function
         return () => {
-            // Xóa sự kiện lắng nghe khi component unmount
             if (socket) {
                 socket.removeEventListener('message', handleCreateRoomResponse);
             }
         };
-    }, [socket]);
+    }, [socket, userList, roomNames, username]);
 
-
-// =======
-    //chuc nang search
-// =======
-// >>>>>>> main
     const handleSearchInputChange = (event) => {
         setSearchInput(event.target.value);
     };
@@ -366,10 +384,6 @@ export default function ChatRoom() {
         }
     };
 
-// <<<<<<< HEAD
-//
-//
-// =======
     const fetchMessages = (event, name) => {
         const requestData = {
             action: "onchat",
@@ -440,6 +454,7 @@ export default function ChatRoom() {
                 }
 
                 setMessages(fetchedMessages);
+                setScrollToBottom(true); // Cuộn xuống dưới cùng khi có tin nhắn mới
             } else {
                 Swal.fire({
                     text: `Failed to fetch messages for ${name}.`,
@@ -447,16 +462,16 @@ export default function ChatRoom() {
                 });
             }
         };
+        setScrollToBottom(true); // Đặt trạng thái để cuộn xuống dưới cùng
+
     };
 
-    // Helper function to add 7 hours to a date
     const add7Hours = (dateString) => {
         const date = new Date(dateString);
         date.setHours(date.getHours() + 7);
         return date;
     };
 
-    // Function to render formatted date and time
     const renderDateTime = (dateString) => {
         const date = add7Hours(dateString);
         const day = date.getDate().toString().padStart(2, '0');
@@ -466,12 +481,18 @@ export default function ChatRoom() {
         const minutes = date.getMinutes().toString().padStart(2, '0');
         const seconds = date.getSeconds().toString().padStart(2, '0');
         return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+
     };
 
     // join room
     const handleJoinRoom = () => {
-        if (!joinRoomCode) {
-            console.error('Join room code is null or undefined.');
+        const isAlreadyMember = userList.some((room) => room.name === joinRoomCode && room.type === 1);
+        if (isAlreadyMember) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Already a member',
+                text: 'Bạn đã là thành viên của phòng.',
+            });
             return;
         }
 
@@ -510,6 +531,21 @@ export default function ChatRoom() {
                         showConfirmButton: false,
                         timer: 1500
                     });
+
+                    // Cập nhật danh sách userList và lưu vào localStorage
+                    const currentDate = new Date();
+                    currentDate.setHours(currentDate.getHours() - 7);
+                    const formattedDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')} ${String(currentDate.getHours()).padStart(2, '0')}:${String(currentDate.getMinutes()).padStart(2, '0')}:${String(currentDate.getSeconds()).padStart(2, '0')}`;
+
+                    const newUserList = [{
+                        name: joinRoomCode,
+                        type: 1,
+                        actionTime: formattedDate,
+                        roomOwner: response.data.roomOwner || 'Unknown'
+                    }, ...userList];
+                    setUserList(newUserList);
+                    localStorage.setItem('userList', JSON.stringify(newUserList));
+
                     // Xử lý các hành động khác nếu cần
                 } else {
                     Swal.fire({
@@ -530,12 +566,12 @@ export default function ChatRoom() {
                 socket.removeEventListener('message', handleJoinRoomResponse);
             }
         };
-    }, [socket]);
-
+    }, [socket, userList, joinRoomCode]);
 
 
 
 // >>>>>>> main
+
 
     return (
         <>
@@ -669,6 +705,7 @@ export default function ChatRoom() {
                                     </div>
                                 </div>
                                 <div className="card-body msg_card_body"
+                                     ref={messagesEndRef}
                                      style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
                                     {messages.map((message, index) => (
                                         <div key={index}
@@ -692,6 +729,8 @@ export default function ChatRoom() {
                                             </div>
                                         </div>
                                     ))}
+                                    <div ref={messagesEndRef}></div>
+
                                 </div>
                                 <div className="card-footer">
                                     <div className="input-group">
@@ -711,7 +750,6 @@ export default function ChatRoom() {
                         </div>
                     </div>
                 </div>
-
 
             </div>
             <MDBModal show={basicModal} onHide={() => setBasicModal(false)}>
@@ -733,7 +771,7 @@ export default function ChatRoom() {
                             <MDBBtn color="secondary" onClick={toggleOpen}>
                                 Close
                             </MDBBtn>
-                            <MDBBtn onClick={handleCreateRoom} >Create</MDBBtn>
+                            <MDBBtn onClick={handleCreateRoom}>Create</MDBBtn>
                         </MDBModalFooter>
                     </MDBModalContent>
                 </MDBModalDialog>
@@ -769,4 +807,3 @@ export default function ChatRoom() {
         </>
     );
 }
-
