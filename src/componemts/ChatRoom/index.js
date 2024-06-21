@@ -56,7 +56,6 @@ export default function ChatRoom() {
     const [joinRoomCode, setJoinRoomCode] = useState('');
     const [joinRoomModal, setJoinRoomModal] = useState(false);
 
-
     useEffect(() => {
         if (darkMode) {
             document.documentElement.classList.add('dark-mode');
@@ -489,8 +488,13 @@ export default function ChatRoom() {
 
     // join room
     const handleJoinRoom = () => {
-        if (!joinRoomCode) {
-            console.error('Join room code is null or undefined.');
+        const isAlreadyMember = userList.some((room) => room.name === joinRoomCode && room.type === 1);
+        if (isAlreadyMember) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Already a member',
+                text: 'Bạn đã là thành viên của phòng.',
+            });
             return;
         }
 
@@ -529,6 +533,21 @@ export default function ChatRoom() {
                         showConfirmButton: false,
                         timer: 1500
                     });
+
+                    // Cập nhật danh sách userList và lưu vào localStorage
+                    const currentDate = new Date();
+                    currentDate.setHours(currentDate.getHours() - 7);
+                    const formattedDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')} ${String(currentDate.getHours()).padStart(2, '0')}:${String(currentDate.getMinutes()).padStart(2, '0')}:${String(currentDate.getSeconds()).padStart(2, '0')}`;
+
+                    const newUserList = [{
+                        name: joinRoomCode,
+                        type: 1,
+                        actionTime: formattedDate,
+                        roomOwner: response.data.roomOwner || 'Unknown'
+                    }, ...userList];
+                    setUserList(newUserList);
+                    localStorage.setItem('userList', JSON.stringify(newUserList));
+
                     // Xử lý các hành động khác nếu cần
                 } else {
                     Swal.fire({
@@ -549,8 +568,7 @@ export default function ChatRoom() {
                 socket.removeEventListener('message', handleJoinRoomResponse);
             }
         };
-    }, [socket]);
-
+    }, [socket, userList, joinRoomCode]);
 
 
 
