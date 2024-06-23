@@ -7,16 +7,46 @@ import {
     MDBCol,
     MDBCard,
     MDBCardBody,
-    MDBCardImage,
     MDBInput,
-    MDBIcon
+    MDBCheckbox,
+    MDBIcon,MDBCardImage
 } from 'mdb-react-ui-kit';
+import './style.css'
+import {
+    createUserWithEmailAndPassword,
+} from "firebase/auth";
+import { auth, db } from "../../firebase";
+import { collection, doc, setDoc, query, where, getDocs } from "firebase/firestore";
 import Swal from 'sweetalert2';
 
 const Register = () => {
     const [username, setUsername] = useState('');
-    const [password, setPassword] = useState("");
+    const [password, setPassword] = useState('');
+    const [email, setEmail] = useState('');
+    const [isMale, setIsMale] = useState(true);
+
     const navigate = useNavigate();
+    const [emailError, setEmailError] = useState('');
+    const [isCheckedMale, setIsCheckedMale] = useState(false);
+    const [isCheckedFemale, setIsCheckedFemale] = useState(false);
+
+    const handleMaleChange = () => {
+        setIsCheckedMale(true);
+        setIsCheckedFemale(false);
+        setIsMale(true);
+    };
+
+    const handleFemaleChange = () => {
+        setIsCheckedFemale(true);
+        setIsCheckedMale(false);
+        setIsMale(false);
+    };
+
+    // Function to validate email format using regex
+    const validateEmail = (email) => {
+        const pattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        return pattern.test(email);
+    };
 
     const handleUsernameChange = (event) => {
         const value = event.target.value;
@@ -40,9 +70,26 @@ const Register = () => {
         }
     };
 
+    const handleEmailChange = (event) => {
+        const value = event.target.value;
+        setEmail(value);
 
-    const handleRegister = (event) => {
+        // Clear email error when user starts typing again
+        if (emailError && validateEmail(value)) {
+            setEmailError('');
+        }
+    };
+
+    const handleRegister = async (event) => {
         event.preventDefault();
+
+        // Check if email is valid
+        if (!validateEmail(email)) {
+            setEmailError("Email không hợp lệ");
+            return;
+        }
+
+        // Check if username and password are empty
         if (username.trim() === "" || password.trim() === "") {
             return Swal.fire({
                 text: "Username và Password không được để trống hoặc chỉ có khoảng trắng",
@@ -50,61 +97,90 @@ const Register = () => {
             });
         }
 
-        // Gửi yêu cầu đăng nhập đến server WebSocket
-        const requestData = {
-            action: "onchat",
-            data: {
-                event: "REGISTER",
-                data: {
-                    user: username,
-                    pass: password
-                }
-            }
-        };
-
-        const socket = new WebSocket("ws://140.238.54.136:8080/chat/chat");
-
-        socket.onopen = () => {
-            Swal.fire({
-                text: "WebSocket connection established",
-                icon: 'success',
-                timer: 1500,
-                showConfirmButton: false
+        // Validate unique username
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("username", "==", username));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            return Swal.fire({
+                text: "Select another username",
+                icon: 'warning',
             });
-            socket.send(JSON.stringify(requestData));
-        };
+        }
 
-        socket.onmessage = (event) => {
-            const response = JSON.parse(event.data);
-            if (response.status === "success") {
+        try {
+            const res = await createUserWithEmailAndPassword(auth, email, password);
+
+            await setDoc(doc(db, "users", res.user.uid), {
+                username,
+                email,
+                gender: isMale ? 'male' : 'female',
+                id: res.user.uid,
+            });
+
+            // WebSocket requestData
+            const requestData = {
+                action: "onchat",
+                data: {
+                    event: "REGISTER",
+                    data: {
+                        user: username,
+                        pass: password,
+                    }
+                }
+            };
+
+            const socket = new WebSocket("ws://140.238.54.136:8080/chat/chat");
+
+            socket.onopen = () => {
                 Swal.fire({
-                    position: 'center',
-                    icon: response.status,
-                    title: response.status,
-                    showConfirmButton: false,
-                    timer: 1500
-                }).then(() => {
-                    navigate("/login"); // Pass the username to the Chat component
+                    text: "Kết nối WebSocket thành công",
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
                 });
-            } else {
+                socket.send(JSON.stringify(requestData));
+            };
+
+            socket.onmessage = (event) => {
+                const response = JSON.parse(event.data);
+                if (response.status === "success") {
+                    Swal.fire({
+                        position: 'center',
+                        icon: response.status,
+                        title: response.status,
+                        showConfirmButton: false,
+                        timer: 1500
+                    }).then(() => {
+                        navigate("/login"); // Redirect to login page after successful registration
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: response.status,
+                        text: response.mes,
+                    });
+                }
+                socket.close();
+            };
+
+            socket.onerror = (error) => {
                 Swal.fire({
                     icon: 'error',
-                    title: response.status,
-                    text: response.mes,
+                    title: 'Lỗi WebSocket',
+                    text: 'Không thể kết nối WebSocket',
                 });
-            }
-            socket.close();
-        };
+            };
 
-        socket.onerror = (error) => {
+        } catch (error) {
             Swal.fire({
                 icon: 'error',
-                title: 'WebSocket Error',
-                text: 'Unable to establish WebSocket connection',
+                title: 'Error',
+                text: error.message,
             });
-        };
-
+        }
     };
+
 
     return (
         <MDBContainer style={{ marginTop: '100px' }} fluid>
@@ -134,12 +210,41 @@ const Register = () => {
                                         onChange={handlePasswordChange}
                                     />
                                 </div>
+                                <div className="d-flex flex-row align-items-center mb-4">
+                                    <MDBIcon fas icon="envelope me-3" size='lg'/>
+                                    <MDBInput
+                                        label='Email'
+                                        id='form4'
+                                        type='email'
+                                        value={email}
+                                        onChange={handleEmailChange}
+                                    />
+                                </div>
+                                {emailError && <p className="text-danger">{emailError}</p>}
+                                <div className="mb-4 d-flex">
+                                    <MDBCheckbox id='male' label='Male' value='male' checked={isCheckedMale}
+                                                 onChange={handleMaleChange} class="mr-2"/>
+                                    <MDBCheckbox id='female' label='Female' value='female' checked={isCheckedFemale}
+                                                 onChange={handleFemaleChange} class="ml-2"/>
+                                </div>
+                                {/*<div className="mb-4 d-flex align-items-center">*/}
+                                {/*    <MDBIcon fas icon="camera" size='lg' className="me-3"/>*/}
+                                {/*    <MDBInput*/}
+                                {/*        required*/}
+                                {/*        type="file"*/}
+                                {/*        id="file"*/}
+                                {/*        className="form-control"*/}
+                                {/*    />*/}
+                                {/*</div>*/}
                                 <MDBBtn className='mb-4' size='lg' type="submit">Đăng ký</MDBBtn>
-                                <p className="small fw-bold mt-2 pt-1 mb-2">Already have an account? <Link to="/login">Login</Link></p>
+                                <p className="small fw-bold mt-2 pt-1 mb-2">Already have an account? <Link
+                                    to="/login">Login</Link></p>
                             </form>
                         </MDBCol>
                         <MDBCol md='10' lg='6' className='order-1 order-lg-2 d-flex align-items-center'>
-                            <MDBCardImage src='https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-registration/draw1.webp' fluid/>
+                            <MDBCardImage
+                                src='https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-registration/draw1.webp'
+                                fluid/>
                         </MDBCol>
                     </MDBRow>
                 </MDBCardBody>

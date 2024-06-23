@@ -15,6 +15,7 @@ import './style.css';
 import { useNavigate } from 'react-router-dom';
 import Swal from "sweetalert2";
 import { useWebSocket } from "../WebSocket/WebSocketContext";
+import { getFirestore, collection, getDocs } from "firebase/firestore";
 
 export default function ChatRoom() {
     const [basicModal, setBasicModal] = useState(false);
@@ -41,6 +42,8 @@ export default function ChatRoom() {
     const [roomNames, setRoomNames] = useState('');
     const messagesEndRef = useRef(null);
     const [scrollToBottom, setScrollToBottom] = useState(false); // State để xác định cuộn xuống dưới cùng
+    const [userAvatar, setUserAvatar] = useState('https://therichpost.com/wp-content/uploads/2020/06/avatar2.png');
+    const [data, setData] = useState([]);
 
     // Sử dụng useEffect để cuộn xuống dưới cùng khi có tin nhắn mới
     useEffect(() => {
@@ -56,7 +59,6 @@ export default function ChatRoom() {
     const [joinRoomCode, setJoinRoomCode] = useState('');
     const [joinRoomModal, setJoinRoomModal] = useState(false);
 
-
     useEffect(() => {
         if (darkMode) {
             document.documentElement.classList.add('dark-mode');
@@ -64,6 +66,7 @@ export default function ChatRoom() {
             document.documentElement.classList.remove('dark-mode');
         }
     }, [darkMode]);
+
     useEffect(() => {
         const handleBeforeUnload = () => {
             localStorage.clear();
@@ -76,10 +79,49 @@ export default function ChatRoom() {
         };
     }, []);
 
-
     const handleToggleDarkMode = () => {
         setDarkMode(prevMode => !prevMode);
     };
+
+    const fetchUserData = async () => {
+        try {
+            const db = getFirestore();
+            const userRef = collection(db, 'users');
+            const snapshot = await getDocs(userRef);
+            const allData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            setData(allData);
+            console.log(allData);
+            const userData = allData.find(user => user.username === username);
+
+
+
+            if (userData) {
+
+                if (userData.gender === 'male') {
+
+                    setUserAvatar('https://bootdey.com/img/Content/avatar/avatar7.png');
+
+                } else if (userData.gender === 'female') {
+
+                    setUserAvatar('https://bootdey.com/img/Content/avatar/avatar3.png');
+
+                }
+
+            } else {
+
+                console.log('No matching user found in Firestore');
+
+            }
+
+
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    useEffect(() => {
+        fetchUserData();
+    }, [username]);
 
     useEffect(() => {
         if (!socket) return;
@@ -420,6 +462,17 @@ export default function ChatRoom() {
         setMessageContent(type === 0 ? 'Người dùng' : 'Phòng');
         setSearchType(type === 0 ? 'user' : 'room');
 
+        let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
+        const matchedUser = data.find(dbUser => dbUser.username === name);
+        if (matchedUser) {
+            if (matchedUser.gender === 'male') {
+                avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
+            } else if (matchedUser.gender === 'female') {
+                avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+            }
+        }
+        setUserAvatar(avatarSrc);
+
         if (!socket || socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket connection is not open');
             Swal.fire({
@@ -464,9 +517,7 @@ export default function ChatRoom() {
             }
         };
         setScrollToBottom(true); // Đặt trạng thái để cuộn xuống dưới cùng
-
     };
-
 
     const add7Hours = (dateString) => {
         const date = new Date(dateString);
@@ -486,11 +537,15 @@ export default function ChatRoom() {
 
     };
 
-
     // join room
     const handleJoinRoom = () => {
-        if (!joinRoomCode) {
-            console.error('Join room code is null or undefined.');
+        const isAlreadyMember = userList.some((room) => room.name === joinRoomCode && room.type === 1);
+        if (isAlreadyMember) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Already a member',
+                text: 'Bạn đã là thành viên của phòng.',
+            });
             return;
         }
 
@@ -529,6 +584,21 @@ export default function ChatRoom() {
                         showConfirmButton: false,
                         timer: 1500
                     });
+
+                    // Cập nhật danh sách userList và lưu vào localStorage
+                    const currentDate = new Date();
+                    currentDate.setHours(currentDate.getHours() - 7);
+                    const formattedDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')} ${String(currentDate.getHours()).padStart(2, '0')}:${String(currentDate.getMinutes()).padStart(2, '0')}:${String(currentDate.getSeconds()).padStart(2, '0')}`;
+
+                    const newUserList = [{
+                        name: joinRoomCode,
+                        type: 1,
+                        actionTime: formattedDate,
+                        roomOwner: response.data.roomOwner || 'Unknown'
+                    }, ...userList];
+                    setUserList(newUserList);
+                    localStorage.setItem('userList', JSON.stringify(newUserList));
+
                     // Xử lý các hành động khác nếu cần
                 } else {
                     Swal.fire({
@@ -549,8 +619,7 @@ export default function ChatRoom() {
                 socket.removeEventListener('message', handleJoinRoomResponse);
             }
         };
-    }, [socket]);
-
+    }, [socket, userList, joinRoomCode]);
 
 
 
@@ -607,27 +676,38 @@ export default function ChatRoom() {
                                      style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
                                     <ul className="contacts">
                                         {userList.length > 0 ? (
-                                            userList.map((user, index) => (
-                                                <li key={index}
-                                                    className={user.name === displayName ? 'active' : ''}
-                                                    onClick={() => handleLiClick(user.name, user.type, user.roomOwner)}>
-                                                    <div className="d-flex bd-highlight">
-                                                        <div className="img_cont">
-                                                            <img
-                                                                src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                                alt="avatar"
-                                                                className="rounded-circle user_img"
-                                                            />
-                                                            <span className="online_icon"></span>
+                                            userList.map((user, index) => {
+                                                const matchedUser = data.find(dbUser => dbUser.username === user.name);
+                                                let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
+                                                if (matchedUser) {
+                                                    if (matchedUser.gender === 'male') {
+                                                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
+                                                    } else if (matchedUser.gender === 'female') {
+                                                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                                                    }
+                                                }
+                                                return (
+                                                    <li key={index}
+                                                        className={user.name === displayName ? 'active' : ''}
+                                                        onClick={() => handleLiClick(user.name, user.type, user.roomOwner)}>
+                                                        <div className="d-flex bd-highlight">
+                                                            <div className="img_cont">
+                                                                <img
+                                                                    src={avatarSrc}
+                                                                    alt="avatar"
+                                                                    className="rounded-circle user_img"
+                                                                />
+                                                                <span className="online_icon"></span>
+                                                            </div>
+                                                            <div className="user_info">
+                                                                <span>{user.name}</span>
+                                                                <p className="typechat">Type: {user.type}</p>
+                                                                <p>Last Action: {renderDateTime(user.actionTime)}</p>
+                                                            </div>
                                                         </div>
-                                                        <div className="user_info">
-                                                            <span>{user.name}</span>
-                                                            <p className="typechat">Type: {user.type}</p>
-                                                            <p>Last Action: {renderDateTime(user.actionTime)}</p>
-                                                        </div>
-                                                    </div>
-                                                </li>
-                                            ))
+                                                    </li>
+                                                );
+                                            })
                                         ) : (
                                             <li>No users found.</li>
                                         )}
@@ -642,14 +722,16 @@ export default function ChatRoom() {
                                     <div className="d-flex bd-highlight">
                                         <div className="img_cont">
                                             <img
-                                                src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                className="rounded-circle user_img"/>
+                                                src={userAvatar}
+                                                className="rounded-circle user_img"
+                                            />
                                             <span className="online_icon"></span>
                                         </div>
                                         <div className="user_info">
                                             <span>{displayName}</span>
                                             {searchType === 'room' && messageContent && <p>{messageContent}</p>}
                                         </div>
+
                                         <div className="video_cam">
                                             <span><i className="fas fa-video"></i></span>
                                             <span><i className="fas fa-phone"></i></span>
@@ -691,30 +773,42 @@ export default function ChatRoom() {
                                 <div className="card-body msg_card_body"
                                      ref={messagesEndRef}
                                      style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
-                                    {messages.map((message, index) => (
-                                        <div key={index}
-                                             className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`}>
-                                            {searchType === 'room' && message.name !== username && (
-                                                <span className="sender">{message.name} </span>
-                                            )}
-                                            <div className="img_cont_msg">
-                                                <img
+                                    {messages.map((message, index) => {
+                                        const matchedUser = data.find(dbUser => dbUser.username === message.name);
+                                        let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
+                                        if (matchedUser) {
+                                            if (matchedUser.gender === 'male') {
+                                                avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
+                                            } else if (matchedUser.gender === 'female') {
+                                                avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                                            }
+                                        }
 
-                                                    src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"
-                                                    className="rounded-circle user_img_msg"/>
-                                            </div>
-                                            <div
-                                                className={`msg_cotainer${message.name === username ? '_send' : ''}`}>
-                                                <div className="message-content">
-                                                    {message.mes}
-                                                    <span
-                                                        className={`msg_time${message.name === username ? '_send' : ''}`}>{renderDateTime(message.createAt)}</span>
+                                        return (
+                                            <div key={index}
+                                                 className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`}>
+                                                {searchType === 'room' && message.name !== username && (
+                                                    <span className="sender">{message.name} </span>
+                                                )}
+                                                <div className="img_cont_msg">
+                                                    <img
+                                                        src={avatarSrc}
+                                                        alt="avatar"
+                                                        className="rounded-circle user_img_msg"
+                                                    />
+                                                </div>
+                                                <div
+                                                    className={`msg_cotainer${message.name === username ? '_send' : ''}`}>
+                                                    <div className="message-content">
+                                                        {message.mes}
+                                                        <span
+                                                            className={`msg_time${message.name === username ? '_send' : ''}`}>{renderDateTime(message.createAt)}</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                     <div ref={messagesEndRef}></div>
-
                                 </div>
                                 <div className="card-footer">
                                     <div className="input-group">
@@ -767,7 +861,7 @@ export default function ChatRoom() {
                     <MDBModalContent>
                         <MDBModalHeader>
                             <MDBModalTitle>Join Room</MDBModalTitle>
-                            <MDBBtn className="btn-close" color="none" onClick={() => setJoinRoomModal(false)} />
+                            <MDBBtn className="btn-close" color="none" onClick={() => setJoinRoomModal(false)}/>
                         </MDBModalHeader>
                         <MDBModalBody>
                             <MDBInput
