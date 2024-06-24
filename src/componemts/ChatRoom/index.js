@@ -91,28 +91,22 @@ export default function ChatRoom() {
             const allData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
             setData(allData);
             console.log(allData);
+
             const userData = allData.find(user => user.username === username);
 
-
-
             if (userData) {
-
-                if (userData.gender === 'male') {
-
-                    setUserAvatar('https://bootdey.com/img/Content/avatar/avatar7.png');
-
-                } else if (userData.gender === 'female') {
-
-                    setUserAvatar('https://bootdey.com/img/Content/avatar/avatar3.png');
-
+                if (userData.avatar && userData.avatar.length > 0) {
+                    setUserAvatar(userData.avatar);
+                } else {
+                    if (userData.gender === 'male') {
+                        setUserAvatar('https://bootdey.com/img/Content/avatar/avatar7.png');
+                    } else if (userData.gender === 'female') {
+                        setUserAvatar('https://bootdey.com/img/Content/avatar/avatar3.png');
+                    }
                 }
-
             } else {
-
                 console.log('No matching user found in Firestore');
-
             }
-
 
         } catch (error) {
             console.error(error);
@@ -122,6 +116,7 @@ export default function ChatRoom() {
     useEffect(() => {
         fetchUserData();
     }, [username]);
+
 
     useEffect(() => {
         if (!socket) return;
@@ -354,6 +349,7 @@ export default function ChatRoom() {
                 if (response.status === "success") {
                     if (response.data.status) {
                         setDisplayName(searchInput.trim());
+
                         setMessageContent('');
                         setSearchType('user');
                         Swal.fire({
@@ -462,10 +458,13 @@ export default function ChatRoom() {
         setMessageContent(type === 0 ? 'Người dùng' : 'Phòng');
         setSearchType(type === 0 ? 'user' : 'room');
 
+
         let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
         const matchedUser = data.find(dbUser => dbUser.username === name);
         if (matchedUser) {
-            if (matchedUser.gender === 'male') {
+            if (matchedUser.avatar && matchedUser.avatar.length > 0) {
+                avatarSrc = matchedUser.avatar;
+            } else if (matchedUser.gender === 'male') {
                 avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
             } else if (matchedUser.gender === 'female') {
                 avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
@@ -473,7 +472,9 @@ export default function ChatRoom() {
         }
         setUserAvatar(avatarSrc);
 
-        if (!socket || socket.readyState !== WebSocket.OPEN) {
+
+
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket connection is not open');
             Swal.fire({
                 icon: 'error',
@@ -679,13 +680,17 @@ export default function ChatRoom() {
                                             userList.map((user, index) => {
                                                 const matchedUser = data.find(dbUser => dbUser.username === user.name);
                                                 let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
+
                                                 if (matchedUser) {
-                                                    if (matchedUser.gender === 'male') {
+                                                    if (matchedUser.avatar && matchedUser.avatar.length > 0) {
+                                                        avatarSrc = matchedUser.avatar;
+                                                    } else if (matchedUser.gender === 'male') {
                                                         avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
                                                     } else if (matchedUser.gender === 'female') {
                                                         avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
                                                     }
                                                 }
+
                                                 return (
                                                     <li key={index}
                                                         className={user.name === displayName ? 'active' : ''}
@@ -776,8 +781,11 @@ export default function ChatRoom() {
                                     {messages.map((message, index) => {
                                         const matchedUser = data.find(dbUser => dbUser.username === message.name);
                                         let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
+
                                         if (matchedUser) {
-                                            if (matchedUser.gender === 'male') {
+                                            if (matchedUser.avatar && matchedUser.avatar.length > 0) {
+                                                avatarSrc = matchedUser.avatar;
+                                            } else if (matchedUser.gender === 'male') {
                                                 avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
                                             } else if (matchedUser.gender === 'female') {
                                                 avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
@@ -802,7 +810,9 @@ export default function ChatRoom() {
                                                     <div className="message-content">
                                                         {message.mes}
                                                         <span
-                                                            className={`msg_time${message.name === username ? '_send' : ''}`}>{renderDateTime(message.createAt)}</span>
+                                                            className={`msg_time${message.name === username ? '_send' : ''}`}>
+                            {renderDateTime(message.createAt)}
+                        </span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -810,6 +820,7 @@ export default function ChatRoom() {
                                     })}
                                     <div ref={messagesEndRef}></div>
                                 </div>
+
                                 <div className="card-footer">
                                     <div className="input-group">
                                         <div className="input-group-append">

@@ -15,9 +15,12 @@ import './style.css'
 import {
     createUserWithEmailAndPassword,
 } from "firebase/auth";
+import ava from "../../img/addAvatar.png"
 import { auth, db } from "../../firebase";
 import { collection, doc, setDoc, query, where, getDocs } from "firebase/firestore";
 import Swal from 'sweetalert2';
+import upload from "../../componemts/ChatRoom/upload";
+
 
 const Register = () => {
     const [username, setUsername] = useState('');
@@ -29,6 +32,19 @@ const Register = () => {
     const [emailError, setEmailError] = useState('');
     const [isCheckedMale, setIsCheckedMale] = useState(false);
     const [isCheckedFemale, setIsCheckedFemale] = useState(false);
+    const [avatar, setAvatar] = useState({
+        file: null,
+        url: "",
+    });
+
+    const handleAvatar = (e) => {
+        if (e.target.files[0]) {
+            setAvatar({
+                file: e.target.files[0],
+                url: URL.createObjectURL(e.target.files[0]),
+            });
+        }
+    };
 
     const handleMaleChange = () => {
         setIsCheckedMale(true);
@@ -42,7 +58,6 @@ const Register = () => {
         setIsMale(false);
     };
 
-    // Function to validate email format using regex
     const validateEmail = (email) => {
         const pattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         return pattern.test(email);
@@ -74,7 +89,6 @@ const Register = () => {
         const value = event.target.value;
         setEmail(value);
 
-        // Clear email error when user starts typing again
         if (emailError && validateEmail(value)) {
             setEmailError('');
         }
@@ -83,13 +97,11 @@ const Register = () => {
     const handleRegister = async (event) => {
         event.preventDefault();
 
-        // Check if email is valid
         if (!validateEmail(email)) {
             setEmailError("Email không hợp lệ");
             return;
         }
 
-        // Check if username and password are empty
         if (username.trim() === "" || password.trim() === "") {
             return Swal.fire({
                 text: "Username và Password không được để trống hoặc chỉ có khoảng trắng",
@@ -97,7 +109,6 @@ const Register = () => {
             });
         }
 
-        // Validate unique username
         const usersRef = collection(db, "users");
         const q = query(usersRef, where("username", "==", username));
         const querySnapshot = await getDocs(q);
@@ -110,15 +121,24 @@ const Register = () => {
 
         try {
             const res = await createUserWithEmailAndPassword(auth, email, password);
+            let imgUrl = "";
+            if (avatar.file) {
+                imgUrl = await upload(avatar.file);
+            }
 
-            await setDoc(doc(db, "users", res.user.uid), {
+            const userData = {
                 username,
                 email,
                 gender: isMale ? 'male' : 'female',
                 id: res.user.uid,
-            });
+            };
 
-            // WebSocket requestData
+            if (imgUrl) {
+                userData.avatar = imgUrl;
+            }
+
+            await setDoc(doc(db, "users", res.user.uid), userData);
+
             const requestData = {
                 action: "onchat",
                 data: {
@@ -152,7 +172,7 @@ const Register = () => {
                         showConfirmButton: false,
                         timer: 1500
                     }).then(() => {
-                        navigate("/login"); // Redirect to login page after successful registration
+                        navigate("/login");
                     });
                 } else {
                     Swal.fire({
@@ -227,15 +247,24 @@ const Register = () => {
                                     <MDBCheckbox id='female' label='Female' value='female' checked={isCheckedFemale}
                                                  onChange={handleFemaleChange} class="ml-2"/>
                                 </div>
-                                {/*<div className="mb-4 d-flex align-items-center">*/}
-                                {/*    <MDBIcon fas icon="camera" size='lg' className="me-3"/>*/}
-                                {/*    <MDBInput*/}
-                                {/*        required*/}
-                                {/*        type="file"*/}
-                                {/*        id="file"*/}
-                                {/*        className="form-control"*/}
-                                {/*    />*/}
-                                {/*</div>*/}
+                                <div className="mb-4 d-flex align-items-center">
+                                    <input
+                                        type="file"
+                                        id="file"
+                                        style={{ display: "none" }}
+                                        onChange={handleAvatar}
+
+                                    />
+                                    <label htmlFor="file" className="LabelUpload" >
+                                        <div className="img_cont_msg">
+                                        <img  src={avatar.url || ava} alt=""
+                                             className="rounded-circle user_img_msg"
+                                        />
+                                        </div>
+                                        <span id="UploadImg" >Upload an image</span>
+
+                                    </label>
+                                </div>
                                 <MDBBtn className='mb-4' size='lg' type="submit">Đăng ký</MDBBtn>
                                 <p className="small fw-bold mt-2 pt-1 mb-2">Already have an account? <Link
                                     to="/login">Login</Link></p>
