@@ -1,6 +1,6 @@
 import './App.css';
 
-import React from "react";
+import React, {useEffect} from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./componemts/Login"; // Corrected path
 import ChatRoom from "./componemts/ChatRoom"; // Corrected path
@@ -10,8 +10,16 @@ import Home from "./componemts/Home";
 
 import { WebSocketProvider } from "./componemts/WebSocket/WebSocketContext";
 import ProtectedRoute from "./componemts/auth";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "./firebase";
 
 function App() {
+    const user = false;
+    useEffect(() =>{
+        const unsub = onAuthStateChanged(auth,(user) =>{
+            console.log(user);
+        });
+    })
     return (
         <WebSocketProvider>
             <BrowserRouter>
