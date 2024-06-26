@@ -453,7 +453,7 @@ export default function ChatRoom() {
 
 
 
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket connection is not open');
             Swal.fire({
                 icon: 'error',
@@ -600,7 +600,31 @@ export default function ChatRoom() {
             }
         };
     }, [socket, userList, joinRoomCode]);
+    //Regex kiểm tra đường dẫn//
+    const urlRegex = /https?:\/\/[^\s]+/g;
+    //Tải lên và kiểm tra tin nhắn là dạng text hay u//
+    const renderMessageContent = (message) => {
+        const parts = message.mes.split(urlRegex);
+        const urls = message.mes.match(urlRegex);
 
+        if (urls) {
+            return (
+                <div className="message-content">
+                    {parts.map((part, index) => (
+                        <React.Fragment key={index}>
+                            {part}
+                            {urls[index] && (
+                                <a href={urls[index]} target="_blank" rel="noopener noreferrer">
+                                    {urls[index]}
+                                </a>
+                            )}
+                        </React.Fragment>
+                    ))}
+                </div>
+            );
+        }
+        return <div className="message-content">{message.mes}</div>;
+    };
 
 
 // >>>>>>> main
@@ -787,7 +811,8 @@ export default function ChatRoom() {
                                                 <div
                                                     className={`msg_cotainer${message.name === username ? '_send' : ''}`}>
                                                     <div className="message-content">
-                                                        {message.mes}
+                                                        {renderMessageContent(message)}
+
                                                         <span
                                                             className={`msg_time${message.name === username ? '_send' : ''}`}>
                             {renderDateTime(message.createAt)}
