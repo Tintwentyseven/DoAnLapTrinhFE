@@ -330,48 +330,27 @@ export default function ChatRoom() {
             });
             return;
         }
+        const trimmedSearchInput = searchInput.trim();
 
         if (!isCheckboxChecked) {
-            const requestData = {
-                action: "onchat",
-                data: {
-                    event: "CHECK_USER",
-                    data: {
-                        user: searchInput.trim()
-                    }
-                }
-            };
+            const user = userList.find(user => user.name === trimmedSearchInput && user.type === 0);
+            if (user) {
+                setDisplayName(user.name);
+                setMessageContent('');
+                setSearchType('user');
+                Swal.fire({
+                    text: `User ${user.name} exists.`,
+                    icon: 'success',
+                });
 
-            socket.send(JSON.stringify(requestData));
-
-            socket.onmessage = (event) => {
-                const response = JSON.parse(event.data);
-                if (response.status === "success") {
-                    if (response.data.status) {
-                        setDisplayName(searchInput.trim());
-
-                        setMessageContent('');
-                        setSearchType('user');
-                        Swal.fire({
-                            text: `User ${searchInput} has logged in before.`,
-                            icon: 'success',
-                        });
-
-                        // Fetch messages for the user
-                        fetchMessages('GET_PEOPLE_CHAT_MES', searchInput.trim());
-                    } else {
-                        Swal.fire({
-                            text: `User ${searchInput} has not logged in before.`,
-                            icon: 'warning',
-                        });
-                    }
-                } else {
-                    Swal.fire({
-                        text: `Failed to check user ${searchInput}.`,
-                        icon: 'error',
-                    });
-                }
-            };
+                // Fetch messages for the user
+                fetchMessages('GET_PEOPLE_CHAT_MES', user.name);
+            } else {
+                Swal.fire({
+                    text: `User ${trimmedSearchInput} does not exist.`,
+                    icon: 'warning',
+                });
+            }
         } else {
             const requestData = {
                 action: "onchat",
@@ -621,8 +600,9 @@ export default function ChatRoom() {
             }
         };
     }, [socket, userList, joinRoomCode]);
+    //Regex kiểm tra đường dẫn//
     const urlRegex = /https?:\/\/[^\s]+/g;
-
+    //Tải lên và kiểm tra tin nhắn là dạng text hay u//
     const renderMessageContent = (message) => {
         const parts = message.mes.split(urlRegex);
         const urls = message.mes.match(urlRegex);
