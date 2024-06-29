@@ -15,7 +15,13 @@ import './style.css';
 import { useNavigate } from 'react-router-dom';
 import Swal from "sweetalert2";
 import { useWebSocket } from "../WebSocket/WebSocketContext";
-import { getFirestore, collection, getDocs } from "firebase/firestore";
+import { getFirestore, collection, getDocs, doc, setDoc, query, where, addDoc} from "firebase/firestore";
+
+import ava from "../../img/addAvatar.png";
+
+import upload from "../../componemts/ChatRoom/upload";
+
+import { auth, db } from "../../firebase";
 
 export default function ChatRoom() {
     const [basicModal, setBasicModal] = useState(false);
@@ -44,6 +50,33 @@ export default function ChatRoom() {
     const [scrollToBottom, setScrollToBottom] = useState(false); // State để xác định cuộn xuống dưới cùng
     const [userAvatar, setUserAvatar] = useState('https://therichpost.com/wp-content/uploads/2020/06/avatar2.png');
     const [data, setData] = useState([]);
+    const [rooms, setRooms] = useState([])
+
+    const [avatar, setAvatar] = useState({
+
+        file: null,
+
+        url: "",
+
+    });
+
+
+
+    const handleAvatar = (e) => {
+
+        if (e.target.files[0]) {
+
+            setAvatar({
+
+                file: e.target.files[0],
+
+                url: URL.createObjectURL(e.target.files[0]),
+
+            });
+
+        }
+
+    };
 
     // Sử dụng useEffect để cuộn xuống dưới cùng khi có tin nhắn mới
     useEffect(() => {
@@ -112,10 +145,38 @@ export default function ChatRoom() {
             console.error(error);
         }
     };
+    const fetchRoomData = async () => {
+
+        try {
+
+            const db = getFirestore();
+
+            const roomRef = collection(db, 'rooms');
+
+            const snapshot = await getDocs(roomRef);
+
+            const roomData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+
+            setRooms(roomData);
+
+            console.log(roomData);
+
+        } catch (error) {
+
+            console.error(error);
+
+        }
+
+    };
 
     useEffect(() => {
         fetchUserData();
     }, [username]);
+    useEffect(() => {
+
+        fetchRoomData();
+
+    }, []);
 
 
     useEffect(() => {
@@ -238,7 +299,21 @@ export default function ChatRoom() {
         socket.addEventListener('message', handleLogoutMessage);
     };
 
-    const handleCreateRoom = () => {
+    const handleCreateRoom = async () => {
+        // Get sessionData from local storage
+        const sessionData = JSON.parse(localStorage.getItem('sessionData'));
+        const sessionUsername = sessionData ? sessionData.username : '';
+
+        const roomAvatar = avatar.file ? await upload(avatar.file) : 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
+
+        const roomData = {
+            roomname: roomNames,
+            roomavatar: roomAvatar,
+            createdBy: sessionUsername // Use username from sessionData
+        };
+
+        // Add room to Firestore
+        const roomRef = await addDoc(collection(db, 'rooms'), roomData);
         const createRoom = {
             action: "onchat",
             data: {
@@ -257,8 +332,27 @@ export default function ChatRoom() {
         }
 
         toggleOpen();
-    };
+        const currentDate = new Date();
+        currentDate.setHours(currentDate.getHours() - 7);
+        const formattedDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')} ${String(currentDate.getHours()).padStart(2, '0')}:${String(currentDate.getMinutes()).padStart(2, '0')}:${String(currentDate.getSeconds()).padStart(2, '0')}`;
 
+        const newUserList = [{
+            name: roomNames,
+            type: 1,
+            actionTime: formattedDate,
+            roomOwner: username,
+            avatar: roomAvatar // Include the room avatar
+        }, ...userList];
+
+        setUserList(newUserList);
+        localStorage.setItem('userList', JSON.stringify(newUserList));
+
+        // Update the rooms state
+        setRooms(prevRooms => [...prevRooms, roomData]);
+
+
+
+};
     useEffect(() => {
         const handleCreateRoomResponse = (event) => {
             const response = JSON.parse(event.data);
@@ -277,14 +371,7 @@ export default function ChatRoom() {
                     currentDate.setHours(currentDate.getHours() - 7);
                     const formattedDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')} ${String(currentDate.getHours()).padStart(2, '0')}:${String(currentDate.getMinutes()).padStart(2, '0')}:${String(currentDate.getSeconds()).padStart(2, '0')}`;
 
-                    const newUserList = [{
-                        name: roomNames,
-                        type: 1,
-                        actionTime: formattedDate,
-                        roomOwner: username
-                    }, ...userList];
-                    setUserList(newUserList);
-                    localStorage.setItem('userList', JSON.stringify(newUserList));
+
 
                     // Save room data to localStorage
                     const roomData = {
@@ -330,21 +417,37 @@ export default function ChatRoom() {
             });
             return;
         }
+
         const trimmedSearchInput = searchInput.trim();
 
         if (!isCheckboxChecked) {
             const user = userList.find(user => user.name === trimmedSearchInput && user.type === 0);
             if (user) {
                 setDisplayName(user.name);
-                setMessageContent('');
+                setMessageContent('Người dùng');
                 setSearchType('user');
+
+                // Set user avatar
+                let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
+                const matchedUser = data.find(dbUser => dbUser.username === user.name);
+                if (matchedUser) {
+                    if (matchedUser.avatar && matchedUser.avatar.length > 0) {
+                        avatarSrc = matchedUser.avatar;
+                    } else if (matchedUser.gender === 'male') {
+                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
+                    } else if (matchedUser.gender === 'female') {
+                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                    }
+                }
+                setUserAvatar(avatarSrc);
+
                 Swal.fire({
                     text: `User ${user.name} exists.`,
                     icon: 'success',
                 });
 
                 // Fetch messages for the user
-                fetchMessages('GET_PEOPLE_CHAT_MES', user.name);
+                fetchMessages('GET_PEOPLE_CHAT_MES', user.name, 0);
             } else {
                 Swal.fire({
                     text: `User ${trimmedSearchInput} does not exist.`,
@@ -357,7 +460,7 @@ export default function ChatRoom() {
                 data: {
                     event: "GET_ROOM_CHAT_MES",
                     data: {
-                        name: searchInput.trim(),
+                        name: trimmedSearchInput,
                         page: 1
                     }
                 }
@@ -368,33 +471,45 @@ export default function ChatRoom() {
             socket.onmessage = (event) => {
                 const response = JSON.parse(event.data);
                 if (response.status === "success") {
-                    const roomData = response.data;
-                    const roomName = roomData.name;
+                    const roomName = trimmedSearchInput;
+                    const matchedRoom = rooms.find(room => room.roomname === roomName);
 
-                    localStorage.setItem('data', JSON.stringify(roomData));
+                    if (!matchedRoom) {
+                        Swal.fire({
+                            text: `Room ${roomName} does not exist.`,
+                            icon: 'warning',
+                        });
+                        return;
+                    }
 
                     const savedUserList = JSON.parse(localStorage.getItem('userList')) || [];
                     const existingRoom = savedUserList.find(room => room.name === roomName);
                     if (!existingRoom) {
-                        savedUserList.push(roomData);
+                        savedUserList.push(matchedRoom);
                         localStorage.setItem('userList', JSON.stringify(savedUserList));
                     }
 
-                    setRoomOwner(roomData.own);
-                    setMessageContent(username === roomData.own ? 'Người tạo phòng' : 'Người tham gia');
                     setDisplayName(roomName);
+                    setMessageContent('Phòng');
                     setSearchType('room');
 
+                    // Set room avatar
+                    let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
+                    if (matchedRoom.roomavatar) {
+                        avatarSrc = matchedRoom.roomavatar;
+                    }
+                    setUserAvatar(avatarSrc);
+
                     Swal.fire({
-                        text: `Room ${roomName} tồn tại`,
+                        text: `Room ${roomName} exists.`,
                         icon: 'success',
                     });
 
                     // Fetch messages for the room
-                    fetchMessages('GET_ROOM_CHAT_MES', roomName);
+                    fetchMessages('GET_ROOM_CHAT_MES', roomName, 1);
                 } else {
                     Swal.fire({
-                        text: `Room ${searchInput} không tồn tại`,
+                        text: `Room ${trimmedSearchInput} does not exist.`,
                         icon: 'warning',
                     });
                 }
@@ -402,7 +517,8 @@ export default function ChatRoom() {
         }
     };
 
-    const fetchMessages = (event, name) => {
+// Helper function to fetch messages
+    const fetchMessages = (event, name, type) => {
         const requestData = {
             action: "onchat",
             data: {
@@ -419,10 +535,16 @@ export default function ChatRoom() {
         socket.onmessage = (event) => {
             const response = JSON.parse(event.data);
             if (response.status === "success") {
-                const fetchedMessages = event === 'GET_PEOPLE_CHAT_MES' ?
-                    response.data?.reverse() || [] :
-                    response.data?.chatData?.reverse() || [];
+                let fetchedMessages = [];
+
+                if (type === 0 && Array.isArray(response.data)) {
+                    fetchedMessages = response.data.reverse();
+                } else if (type === 1 && response.data && Array.isArray(response.data.chatData)) {
+                    fetchedMessages = response.data.chatData.reverse();
+                }
+
                 setMessages(fetchedMessages);
+                setScrollToBottom(true); // Scroll to bottom when new messages are received
             } else {
                 Swal.fire({
                     text: `Failed to fetch messages for ${name}.`,
@@ -432,26 +554,39 @@ export default function ChatRoom() {
         };
     };
 
+
+
+
+
+
+
+
     const handleLiClick = (name, type, roomOwner) => {
         setDisplayName(name);
         setMessageContent(type === 0 ? 'Người dùng' : 'Phòng');
         setSearchType(type === 0 ? 'user' : 'room');
-
-
         let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
-        const matchedUser = data.find(dbUser => dbUser.username === name);
-        if (matchedUser) {
-            if (matchedUser.avatar && matchedUser.avatar.length > 0) {
-                avatarSrc = matchedUser.avatar;
-            } else if (matchedUser.gender === 'male') {
-                avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
-            } else if (matchedUser.gender === 'female') {
-                avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+
+        if (type === 0) { // If type is 0, it's a user
+            const matchedUser = data.find(dbUser => dbUser.username === name);
+            if (matchedUser) {
+                if (matchedUser.avatar && matchedUser.avatar.length > 0) {
+                    avatarSrc = matchedUser.avatar;
+                } else if (matchedUser.gender === 'male') {
+                    avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
+                } else if (matchedUser.gender === 'female') {
+                    avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                }
+            }
+        } else if (type === 1) { // If type is 1, it's a room
+            const matchedRoom = rooms.find(room => room.roomname === name);
+            if (matchedRoom && matchedRoom.roomavatar) {
+                avatarSrc = matchedRoom.roomavatar;
             }
         }
+
+        // Set userAvatar with the correct avatarSrc
         setUserAvatar(avatarSrc);
-
-
 
         if (!socket || socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket connection is not open');
@@ -480,15 +615,13 @@ export default function ChatRoom() {
             const response = JSON.parse(event.data);
             if (response.status === "success") {
                 let fetchedMessages = [];
-
                 if (type === 0 && Array.isArray(response.data)) {
                     fetchedMessages = response.data.reverse();
                 } else if (type === 1 && response.data && Array.isArray(response.data.chatData)) {
                     fetchedMessages = response.data.chatData.reverse();
                 }
-
                 setMessages(fetchedMessages);
-                setScrollToBottom(true); // Cuộn xuống dưới cùng khi có tin nhắn mới
+                setScrollToBottom(true); // Scroll to bottom when new messages are received
             } else {
                 Swal.fire({
                     text: `Failed to fetch messages for ${name}.`,
@@ -496,8 +629,9 @@ export default function ChatRoom() {
                 });
             }
         };
-        setScrollToBottom(true); // Đặt trạng thái để cuộn xuống dưới cùng
+        setScrollToBottom(true); // Set state to scroll to bottom
     };
+
 
     const add7Hours = (dateString) => {
         const date = new Date(dateString);
@@ -683,14 +817,41 @@ export default function ChatRoom() {
                                             userList.map((user, index) => {
                                                 const matchedUser = data.find(dbUser => dbUser.username === user.name);
                                                 let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
+                                                if (user.type === 1) { // If user type is 1, check for room avatar
 
-                                                if (matchedUser) {
-                                                    if (matchedUser.avatar && matchedUser.avatar.length > 0) {
-                                                        avatarSrc = matchedUser.avatar;
-                                                    } else if (matchedUser.gender === 'male') {
-                                                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
-                                                    } else if (matchedUser.gender === 'female') {
-                                                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                                                    const roomName = user.name;
+
+                                                    const matchedRoom = rooms.find(room => room.roomname === roomName);
+
+
+
+                                                    if (user.avatar) {
+
+                                                        avatarSrc = user.avatar;
+
+                                                    } else if (matchedRoom && matchedRoom.roomavatar) {
+
+                                                        avatarSrc = matchedRoom.roomavatar;
+
+                                                    }
+
+                                                } else {
+
+                                                    if (matchedUser) {
+
+                                                        if (matchedUser.avatar && matchedUser.avatar.length > 0) {
+
+                                                            avatarSrc = matchedUser.avatar;
+
+                                                        } else if (matchedUser.gender === 'male') {
+
+                                                            avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
+
+                                                        } else if (matchedUser.gender === 'female') {
+
+                                                            avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+
+                                                        }
                                                     }
                                                 }
 
@@ -859,6 +1020,37 @@ export default function ChatRoom() {
                                 onChange={(e) => setRoomNames(e.target.value)}
                                 label="Room Name"
                             ></MDBInput>
+                            <br/>
+
+                            <input
+
+                                type="file"
+
+                                id="file"
+
+                                style={{display: "none"}}
+
+                                onChange={handleAvatar}
+
+
+                            />
+
+                            <label htmlFor="file" className="LabelUpload">
+
+                                <div className="img_cont_msg">
+
+                                    <img src={avatar.url || ava} alt=""
+
+                                         className="rounded-circle user_img_msg"
+
+                                    />
+
+                                </div>
+
+                                <span id="UploadImg">Upload an image</span>
+
+
+                            </label>
                         </MDBModalBody>
                         <MDBModalFooter>
                             <MDBBtn color="secondary" onClick={toggleOpen}>
