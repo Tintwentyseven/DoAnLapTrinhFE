@@ -24,6 +24,7 @@ export default function ChatRoom() {
 
     const sessionData = JSON.parse(localStorage.getItem('sessionData')) || {};
     const { username, code } = sessionData;
+    const usernameRef = useRef(username);
     const initialUserList = JSON.parse(localStorage.getItem('userList')) || [];
 
     const toggleOpen = () => setBasicModal(!basicModal);
@@ -36,6 +37,7 @@ export default function ChatRoom() {
     const [messageContent, setMessageContent] = useState('');
     const [messageContentChat, setMessageContentChat] = useState('');
     const [displayName, setDisplayName] = useState(username);
+    const [lastMessage, setLastMessage] = useState(null);
     const [searchType, setSearchType] = useState('');
     const [messages, setMessages] = useState([]);
     const [darkMode, setDarkMode] = useState(false);
@@ -43,6 +45,9 @@ export default function ChatRoom() {
     const messagesEndRef = useRef(null);
     const [scrollToBottom, setScrollToBottom] = useState(false); // State để xác định cuộn xuống dưới cùng
 
+    useEffect(() => {
+        usernameRef.current = username;
+    }, [username]);
     // Sử dụng useEffect để cuộn xuống dưới cùng khi có tin nhắn mới
     useEffect(() => {
         if (scrollToBottom) {
@@ -63,7 +68,7 @@ export default function ChatRoom() {
     }, [darkMode]);
     useEffect(() => {
         const handleBeforeUnload = () => {
-            localStorage.clear();
+            // localStorage.clear();
         };
 
         window.addEventListener('beforeunload', handleBeforeUnload);
@@ -456,7 +461,10 @@ export default function ChatRoom() {
                 } else if (type === 1 && response.data && Array.isArray(response.data.chatData)) {
                     fetchedMessages = response.data.chatData.reverse();
                 }
+                let lastIndex = fetchedMessages.length - 1;
+                const lastmessage = fetchedMessages[lastIndex];
 
+                setLastMessage(lastmessage);
                 setMessages(fetchedMessages);
                 setScrollToBottom(true); // Cuộn xuống dưới cùng khi có tin nhắn mới
             } else {
@@ -469,6 +477,10 @@ export default function ChatRoom() {
         setScrollToBottom(true); // Đặt trạng thái để cuộn xuống dưới cùng
 
     };
+    useEffect(() => {
+        setScrollToBottom(true);
+    }, [messages]);
+
 
 
     const add7Hours = (dateString) => {
@@ -488,6 +500,7 @@ export default function ChatRoom() {
         return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
 
     };
+
 
     // Start of sendChat function
     const [shouldFetchMessages, setShouldFetchMessages] = useState(false);
@@ -510,17 +523,6 @@ export default function ChatRoom() {
         };
 
         if (socket && socket.readyState === WebSocket.OPEN) {
-            // socket.send(JSON.stringify(chatMessage));
-            // setMessageContentChat(''); // Clear message input after sending
-            const newMessage = {
-                from: username,
-                to: displayName,
-                mes: messageContentChat.trim(),
-                timestamp: new Date().toISOString()
-
-            };
-            console.log("time "+newMessage.timestamp);
-            setMessages((prevMessages) => [...prevMessages, newMessage]);
             setMessageContentChat(''); // Xóa nội dung tin nhắn sau khi gửi
             setScrollToBottom(true); // Kích hoạt cuộn xuống dưới
 
@@ -531,6 +533,7 @@ export default function ChatRoom() {
             console.error('WebSocket is not open. Unable to send message.');
         }
     };
+
     useEffect(() => {
         if (shouldFetchMessages) {
             handleLiClick(displayName, 0, roomOwner);
@@ -689,8 +692,9 @@ export default function ChatRoom() {
                                      style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
                                     {messages.map((message, index) => (
                                         <div key={index}
-                                             className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`}>
-                                            {searchType === 'room' && message.name !== username && (
+                                             className={`d-flex mb-4 ${(lastMessage.name===username ||  message.name === username ) ? 'justify-content-end' : 'justify-content-start'}`}>
+
+                                            {searchType === 'room' && (lastMessage.name!==username || message.name !== username) && (
                                                 <span className="sender">{message.name} </span>
                                             )}
                                             <div className="img_cont_msg">
@@ -700,11 +704,11 @@ export default function ChatRoom() {
                                                     className="rounded-circle user_img_msg"/>
                                             </div>
                                             <div
-                                                className={`msg_cotainer${message.name === username ? '_send' : ''}`}>
+                                                className={`msg_cotainer${(lastMessage.name===username || message.name === username) ? '_send' : ''}`}>
                                                 <div className="message-content">
-                                                    {message.mes}
+                                                    { message.mes }
                                                     <span
-                                                        className={`msg_time${message.name === username ? '_send' : ''}`}>{renderDateTime(message.createAt)}</span>
+                                                        className={`msg_time${(lastMessage.name===username ||  message.name === username) ? '_send' : ''}`}>{ renderDateTime( message.createAt)}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -712,6 +716,7 @@ export default function ChatRoom() {
                                     <div ref={messagesEndRef}></div>
 
                                 </div>
+
                                 <div className="card-footer">
                                     <div className="input-group">
                                         <div className="input-group-append">
@@ -723,10 +728,10 @@ export default function ChatRoom() {
                                                   value={messageContentChat}
                                                   onChange={handleInputChange}
                                                   onKeyDown={handleKeyDown}// Listen for Enter key press>
-                                             ></textarea>
+                                        ></textarea>
                                         <div className="input-group-append">
                                             <span className="input-group-text send_btn"
-                                            onClick={handleSendClick}><i
+                                                  onClick={handleSendClick}><i
                                                 className="fas fa-location-arrow"></i></span>
                                         </div>
                                     </div>
