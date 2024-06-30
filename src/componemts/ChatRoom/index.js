@@ -51,6 +51,9 @@ export default function ChatRoom() {
     const [userAvatar, setUserAvatar] = useState('https://therichpost.com/wp-content/uploads/2020/06/avatar2.png');
     const [data, setData] = useState([]);
     const [rooms, setRooms] = useState([])
+    const [roomAvatar, setRoomAvatar] = useState('');
+
+
 
     const [avatar, setAvatar] = useState({
 
@@ -103,6 +106,7 @@ export default function ChatRoom() {
     useEffect(() => {
         const handleBeforeUnload = () => {
             sessionStorage.clear();
+            localStorage.clear()
         };
 
         window.addEventListener('beforeunload', handleBeforeUnload);
@@ -300,12 +304,15 @@ export default function ChatRoom() {
         socket.addEventListener('message', handleLogoutMessage);
     };
 
+
     const handleCreateRoom = async () => {
         // Get sessionData from local storage
         const sessionData = JSON.parse(sessionStorage.getItem('sessionData'));
         const sessionUsername = sessionData ? sessionData.username : '';
 
         const roomAvatar = avatar.file ? await upload(avatar.file) : 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
+
+        setRoomAvatar(roomAvatar);
 
         const roomData = {
             roomname: roomNames,
@@ -331,29 +338,8 @@ export default function ChatRoom() {
             console.error('WebSocket is not open. Unable to send message.');
             return;
         }
+    };
 
-        toggleOpen();
-        const currentDate = new Date();
-        currentDate.setHours(currentDate.getHours() - 7);
-        const formattedDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')} ${String(currentDate.getHours()).padStart(2, '0')}:${String(currentDate.getMinutes()).padStart(2, '0')}:${String(currentDate.getSeconds()).padStart(2, '0')}`;
-
-        const newUserList = [{
-            name: roomNames,
-            type: 1,
-            actionTime: formattedDate,
-            roomOwner: username,
-            avatar: roomAvatar // Include the room avatar
-        }, ...userList];
-
-        setUserList(newUserList);
-        sessionStorage.setItem('userList', JSON.stringify(newUserList));
-
-        // Update the rooms state
-        setRooms(prevRooms => [...prevRooms, roomData]);
-
-
-
-};
     useEffect(() => {
         const handleCreateRoomResponse = (event) => {
             const response = JSON.parse(event.data);
@@ -372,7 +358,19 @@ export default function ChatRoom() {
                     currentDate.setHours(currentDate.getHours() - 7);
                     const formattedDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')} ${String(currentDate.getHours()).padStart(2, '0')}:${String(currentDate.getMinutes()).padStart(2, '0')}:${String(currentDate.getSeconds()).padStart(2, '0')}`;
 
+                    const newUserList = [{
+                        name: roomNames,
+                        type: 1,
+                        actionTime: formattedDate,
+                        roomOwner: username,
+                        avatar: roomAvatar // Include the room avatar
+                    }, ...userList];
 
+                    setUserList(newUserList);
+                    sessionStorage.setItem('userList', JSON.stringify(newUserList));
+
+                    // Update the rooms state
+                    setRooms(prevRooms => [...prevRooms, roomData]);
 
                     // Save room data to sessionStorage
                     const roomData = {
@@ -398,7 +396,9 @@ export default function ChatRoom() {
                 socket.removeEventListener('message', handleCreateRoomResponse);
             }
         };
-    }, [socket, userList, roomNames, username]);
+    }, [socket, userList, roomNames, username, roomAvatar]);
+
+
 
     const handleSearchInputChange = (event) => {
         setSearchInput(event.target.value);
