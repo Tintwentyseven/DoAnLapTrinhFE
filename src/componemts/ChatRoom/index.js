@@ -29,9 +29,9 @@ export default function ChatRoom() {
     const [isOpen, setIsOpen] = useState(false);
     const socket = useWebSocket();
 
-    const sessionData = JSON.parse(localStorage.getItem('sessionData')) || {};
+    const sessionData = JSON.parse(sessionStorage.getItem('sessionData')) || {};
     const { username, code } = sessionData;
-    const initialUserList = JSON.parse(localStorage.getItem('userList')) || [];
+    const initialUserList = JSON.parse(sessionStorage.getItem('userList')) || [];
 
     const toggleOpen = () => setBasicModal(!basicModal);
     const toggleMenu = () => setIsOpen(!isOpen);
@@ -102,7 +102,7 @@ export default function ChatRoom() {
 
     useEffect(() => {
         const handleBeforeUnload = () => {
-            localStorage.clear();
+            sessionStorage.clear();
         };
 
         window.addEventListener('beforeunload', handleBeforeUnload);
@@ -209,7 +209,7 @@ export default function ChatRoom() {
             const response = JSON.parse(event.data);
             if (response.event === "RE_LOGIN") {
                 if (response.status === "success") {
-                    localStorage.setItem('sessionData', JSON.stringify({
+                    sessionStorage.setItem('sessionData', JSON.stringify({
                         username: username,
                         code: response.data.RE_LOGIN_CODE
                     }));
@@ -240,7 +240,7 @@ export default function ChatRoom() {
             setUserList(savedUserList);
         }
 
-        const roomData = JSON.parse(localStorage.getItem('data'));
+        const roomData = JSON.parse(sessionStorage.getItem('data'));
         if (roomData && roomData.own) {
             const roomOwner = roomData.own;
             setRoomOwner(roomOwner);
@@ -271,6 +271,7 @@ export default function ChatRoom() {
             const response = JSON.parse(event.data);
 
             if (response.status === "success") {
+                sessionStorage.clear();
                 localStorage.clear();
                 sessionStorage.removeItem('userList');
                 setUserList([]);
@@ -301,7 +302,7 @@ export default function ChatRoom() {
 
     const handleCreateRoom = async () => {
         // Get sessionData from local storage
-        const sessionData = JSON.parse(localStorage.getItem('sessionData'));
+        const sessionData = JSON.parse(sessionStorage.getItem('sessionData'));
         const sessionUsername = sessionData ? sessionData.username : '';
 
         const roomAvatar = avatar.file ? await upload(avatar.file) : 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
@@ -345,7 +346,7 @@ export default function ChatRoom() {
         }, ...userList];
 
         setUserList(newUserList);
-        localStorage.setItem('userList', JSON.stringify(newUserList));
+        sessionStorage.setItem('userList', JSON.stringify(newUserList));
 
         // Update the rooms state
         setRooms(prevRooms => [...prevRooms, roomData]);
@@ -373,11 +374,11 @@ export default function ChatRoom() {
 
 
 
-                    // Save room data to localStorage
+                    // Save room data to sessionStorage
                     const roomData = {
                         own: username
                     };
-                    localStorage.setItem('data', JSON.stringify(roomData));
+                    sessionStorage.setItem('data', JSON.stringify(roomData));
                 } else {
                     Swal.fire({
                         icon: 'warning',
@@ -482,11 +483,11 @@ export default function ChatRoom() {
                         return;
                     }
 
-                    const savedUserList = JSON.parse(localStorage.getItem('userList')) || [];
+                    const savedUserList = JSON.parse(sessionStorage.getItem('userList')) || [];
                     const existingRoom = savedUserList.find(room => room.name === roomName);
                     if (!existingRoom) {
                         savedUserList.push(matchedRoom);
-                        localStorage.setItem('userList', JSON.stringify(savedUserList));
+                        sessionStorage.setItem('userList', JSON.stringify(savedUserList));
                     }
 
                     setDisplayName(roomName);
@@ -699,7 +700,7 @@ export default function ChatRoom() {
                         timer: 1500
                     });
 
-                    // Cập nhật danh sách userList và lưu vào localStorage
+                    // Cập nhật danh sách userList và lưu vào sessionStorage
                     const currentDate = new Date();
                     currentDate.setHours(currentDate.getHours() - 7);
                     const formattedDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')} ${String(currentDate.getHours()).padStart(2, '0')}:${String(currentDate.getMinutes()).padStart(2, '0')}:${String(currentDate.getSeconds()).padStart(2, '0')}`;
@@ -711,7 +712,7 @@ export default function ChatRoom() {
                         roomOwner: response.data.roomOwner || 'Unknown'
                     }, ...userList];
                     setUserList(newUserList);
-                    localStorage.setItem('userList', JSON.stringify(newUserList));
+                    sessionStorage.setItem('userList', JSON.stringify(newUserList));
 
                     // Xử lý các hành động khác nếu cần
                 } else {
@@ -928,7 +929,7 @@ export default function ChatRoom() {
                                                 <span
                                                     className={`${darkMode ? 'light' : 'dark'}`}>{darkMode ? 'Light mode' : 'Dark mode'}</span>
                                             </li>
-                                            <li><i className="fas fa-user-circle"></i> View profile</li>
+                                            <li><i className="fas fa-user-circle"></i> Change Avatar</li>
                                             {/*<li><i className="fas fa-plus"></i> Join room</li>*/}
                                             <li onClick={() => setJoinRoomModal(true)}>
                                                 <i className="fas fa-plus"></i> Join room
