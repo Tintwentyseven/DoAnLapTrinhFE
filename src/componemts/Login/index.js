@@ -132,6 +132,12 @@ const Login = () => {
           code: response.data.RE_LOGIN_CODE,
           reloginCode: btoa(reloginCode),
         }));
+        sessionStorage.setItem("sessionData", JSON.stringify({
+          username: usernameRef.current,
+          password: passwordRef.current,
+          code: response.data.RE_LOGIN_CODE,
+          reloginCode: btoa(reloginCode),
+        }));
 
         const userListRequest = {
           action: 'onchat',
@@ -149,6 +155,7 @@ const Login = () => {
       } else if (response.status === 'success' && response.event === 'GET_USER_LIST') {
         const users = response.data;
         localStorage.setItem("userList", JSON.stringify(users));
+        sessionStorage.setItem("userList", JSON.stringify(users));
 
         Swal.fire({
           position: 'center',
@@ -197,7 +204,7 @@ const Login = () => {
                 <MDBIcon fab icon='facebook-f' />
               </MDBBtn>
               <MDBBtn floating size='md' tag='a' className='me-2'>
-                <MDBIcon fab icon='twitter' />
+                <MDBIcon fab icon='google' />
               </MDBBtn>
               <MDBBtn floating size='md' tag='a' className='me-2'>
                 <MDBIcon fab icon='linkedin-in' />
