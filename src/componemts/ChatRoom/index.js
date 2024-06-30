@@ -15,6 +15,7 @@ import './style.css';
 import { useNavigate } from 'react-router-dom';
 import Swal from "sweetalert2";
 import { useWebSocket } from "../WebSocket/WebSocketContext";
+import {fromByteArray, toByteArray } from 'base64-js';
 
 export default function ChatRoom() {
     const [basicModal, setBasicModal] = useState(false);
@@ -464,8 +465,32 @@ export default function ChatRoom() {
                 let lastIndex = fetchedMessages.length - 1;
                 const lastmessage = fetchedMessages[lastIndex];
 
+
+                // console.log("id: "+lastmessage.id);
+                // console.log("name: "+lastmessage.name);
+                // console.log("mes: "+lastmessage.mes);
+                // console.log("to: "+lastmessage.to);
+                // console.log("id: "+lastmessage.id);
                 setLastMessage(lastmessage);
-                setMessages(fetchedMessages);
+                // Giải mã tin nhắn
+                fetchedMessages.forEach(message => {
+                    if (message.mes) {
+                        try {
+                            const decodedBytes = toByteArray(message.mes);
+                            const decodedMessages = new TextDecoder().decode(decodedBytes);
+                            message.mes = decodedMessages;
+                        } catch (error) {
+                            // console.error('Error decoding message:', error);
+                        }
+                    }
+                });
+
+
+                // Cập nhật lại danh sách tin nhắn
+                setMessages([...fetchedMessages]);
+
+
+                // setMessages(fetchedMessages);
                 setScrollToBottom(true); // Cuộn xuống dưới cùng khi có tin nhắn mới
             } else {
                 Swal.fire({
@@ -505,9 +530,14 @@ export default function ChatRoom() {
     // Start of sendChat function
     const [shouldFetchMessages, setShouldFetchMessages] = useState(false);
 
+
     const sendChat = () => {
         if (messageContentChat.trim() === '') return;
+        console.log('Message content:', messageContentChat);
 
+        // Encode message content
+        const messageBytes = new TextEncoder().encode(messageContentChat.trim());
+        const encodedMessage = fromByteArray(messageBytes);
         const chatMessage = {
 
             "action": "onchat",
@@ -516,7 +546,7 @@ export default function ChatRoom() {
                 "data": {
                 "type": "people",
                     "to": displayName,
-                    "mes": messageContentChat.trim()
+                    "mes": encodedMessage
             }
 
         }
@@ -525,7 +555,7 @@ export default function ChatRoom() {
         if (socket && socket.readyState === WebSocket.OPEN) {
             setMessageContentChat(''); // Xóa nội dung tin nhắn sau khi gửi
             setScrollToBottom(true); // Kích hoạt cuộn xuống dưới
-
+            console.log('Message object:', chatMessage);
             socket.send(JSON.stringify(chatMessage));
             setShouldFetchMessages(true); // Kích hoạt việc tải lại tin nhắn
 
@@ -692,7 +722,7 @@ export default function ChatRoom() {
                                      style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
                                     {messages.map((message, index) => (
                                         <div key={index}
-                                             className={`d-flex mb-4 ${(lastMessage.name===username ||  message.name === username ) ? 'justify-content-end' : 'justify-content-start'}`}>
+                                             className={`d-flex mb-4 ${(  message.name === username ) ? 'justify-content-end' : 'justify-content-start'}`}>
 
                                             {searchType === 'room' && (lastMessage.name!==username || message.name !== username) && (
                                                 <span className="sender">{message.name} </span>
@@ -704,7 +734,7 @@ export default function ChatRoom() {
                                                     className="rounded-circle user_img_msg"/>
                                             </div>
                                             <div
-                                                className={`msg_cotainer${(lastMessage.name===username || message.name === username) ? '_send' : ''}`}>
+                                                className={`msg_cotainer${( message.name === username) ? '_send' : ''}`}>
                                                 <div className="message-content">
                                                     { message.mes }
                                                     <span
