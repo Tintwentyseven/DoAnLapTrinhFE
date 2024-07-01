@@ -9,7 +9,12 @@ import {
     MDBModalBody,
     MDBModalFooter,
     MDBIcon,
-    MDBInput
+    MDBInput,
+    MDBTabs,
+    MDBTabsItem,
+    MDBTabsLink,
+    MDBTabsContent,
+    MDBTabsPane
 } from 'mdb-react-ui-kit';
 import './style.css';
 import { useNavigate } from 'react-router-dom';
@@ -35,6 +40,7 @@ export default function ChatRoom() {
 
     const toggleOpen = () => setBasicModal(!basicModal);
     const toggleMenu = () => setIsOpen(!isOpen);
+    const [activeTab, setActiveTab] = useState('user');
 
     const [searchInput, setSearchInput] = useState('');
     const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
@@ -52,6 +58,7 @@ export default function ChatRoom() {
     const [data, setData] = useState([]);
     const [rooms, setRooms] = useState([])
     const [roomAvatar, setRoomAvatar] = useState('');
+
 
 
 
@@ -81,6 +88,7 @@ export default function ChatRoom() {
 
     };
 
+
     // Sử dụng useEffect để cuộn xuống dưới cùng khi có tin nhắn mới
     useEffect(() => {
         if (scrollToBottom) {
@@ -94,6 +102,7 @@ export default function ChatRoom() {
 
     const [joinRoomCode, setJoinRoomCode] = useState('');
     const [joinRoomModal, setJoinRoomModal] = useState(false);
+    const [changeAvatarModal, setChangeAvatarModal] = useState(false);
 
     useEffect(() => {
         if (darkMode) {
@@ -929,7 +938,8 @@ export default function ChatRoom() {
                                                 <span
                                                     className={`${darkMode ? 'light' : 'dark'}`}>{darkMode ? 'Light mode' : 'Dark mode'}</span>
                                             </li>
-                                            <li><i className="fas fa-user-circle"></i> Change Avatar</li>
+                                            <li onClick={() => setChangeAvatarModal(true)}>
+                                                <i className="fas fa-user-circle"></i> Change Avatar</li>
                                             {/*<li><i className="fas fa-plus"></i> Join room</li>*/}
                                             <li onClick={() => setJoinRoomModal(true)}>
                                                 <i className="fas fa-plus"></i> Join room
@@ -1085,6 +1095,83 @@ export default function ChatRoom() {
                             </MDBBtn>
                             <MDBBtn onClick={handleJoinRoom}>
                                 Join
+                            </MDBBtn>
+                        </MDBModalFooter>
+                    </MDBModalContent>
+                </MDBModalDialog>
+            </MDBModal>
+
+    {/* Modal Change Avatar */}
+            <MDBModal show={changeAvatarModal} onHide={() => setChangeAvatarModal(false)}>
+                <MDBModalDialog>
+                    <MDBModalContent>
+                        <MDBModalHeader>
+                            <MDBModalTitle>Change Avatar</MDBModalTitle>
+                            <MDBBtn className="btn-close" color="none" onClick={() => setChangeAvatarModal(false)} />
+                        </MDBModalHeader>
+                        <MDBTabs className="mb-3" style={{marginBottom:0}}>
+                            <MDBTabsItem>
+                                <MDBTabsLink onClick={() => setActiveTab('user')} active={activeTab === 'user'}>
+                                    User
+                                </MDBTabsLink>
+                            </MDBTabsItem>
+                            <MDBTabsItem>
+                                <MDBTabsLink onClick={() => setActiveTab('room')} active={activeTab === 'room'}>
+                                    Room
+                                </MDBTabsLink>
+                            </MDBTabsItem>
+                        </MDBTabs>
+                        <MDBTabsContent>
+                            <MDBTabsPane show={activeTab === 'user'}>
+                                <MDBInput style={{backgroundColor:"white"}}
+                                    type="text"
+                                    value={username}
+                                    label="Default Input"
+                                    disabled
+
+                                />
+                                <br />
+                                <input
+                                    type="file"
+                                    id="file"
+                                    style={{ display: "none" }}
+                                    onChange={handleAvatar}
+                                />
+                                <label htmlFor="file" className="LabelUpload" style={{backgroundColor:"white"}}>
+                                    <div className="img_cont_msg">
+                                        <img src={avatar.url || ava} alt="" className="rounded-circle user_img_msg" />
+                                    </div>
+                                    <span id="UploadImg">Upload an image</span>
+                                </label>
+                            </MDBTabsPane>
+                            <MDBTabsPane show={activeTab === 'room'}>
+                                <MDBInput
+                                    type="text"
+                                    value={roomNames}
+                                    onChange={(e) => setRoomNames(e.target.value)}
+                                    label="Room Name"
+                                />
+                                <br />
+                                <input
+                                    type="file"
+                                    id="file"
+                                    style={{ display: "none" }}
+                                    onChange={handleAvatar}
+                                />
+                                <label htmlFor="file" className="LabelUpload" style={{backgroundColor:"white"}}>
+                                    <div className="img_cont_msg">
+                                        <img src={avatar.url || ava} alt="" className="rounded-circle user_img_msg" />
+                                    </div>
+                                    <span id="UploadImg">Upload an image</span>
+                                </label>
+                            </MDBTabsPane>
+                        </MDBTabsContent>
+                        <MDBModalFooter>
+                            <MDBBtn color="secondary" onClick={() => setChangeAvatarModal(false)}>
+                                Close
+                            </MDBBtn>
+                            <MDBBtn onClick={activeTab === 'user' ? handleJoinRoom : handleCreateRoom}>
+                                {activeTab === 'user' ? 'Join' : 'Create'}
                             </MDBBtn>
                         </MDBModalFooter>
                     </MDBModalContent>
