@@ -3,8 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { MDBContainer, MDBCol, MDBRow, MDBBtn, MDBIcon, MDBInput, MDBCheckbox } from 'mdb-react-ui-kit';
 import Swal from 'sweetalert2';
 import { useWebSocket } from "../WebSocket/WebSocketContext";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from "../../firebase";
+import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { auth, provider, db } from "../../firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
 const Login = () => {
@@ -51,6 +51,121 @@ const Login = () => {
   useEffect(() => {
     passwordRef.current = password;
   }, [password]);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const data = await signInWithPopup(auth, provider);
+      const email = data.user.email;
+
+      // Check if the email exists in the Firestore users collection
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", email));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Email not found in the database',
+        });
+        return;
+      }
+
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data();
+      const username = userData.username;
+      const password = userData.password;
+
+      // Store email, username, and password in local storage
+      localStorage.setItem("email", email);
+      localStorage.setItem("username", username);
+
+      // Prepare request data for the API
+      const requestData = {
+        action: "onchat",
+        data: {
+          event: "LOGIN",
+          data: {
+            user: username,
+            pass: password
+          }
+        }
+      };
+
+      // Send request to the WebSocket API
+      if (socket) {
+        socket.send(JSON.stringify(requestData));
+      } else {
+        Swal.fire({
+          text: "WebSocket connection is not established",
+          icon: 'error',
+        });
+        return;
+      }
+
+      // Handle WebSocket response
+      const handleMessage = (event) => {
+        const response = JSON.parse(event.data);
+        if (response.status === "success" && response.event === "LOGIN") {
+          const reloginCode = response.data.RE_LOGIN_CODE;
+          localStorage.setItem("sessionData", JSON.stringify({
+            username,
+            password,
+            code: response.data.RE_LOGIN_CODE,
+            reloginCode: btoa(reloginCode),
+          }));
+          sessionStorage.setItem("sessionData", JSON.stringify({
+            username,
+            password,
+            code: response.data.RE_LOGIN_CODE,
+            reloginCode: btoa(reloginCode),
+          }));
+
+          const userListRequest = {
+            action: 'onchat',
+            data: {
+              event: 'GET_USER_LIST',
+            },
+          };
+          socket.send(JSON.stringify(userListRequest));
+        } else if (response.status === "error" && response.event === "LOGIN") {
+          Swal.fire({
+            icon: 'error',
+            title: response.status,
+            text: response.mes,
+          });
+        } else if (response.status === 'success' && response.event === 'GET_USER_LIST') {
+          const users = response.data;
+          localStorage.setItem("userList", JSON.stringify(users));
+          sessionStorage.setItem("userList", JSON.stringify(users));
+
+          navigate("/chat", { state: { username, password, userList: users } });
+        }
+      };
+
+      const handleError = () => {
+        Swal.fire({
+          icon: 'error',
+          title: 'WebSocket Error',
+          text: 'Unable to establish WebSocket connection',
+        });
+      };
+
+      socket.addEventListener('message', handleMessage);
+      socket.addEventListener('error', handleError);
+
+      return () => {
+        socket.removeEventListener('message', handleMessage);
+        socket.removeEventListener('error', handleError);
+      };
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error.message,
+      });
+    }
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -203,7 +318,7 @@ const Login = () => {
               <MDBBtn floating size='md' tag='a' className='me-2'>
                 <MDBIcon fab icon='facebook-f' />
               </MDBBtn>
-              <MDBBtn floating size='md' tag='a' className='me-2'>
+              <MDBBtn floating size='md' tag='a' className='me-2' onClick={handleGoogleSignIn} >
                 <MDBIcon fab icon='google' />
               </MDBBtn>
               <MDBBtn floating size='md' tag='a' className='me-2'>

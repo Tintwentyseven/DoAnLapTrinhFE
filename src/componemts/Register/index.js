@@ -129,6 +129,7 @@ const Register = () => {
             const userData = {
                 username,
                 email,
+                password,
                 gender: isMale ? 'male' : 'female',
                 id: res.user.uid,
             };
