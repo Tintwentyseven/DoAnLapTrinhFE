@@ -3,6 +3,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import { MDBContainer, MDBCol, MDBRow, MDBBtn, MDBIcon, MDBInput, MDBCheckbox } from 'mdb-react-ui-kit';
 import Swal from 'sweetalert2';
 import { useWebSocket } from "../WebSocket/WebSocketContext";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth, db } from "../../firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -49,7 +52,7 @@ const Login = () => {
     passwordRef.current = password;
   }, [password]);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     if (username.trim() === "" || password.trim() === "") {
       return Swal.fire({
@@ -58,25 +61,53 @@ const Login = () => {
       });
     }
 
-    if (!socket) {
-      return Swal.fire({
-        text: "WebSocket connection is not established",
+    try {
+      // Fetch the email associated with the provided username
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("username", "==", username));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        return Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Invalid username or password',
+        });
+      }
+
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data();
+      const email = userData.email;
+
+      // Authenticate using the fetched email and provided password
+      await signInWithEmailAndPassword(auth, email, password);
+
+      if (!socket) {
+        return Swal.fire({
+          text: "WebSocket connection is not established",
+          icon: 'error',
+        });
+      }
+
+      const requestData = {
+        action: "onchat",
+        data: {
+          event: "LOGIN",
+          data: {
+            user: username,
+            pass: password
+          }
+        }
+      };
+
+      socket.send(JSON.stringify(requestData));
+    } catch (error) {
+      Swal.fire({
         icon: 'error',
+        title: 'Error',
+        text: error.message,
       });
     }
-
-    const requestData = {
-      action: "onchat",
-      data: {
-        event: "LOGIN",
-        data: {
-          user: username,
-          pass: password
-        }
-      }
-    };
-
-    socket.send(JSON.stringify(requestData));
   };
 
   useEffect(() => {
@@ -99,7 +130,12 @@ const Login = () => {
           username: usernameRef.current,
           password: passwordRef.current,
           code: response.data.RE_LOGIN_CODE,
-
+          reloginCode: btoa(reloginCode),
+        }));
+        sessionStorage.setItem("sessionData", JSON.stringify({
+          username: usernameRef.current,
+          password: passwordRef.current,
+          code: response.data.RE_LOGIN_CODE,
           reloginCode: btoa(reloginCode),
         }));
 
@@ -119,6 +155,7 @@ const Login = () => {
       } else if (response.status === 'success' && response.event === 'GET_USER_LIST') {
         const users = response.data;
         localStorage.setItem("userList", JSON.stringify(users));
+        sessionStorage.setItem("userList", JSON.stringify(users));
 
         Swal.fire({
           position: 'center',
@@ -153,6 +190,7 @@ const Login = () => {
 
 
 
+
   return (
       <MDBContainer fluid className="p-3 my-5 h-custom">
         <MDBRow>
@@ -166,7 +204,7 @@ const Login = () => {
                 <MDBIcon fab icon='facebook-f' />
               </MDBBtn>
               <MDBBtn floating size='md' tag='a' className='me-2'>
-                <MDBIcon fab icon='twitter' />
+                <MDBIcon fab icon='google' />
               </MDBBtn>
               <MDBBtn floating size='md' tag='a' className='me-2'>
                 <MDBIcon fab icon='linkedin-in' />
