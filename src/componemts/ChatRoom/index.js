@@ -130,10 +130,10 @@ export default function ChatRoom() {
         const handleBeforeUnload = () => {
 // <<<<<<< HEAD
             // localStorage.clear();
-{/*=======*/}
-{/*            sessionStorage.clear();*/}
-{/*            localStorage.clear()*/}
-{/*>>>>>>> main*/}
+            {/*=======*/}
+            {/*            sessionStorage.clear();*/}
+            {/*            localStorage.clear()*/}
+            {/*>>>>>>> main*/}
         };
 
         window.addEventListener('beforeunload', handleBeforeUnload);
@@ -740,14 +740,14 @@ export default function ChatRoom() {
 
             "action": "onchat",
             "data": {
-            "event": "SEND_CHAT",
+                "event": "SEND_CHAT",
                 "data": {
-                "type": "people",
+                    "type": "people",
                     "to": displayName,
                     "mes": encodedMessage
-            }
+                }
 
-        }
+            }
         };
 
         if (socket && socket.readyState === WebSocket.OPEN) {
@@ -1099,27 +1099,27 @@ export default function ChatRoom() {
                                 <div className="card-body msg_card_body"
                                      ref={messagesEndRef}
                                      style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
-{/*<<<<<<< HEAD*/}
-{/*                                    {messages.map((message, index) => (*/}
-{/*                                        <div key={index}*/}
-{/*                                             className={`d-flex mb-4 ${(  message.name === username ) ? 'justify-content-end' : 'justify-content-start'}`}>*/}
+                                    {/*<<<<<<< HEAD*/}
+                                    {/*                                    {messages.map((message, index) => (*/}
+                                    {/*                                        <div key={index}*/}
+                                    {/*                                             className={`d-flex mb-4 ${(  message.name === username ) ? 'justify-content-end' : 'justify-content-start'}`}>*/}
 
-{/*                                            {searchType === 'room' && (lastMessage.name!==username || message.name !== username) && (*/}
-{/*                                                <span className="sender">{message.name} </span>*/}
-{/*                                            )}*/}
-{/*                                            <div className="img_cont_msg">*/}
-{/*                                                <img*/}
+                                    {/*                                            {searchType === 'room' && (lastMessage.name!==username || message.name !== username) && (*/}
+                                    {/*                                                <span className="sender">{message.name} </span>*/}
+                                    {/*                                            )}*/}
+                                    {/*                                            <div className="img_cont_msg">*/}
+                                    {/*                                                <img*/}
 
-{/*                                                    src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"*/}
-{/*                                                    className="rounded-circle user_img_msg"/>*/}
-{/*                                            </div>*/}
-{/*                                            <div*/}
-{/*                                                className={`msg_cotainer${( message.name === username) ? '_send' : ''}`}>*/}
-{/*                                                <div className="message-content">*/}
-{/*                                                    { message.mes }*/}
-{/*                                                    <span*/}
-{/*                                                        className={`msg_time${(lastMessage.name===username ||  message.name === username) ? '_send' : ''}`}>{ renderDateTime( message.createAt)}</span>*/}
-{/*=======*/}
+                                    {/*                                                    src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"*/}
+                                    {/*                                                    className="rounded-circle user_img_msg"/>*/}
+                                    {/*                                            </div>*/}
+                                    {/*                                            <div*/}
+                                    {/*                                                className={`msg_cotainer${( message.name === username) ? '_send' : ''}`}>*/}
+                                    {/*                                                <div className="message-content">*/}
+                                    {/*                                                    { message.mes }*/}
+                                    {/*                                                    <span*/}
+                                    {/*                                                        className={`msg_time${(lastMessage.name===username ||  message.name === username) ? '_send' : ''}`}>{ renderDateTime( message.createAt)}</span>*/}
+                                    {/*=======*/}
                                     {messages.map((message, index) => {
                                         const matchedUser = data.find(dbUser => dbUser.username === message.name);
                                         let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
@@ -1187,7 +1187,7 @@ export default function ChatRoom() {
                                 </div>
 
                                 <div className="card-footer">
-                                <div className="input-group">
+                                    <div className="input-group">
                                         <div className="input-group-append">
                                             <span className="input-group-text attach_btn"><i
                                                 className="fas fa-paperclip"></i></span>
@@ -1295,7 +1295,7 @@ export default function ChatRoom() {
                 </MDBModalDialog>
             </MDBModal>
 
-    {/* Modal Change Avatar */}
+            {/* Modal Change Avatar */}
             <MDBModal show={changeAvatarModal} onHide={() => setChangeAvatarModal(false)}>
                 <MDBModalDialog>
                     <MDBModalContent>
@@ -1318,10 +1318,10 @@ export default function ChatRoom() {
                         <MDBTabsContent>
                             <MDBTabsPane show={activeTab === 'user'}>
                                 <MDBInput style={{backgroundColor:"white"}}
-                                    type="text"
-                                    value={username}
-                                    label="Default Input"
-                                    disabled
+                                          type="text"
+                                          value={username}
+                                          label="Default Input"
+                                          disabled
 
                                 />
                                 <br />
