@@ -20,6 +20,9 @@ import './style.css';
 import { useNavigate } from 'react-router-dom';
 import Swal from "sweetalert2";
 import { useWebSocket } from "../WebSocket/WebSocketContext";
+
+import {fromByteArray, toByteArray } from 'base64-js';
+
 import { getFirestore, collection, getDocs, doc, setDoc, query, where, addDoc} from "firebase/firestore";
 
 import ava from "../../img/addAvatar.png";
@@ -27,6 +30,7 @@ import ava from "../../img/addAvatar.png";
 import upload from "../../componemts/ChatRoom/upload";
 
 import { auth, db } from "../../firebase";
+
 
 export default function ChatRoom() {
     const [basicModal, setBasicModal] = useState(false);
@@ -36,7 +40,12 @@ export default function ChatRoom() {
 
     const sessionData = JSON.parse(sessionStorage.getItem('sessionData')) || {};
     const { username, code } = sessionData;
-    const initialUserList = JSON.parse(sessionStorage.getItem('userList')) || [];
+// <<<<<<< HEAD
+    const usernameRef = useRef(username);
+    const initialUserList = JSON.parse(localStorage.getItem('userList')) || [];
+// =======
+//     const initialUserList = JSON.parse(sessionStorage.getItem('userList')) || [];
+// >>>>>>> main
 
     const toggleOpen = () => setBasicModal(!basicModal);
     const toggleMenu = () => setIsOpen(!isOpen);
@@ -47,7 +56,9 @@ export default function ChatRoom() {
     const [userList, setUserList] = useState(initialUserList);
     const [roomOwner, setRoomOwner] = useState('');
     const [messageContent, setMessageContent] = useState('');
+    const [messageContentChat, setMessageContentChat] = useState('');
     const [displayName, setDisplayName] = useState(username);
+    const [lastMessage, setLastMessage] = useState(null);
     const [searchType, setSearchType] = useState('');
     const [messages, setMessages] = useState([]);
     const [darkMode, setDarkMode] = useState(false);
@@ -89,6 +100,9 @@ export default function ChatRoom() {
     };
 
 
+    useEffect(() => {
+        usernameRef.current = username;
+    }, [username]);
     // Sử dụng useEffect để cuộn xuống dưới cùng khi có tin nhắn mới
     useEffect(() => {
         if (scrollToBottom) {
@@ -114,8 +128,12 @@ export default function ChatRoom() {
 
     useEffect(() => {
         const handleBeforeUnload = () => {
-            sessionStorage.clear();
-            localStorage.clear()
+// <<<<<<< HEAD
+            // localStorage.clear();
+{/*=======*/}
+{/*            sessionStorage.clear();*/}
+{/*            localStorage.clear()*/}
+{/*>>>>>>> main*/}
         };
 
         window.addEventListener('beforeunload', handleBeforeUnload);
@@ -314,6 +332,9 @@ export default function ChatRoom() {
     };
 
 
+// <<<<<<< HEAD
+//     const handleCreateRoom = () => {
+// =======
     const handleCreateRoom = async () => {
         // Get sessionData from local storage
         const sessionData = JSON.parse(sessionStorage.getItem('sessionData'));
@@ -331,6 +352,7 @@ export default function ChatRoom() {
 
         // Add room to Firestore
         const roomRef = await addDoc(collection(db, 'rooms'), roomData);
+// >>>>>>> main
         const createRoom = {
             action: "onchat",
             data: {
@@ -351,6 +373,7 @@ export default function ChatRoom() {
 
     useEffect(() => {
         const handleCreateRoomResponse = (event) => {
+
             const response = JSON.parse(event.data);
             if (response.event === "CREATE_ROOM") {
                 if (response.status === "success") {
@@ -391,7 +414,7 @@ export default function ChatRoom() {
                         icon: 'warning',
                         text: 'Tên phòng đã tồn tại!',
                     });
-                    console.error('Create room error details:', response);
+                    console.error('Chi tiết lỗi tạo phòng:', response);
                 }
             }
         };
@@ -406,6 +429,7 @@ export default function ChatRoom() {
             }
         };
     }, [socket, userList, roomNames, username, roomAvatar]);
+
 
 
 
@@ -527,8 +551,13 @@ export default function ChatRoom() {
         }
     };
 
+// <<<<<<< HEAD
+//
+//     const fetchMessages = (event, name) => {
+// =======
 // Helper function to fetch messages
     const fetchMessages = (event, name, type) => {
+// >>>>>>> main
         const requestData = {
             action: "onchat",
             data: {
@@ -566,12 +595,8 @@ export default function ChatRoom() {
 
 
 
-
-
-
-
-
     const handleLiClick = (name, type, roomOwner) => {
+        console.log("toi da vao hien thi");
         setDisplayName(name);
         setMessageContent(type === 0 ? 'Người dùng' : 'Phòng');
         setSearchType(type === 0 ? 'user' : 'room');
@@ -630,8 +655,41 @@ export default function ChatRoom() {
                 } else if (type === 1 && response.data && Array.isArray(response.data.chatData)) {
                     fetchedMessages = response.data.chatData.reverse();
                 }
-                setMessages(fetchedMessages);
-                setScrollToBottom(true); // Scroll to bottom when new messages are received
+// <<<<<<< HEAD
+                let lastIndex = fetchedMessages.length - 1;
+                const lastmessage = fetchedMessages[lastIndex];
+
+
+                // console.log("id: "+lastmessage.id);
+                // console.log("name: "+lastmessage.name);
+                // console.log("mes: "+lastmessage.mes);
+                // console.log("to: "+lastmessage.to);
+                // console.log("id: "+lastmessage.id);
+                setLastMessage(lastmessage);
+                // Giải mã tin nhắn
+                fetchedMessages.forEach(message => {
+                    if (message.mes) {
+                        try {
+                            const decodedBytes = toByteArray(message.mes);
+                            const decodedMessages = new TextDecoder().decode(decodedBytes);
+                            message.mes = decodedMessages;
+                        } catch (error) {
+                            // console.error('Error decoding message:', error);
+                        }
+                    }
+                });
+
+
+                // Cập nhật lại danh sách tin nhắn
+                setMessages([...fetchedMessages]);
+
+
+                // setMessages(fetchedMessages);
+                setScrollToBottom(true); // Cuộn xuống dưới cùng khi có tin nhắn mới
+// =======
+//                 setMessages(fetchedMessages);
+//                 setScrollToBottom(true); // Scroll to bottom when new messages are received
+// >>>>>>> main
             } else {
                 Swal.fire({
                     text: `Failed to fetch messages for ${name}.`,
@@ -641,6 +699,10 @@ export default function ChatRoom() {
         };
         setScrollToBottom(true); // Set state to scroll to bottom
     };
+    useEffect(() => {
+        setScrollToBottom(true);
+    }, [messages]);
+
 
 
     const add7Hours = (dateString) => {
@@ -661,6 +723,70 @@ export default function ChatRoom() {
 
     };
 
+// <<<<<<< HEAD
+
+    // Start of sendChat function
+    const [shouldFetchMessages, setShouldFetchMessages] = useState(false);
+
+
+    const sendChat = () => {
+        if (messageContentChat.trim() === '') return;
+        console.log('Message content:', messageContentChat);
+
+        // Encode message content
+        const messageBytes = new TextEncoder().encode(messageContentChat.trim());
+        const encodedMessage = fromByteArray(messageBytes);
+        const chatMessage = {
+
+            "action": "onchat",
+            "data": {
+            "event": "SEND_CHAT",
+                "data": {
+                "type": "people",
+                    "to": displayName,
+                    "mes": encodedMessage
+            }
+
+        }
+        };
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            setMessageContentChat(''); // Xóa nội dung tin nhắn sau khi gửi
+            setScrollToBottom(true); // Kích hoạt cuộn xuống dưới
+            console.log('Message object:', chatMessage);
+            socket.send(JSON.stringify(chatMessage));
+            setShouldFetchMessages(true); // Kích hoạt việc tải lại tin nhắn
+
+        } else {
+            console.error('WebSocket is not open. Unable to send message.');
+        }
+    };
+
+    useEffect(() => {
+        if (shouldFetchMessages) {
+            handleLiClick(displayName, 0, roomOwner);
+            setShouldFetchMessages(false); // Đặt lại để ngăn không gọi lại khi messages thay đổi
+        }
+    }, [shouldFetchMessages]);
+
+
+
+    const handleInputChange = (event) => {
+        setMessageContentChat(event.target.value);
+    };
+
+    const handleSendClick = () => {
+        sendChat();
+    };
+
+    const handleKeyDown = (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            sendChat();
+        }
+    };
+    // End of sendChat function
+// =======
     // join room
     const handleJoinRoom = () => {
         const isAlreadyMember = userList.some((room) => room.name === joinRoomCode && room.type === 1);
@@ -771,8 +897,8 @@ export default function ChatRoom() {
     };
 
 
-// >>>>>>> main
 
+// >>>>>>> main
 
     return (
         <>
@@ -953,6 +1079,27 @@ export default function ChatRoom() {
                                 <div className="card-body msg_card_body"
                                      ref={messagesEndRef}
                                      style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
+{/*<<<<<<< HEAD*/}
+{/*                                    {messages.map((message, index) => (*/}
+{/*                                        <div key={index}*/}
+{/*                                             className={`d-flex mb-4 ${(  message.name === username ) ? 'justify-content-end' : 'justify-content-start'}`}>*/}
+
+{/*                                            {searchType === 'room' && (lastMessage.name!==username || message.name !== username) && (*/}
+{/*                                                <span className="sender">{message.name} </span>*/}
+{/*                                            )}*/}
+{/*                                            <div className="img_cont_msg">*/}
+{/*                                                <img*/}
+
+{/*                                                    src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"*/}
+{/*                                                    className="rounded-circle user_img_msg"/>*/}
+{/*                                            </div>*/}
+{/*                                            <div*/}
+{/*                                                className={`msg_cotainer${( message.name === username) ? '_send' : ''}`}>*/}
+{/*                                                <div className="message-content">*/}
+{/*                                                    { message.mes }*/}
+{/*                                                    <span*/}
+{/*                                                        className={`msg_time${(lastMessage.name===username ||  message.name === username) ? '_send' : ''}`}>{ renderDateTime( message.createAt)}</span>*/}
+{/*=======*/}
                                     {messages.map((message, index) => {
                                         const matchedUser = data.find(dbUser => dbUser.username === message.name);
                                         let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
@@ -990,6 +1137,7 @@ export default function ChatRoom() {
                             {renderDateTime(message.createAt)}
                         </span>
                                                     </div>
+{/*>>>>>>> main*/}
                                                 </div>
                                             </div>
                                         );
@@ -1004,9 +1152,14 @@ export default function ChatRoom() {
                                                 className="fas fa-paperclip"></i></span>
                                         </div>
                                         <textarea name="" className="form-control type_msg"
-                                                  placeholder="Type your message..."></textarea>
+                                                  placeholder="Type your message..."
+                                                  value={messageContentChat}
+                                                  onChange={handleInputChange}
+                                                  onKeyDown={handleKeyDown}// Listen for Enter key press>
+                                        ></textarea>
                                         <div className="input-group-append">
-                                            <span className="input-group-text send_btn"><i
+                                            <span className="input-group-text send_btn"
+                                                  onClick={handleSendClick}><i
                                                 className="fas fa-location-arrow"></i></span>
                                         </div>
                                     </div>
