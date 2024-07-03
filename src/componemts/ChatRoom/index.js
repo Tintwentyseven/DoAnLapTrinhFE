@@ -899,6 +899,26 @@ export default function ChatRoom() {
 
 
 // >>>>>>> main
+    //chuc nang xoa, thu hoi chat
+    const [hoveredMessage, setHoveredMessage] = useState(null); // Thêm trạng thái để theo dõi tin nhắn được chọn
+    // Thêm các hàm xử lý
+    const handleDeleteMessage = (messageId) => {
+        // Xử lý xóa tin nhắn
+        console.log('Delete message:', messageId);
+    };
+
+    const handleReplyMessage = (message) => {
+        // Xử lý trả lời tin nhắn
+        console.log('Reply to message:', message);
+    };
+    const handleEmojiClick = (messageId) => {
+        // Mở một danh sách các biểu tượng cảm xúc cho người dùng chọn
+        // Sau khi người dùng chọn, gửi biểu tượng cảm xúc kèm theo tin nhắn
+        console.log(`Thả biểu tượng cảm xúc cho tin nhắn có ID: ${messageId}`);
+        // Thực hiện logic thêm biểu tượng cảm xúc vào tin nhắn
+    };
+
+
 
     return (
         <>
@@ -1116,7 +1136,11 @@ export default function ChatRoom() {
 
                                         return (
                                             <div key={index}
-                                                 className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`}>
+                                                 className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`}
+                                                 onMouseEnter={() => setHoveredMessage(index)}
+                                                 onMouseLeave={() => setHoveredMessage(null)}>
+
+
                                                 {searchType === 'room' && message.name !== username && (
                                                     <span className="sender">{message.name} </span>
                                                 )}
@@ -1134,11 +1158,28 @@ export default function ChatRoom() {
 
                                                         <span
                                                             className={`msg_time${message.name === username ? '_send' : ''}`}>
-                            {renderDateTime(message.createAt)}
-                        </span>
+                                                                 {renderDateTime(message.createAt)}
+                                                        </span>
+                                                        {hoveredMessage === index && (
+                                                            <div
+                                                                className={`message-icons ${message.name === username ? 'left' : 'right'}`}>
+                                                                <i className="fas fa-trash"
+                                                                   onClick={() => handleDeleteMessage(message.id)}></i>
+                                                                <i className="fas fa-reply"
+                                                                   onClick={() => handleReplyMessage(message)}></i>
+                                                                <i className="fas fa-smile"
+                                                                   onClick={() => handleEmojiClick(message.id)}></i>
+                                                            </div>
+                                                        )}
                                                     </div>
-{/*>>>>>>> main*/}
+                                                    {/*>>>>>>> main*/}
                                                 </div>
+                                                {/*<div className={`message-icons ${message.name === username  ? 'right' : 'left'}`}>*/}
+                                                {/*    <i className="fas fa-trash"*/}
+                                                {/*       onClick={() => handleDeleteMessage(index)}></i>*/}
+                                                {/*    <i className="fas fa-reply"*/}
+                                                {/*       onClick={() => handleReplyMessage(message)}></i>*/}
+                                                {/*</div>*/}
                                             </div>
                                         );
                                     })}
@@ -1146,7 +1187,7 @@ export default function ChatRoom() {
                                 </div>
 
                                 <div className="card-footer">
-                                    <div className="input-group">
+                                <div className="input-group">
                                         <div className="input-group-append">
                                             <span className="input-group-text attach_btn"><i
                                                 className="fas fa-paperclip"></i></span>
