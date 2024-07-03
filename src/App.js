@@ -10,7 +10,6 @@ import { WebSocketProvider } from "./componemts/WebSocket/WebSocketContext";
 import ProtectedRoute from "./componemts/auth/index";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./firebase";
-import { AvatarProvider } from "./componemts/ChatRoom/AvatarContext"; // Import AvatarProvider
 
 function App() {
     const [user, setUser] = useState(null);
@@ -25,7 +24,6 @@ function App() {
 
     return (
         <WebSocketProvider>
-            <AvatarProvider> {/* Bọc AvatarProvider */}
                 <BrowserRouter>
                     <Routes>
                         <Route path="/home" element={<Home />} />
@@ -36,7 +34,6 @@ function App() {
                         <Route path="/" element={<Navigate to="/home" replace />} />
                     </Routes>
                 </BrowserRouter>
-            </AvatarProvider>
         </WebSocketProvider>
     );
 }

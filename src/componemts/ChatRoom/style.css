@@ -472,3 +472,73 @@ input.form-control.search:focus {
     margin-bottom: 0px !important;
 }
 /* Modal Overlay */
+
+/* Thêm CSS cho các biểu tượng */
+/*.message-icons {*/
+/*    position: absolute;*/
+/*    right: 10px;*/
+/*    top: 50%;*/
+/*    transform: translateY(-50%);*/
+/*    display: flex;*/
+/*    gap: 10px;*/
+/*}*/
+
+/*.message-icons i {*/
+/*    cursor: pointer;*/
+/*    font-size: 16px;*/
+/*}*/
+
+.message-icons {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    gap: 10px;
+    color: #312121;
+    opacity: 0.7;
+}
+
+.message-icons i {
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.message-icons.left {
+    left: -120px; /* Điều chỉnh khoảng cách từ trái */
+}
+
+.message-icons.right {
+    right: -70px; /* Điều chỉnh khoảng cách từ phải */
+}
+
+
+/*.message {*/
+/*    position: relative;*/
+/*}*/
+
+/*.message-icons {*/
+/*    position: absolute;*/
+/*    top: 50%;*/
+/*    transform: translateY(-50%);*/
+/*    display: flex;*/
+/*    gap: 5px;*/
+/*    opacity: 0;*/
+/*    transition: opacity 0.2s;*/
+/*}*/
+
+/*.message:hover .message-icons {*/
+/*    opacity: 1;*/
+/*}*/
+
+/*.message-icons.left {*/
+/*    left: -40px;*/
+/*}*/
+
+/*.message-icons.right {*/
+/*    right: -40px;*/
+/*}*/
+
+/*.message-icons i {*/
+/*    cursor: pointer;*/
+/*    font-size: 16px;*/
+/*}*/
