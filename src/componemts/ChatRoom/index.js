@@ -20,45 +20,68 @@ import './style.css';
 import { useNavigate } from 'react-router-dom';
 import Swal from "sweetalert2";
 import { useWebSocket } from "../WebSocket/WebSocketContext";
-import { getFirestore, collection, getDocs, doc, setDoc, query, where, addDoc} from "firebase/firestore";
 
+import {fromByteArray, toByteArray } from 'base64-js';
+
+
+import { getFirestore, collection, getDocs,getDoc, doc, setDoc, query, where, addDoc,updateDoc} from "firebase/firestore";
 import ava from "../../img/addAvatar.png";
 
 import upload from "../../componemts/ChatRoom/upload";
 
 import { auth, db } from "../../firebase";
 
-    export default function ChatRoom() {
-        const [basicModal, setBasicModal] = useState(false);
-        const navigate = useNavigate();
-        const [isOpen, setIsOpen] = useState(false);
-        const socket = useWebSocket();
 
-        const sessionData = JSON.parse(sessionStorage.getItem('sessionData')) || {};
-        const { username, code } = sessionData;
-        const initialUserList = JSON.parse(sessionStorage.getItem('userList')) || [];
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
-        const toggleOpen = () => setBasicModal(!basicModal);
-        const toggleMenu = () => setIsOpen(!isOpen);
-        const [activeTab, setActiveTab] = useState('user');
 
-        const [searchInput, setSearchInput] = useState('');
-        const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
-        const [userList, setUserList] = useState(initialUserList);
-        const [roomOwner, setRoomOwner] = useState('');
-        const [messageContent, setMessageContent] = useState('');
-        const [displayName, setDisplayName] = useState(username);
-        const [searchType, setSearchType] = useState('');
-        const [messages, setMessages] = useState([]);
-        const [darkMode, setDarkMode] = useState(false);
-        const [roomNames, setRoomNames] = useState('');
-        const messagesEndRef = useRef(null);
-        const [scrollToBottom, setScrollToBottom] = useState(false); // State để xác định cuộn xuống dưới cùng
-        const [userAvatar, setUserAvatar] = useState('https://therichpost.com/wp-content/uploads/2020/06/avatar2.png');
-        const [data, setData] = useState([]);
-        const [rooms, setRooms] = useState([])
-        const [roomAvatar, setRoomAvatar] = useState('');
+export default function ChatRoom() {
+    const [basicModal, setBasicModal] = useState(false);
+    const navigate = useNavigate();
+    const [isOpen, setIsOpen] = useState(false);
+    const socket = useWebSocket();
 
+    const sessionData = JSON.parse(sessionStorage.getItem('sessionData')) || {};
+    const { username, code } = sessionData;
+
+    const usernameRef = useRef(username);
+    const initialUserList = JSON.parse(localStorage.getItem('userList')) || [];
+// =======
+//     const initialUserList = JSON.parse(sessionStorage.getItem('userList')) || [];
+// >>>>>>> main
+
+    const toggleOpen = () => setBasicModal(!basicModal);
+    const toggleMenu = () => setIsOpen(!isOpen);
+    //Tab của change avatar//
+    const [activeTab, setActiveTab] = useState('user');
+    //Tab của userList//
+    const [activeContactsTab, setActiveContactsTab] = useState('user');
+    //Tab cho create,join room//
+    const [activeRoomTab, setActiveRoomTab] = useState('create');
+
+
+    const [searchInput, setSearchInput] = useState('');
+    const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
+    const [userList, setUserList] = useState(initialUserList);
+    const [roomOwner, setRoomOwner] = useState('');
+    const [messageContent, setMessageContent] = useState('');
+    const [messageContentChat, setMessageContentChat] = useState('');
+    const [displayName, setDisplayName] = useState(username);
+    const [lastMessage, setLastMessage] = useState(null);
+    const [searchType, setSearchType] = useState('');
+    const [messages, setMessages] = useState([]);
+    const [darkMode, setDarkMode] = useState(false);
+    const [roomNames, setRoomNames] = useState('');
+    const messagesEndRef = useRef(null);
+    const [scrollToBottom, setScrollToBottom] = useState(false); // State để xác định cuộn xuống dưới cùng
+    const [userAvatar, setUserAvatar] = useState('https://therichpost.com/wp-content/uploads/2020/06/avatar2.png');
+    const [data, setData] = useState([]);
+    const [rooms, setRooms] = useState([])
+    const [roomAvatar, setRoomAvatar] = useState('');
+    const [userStatuses, setUserStatuses] = useState({});
+
+
+    const [avatarUrls, setAvatarUrls] = useState({});
 
 
 
@@ -262,9 +285,11 @@ import { auth, db } from "../../firebase";
         }, [socket, userList]);
 
 
+    useEffect(() => {
+        usernameRef.current = username;
+    }, [username]);
+    // Sử dụng useEffect để cuộn xuống dưới cùng khi có tin nhắn mới
 
-
-        // Sử dụng useEffect để cuộn xuống dưới cùng khi có tin nhắn mới
     useEffect(() => {
         if (scrollToBottom) {
             const msgCardBody = document.querySelector('.msg_card_body');
@@ -277,7 +302,9 @@ import { auth, db } from "../../firebase";
 
     const [joinRoomCode, setJoinRoomCode] = useState('');
     const [joinRoomModal, setJoinRoomModal] = useState(false);
-    const [changeAvatarModal, setChangeAvatarModal] = useState(false);
+    const [changeAvatarModal,setChangeAvatarModal ] = useState(false);
+    const [roomModal, setRoomModal] = useState(false);
+
 
     useEffect(() => {
         if (darkMode) {
@@ -289,8 +316,10 @@ import { auth, db } from "../../firebase";
 
     useEffect(() => {
         const handleBeforeUnload = () => {
+
+            localStorage.clear();
             sessionStorage.clear();
-            localStorage.clear()
+
         };
 
         window.addEventListener('beforeunload', handleBeforeUnload);
@@ -489,6 +518,9 @@ import { auth, db } from "../../firebase";
     };
 
 
+// <<<<<<< HEAD
+//     const handleCreateRoom = () => {
+// =======
     const handleCreateRoom = async () => {
         // Get sessionData from local storage
         const sessionData = JSON.parse(sessionStorage.getItem('sessionData'));
@@ -506,6 +538,7 @@ import { auth, db } from "../../firebase";
 
         // Add room to Firestore
         const roomRef = await addDoc(collection(db, 'rooms'), roomData);
+// >>>>>>> main
         const createRoom = {
             action: "onchat",
             data: {
@@ -526,6 +559,7 @@ import { auth, db } from "../../firebase";
 
     useEffect(() => {
         const handleCreateRoomResponse = (event) => {
+
             const response = JSON.parse(event.data);
             if (response.event === "CREATE_ROOM") {
                 if (response.status === "success") {
@@ -566,7 +600,7 @@ import { auth, db } from "../../firebase";
                         icon: 'warning',
                         text: 'Tên phòng đã tồn tại!',
                     });
-                    console.error('Create room error details:', response);
+                    console.error('Chi tiết lỗi tạo phòng:', response);
                 }
             }
         };
@@ -584,6 +618,7 @@ import { auth, db } from "../../firebase";
 
 
 
+
     const handleSearchInputChange = (event) => {
         setSearchInput(event.target.value);
     };
@@ -593,6 +628,7 @@ import { auth, db } from "../../firebase";
     };
 
     const handleSearch = () => {
+
         if (!socket || socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket connection is not open');
             Swal.fire({
@@ -614,16 +650,19 @@ import { auth, db } from "../../firebase";
 
                 // Set user avatar
                 let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
-                const matchedUser = data.find(dbUser => dbUser.username === user.name);
-                if (matchedUser) {
-                    if (matchedUser.avatar && matchedUser.avatar.length > 0) {
-                        avatarSrc = matchedUser.avatar;
-                    } else if (matchedUser.gender === 'male') {
-                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
-                    } else if (matchedUser.gender === 'female') {
-                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                if (user.avatar) {
+                    avatarSrc = user.avatar;
+                } else {
+                    const matchedUser = data.find(dbUser => dbUser.username === user.name);
+                    if (matchedUser) {
+                        if (matchedUser.gender === 'male') {
+                            avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
+                        } else if (matchedUser.gender === 'female') {
+                            avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                        }
                     }
                 }
+
                 setUserAvatar(avatarSrc);
 
                 Swal.fire({
@@ -702,8 +741,13 @@ import { auth, db } from "../../firebase";
         }
     };
 
+// <<<<<<< HEAD
+//
+//     const fetchMessages = (event, name) => {
+// =======
 // Helper function to fetch messages
     const fetchMessages = (event, name, type) => {
+// >>>>>>> main
         const requestData = {
             action: "onchat",
             data: {
@@ -739,39 +783,50 @@ import { auth, db } from "../../firebase";
         };
     };
 
-
-
-
-
-
-
-
-    const handleLiClick = (name, type, roomOwner) => {
+    const handleLiClick = async (name, type, roomOwner) => {
         setDisplayName(name);
         setMessageContent(type === 0 ? 'Người dùng' : 'Phòng');
         setSearchType(type === 0 ? 'user' : 'room');
         let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
 
-        if (type === 0) { // If type is 0, it's a user
-            const matchedUser = data.find(dbUser => dbUser.username === name);
-            if (matchedUser) {
-                if (matchedUser.avatar && matchedUser.avatar.length > 0) {
-                    avatarSrc = matchedUser.avatar;
-                } else if (matchedUser.gender === 'male') {
-                    avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
-                } else if (matchedUser.gender === 'female') {
-                    avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+        const sessionData = JSON.parse(sessionStorage.getItem('userList'));
+
+        if (type === 0) {
+            const sessionUser = sessionData ? sessionData.find(user => user.name === name) : null;
+
+            if (sessionUser && sessionUser.avatar) {
+                avatarSrc = sessionUser.avatar;
+            } else {
+                const matchedUser = data.find(dbUser => dbUser.username === name);
+
+                if (matchedUser) {
+                    if (matchedUser.avatar && matchedUser.avatar.length > 0) {
+                        avatarSrc = matchedUser.avatar;
+                    } else if (matchedUser.gender === 'male') {
+                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
+                    } else if (matchedUser.gender === 'female') {
+                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                    }
                 }
             }
-        } else if (type === 1) { // If type is 1, it's a room
+        } else if (type === 1) {
             const matchedRoom = rooms.find(room => room.roomname === name);
             if (matchedRoom && matchedRoom.roomavatar) {
                 avatarSrc = matchedRoom.roomavatar;
             }
         }
 
-        // Set userAvatar with the correct avatarSrc
         setUserAvatar(avatarSrc);
+        setAvatarUrls(prevState => ({ ...prevState, [name]: avatarSrc }));
+
+        // Update sessionStorage
+        const updatedSessionData = sessionData.map(user => {
+            if (user.name === name) {
+                return { ...user, avatar: avatarSrc };
+            }
+            return user;
+        });
+        sessionStorage.setItem('userList', JSON.stringify(updatedSessionData));
 
         if (!socket || socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket connection is not open');
@@ -806,8 +861,27 @@ import { auth, db } from "../../firebase";
                 } else if (type === 1 && response.data && Array.isArray(response.data.chatData)) {
                     fetchedMessages = response.data.chatData.reverse();
                 }
-                setMessages(fetchedMessages);
-                setScrollToBottom(true); // Scroll to bottom when new messages are received
+
+                // Giải mã tin nhắn
+                let lastIndex = fetchedMessages.length - 1;
+                const lastmessage = fetchedMessages[lastIndex];
+                setLastMessage(lastmessage);
+
+                fetchedMessages.forEach(message => {
+                    if (message.mes) {
+                        try {
+                            const decodedBytes = toByteArray(message.mes);
+                            const decodedMessages = new TextDecoder().decode(decodedBytes);
+                            message.mes = decodedMessages;
+                        } catch (error) {
+                            // console.error('Error decoding message:', error);
+                        }
+                    }
+                });
+
+                // Cập nhật lại danh sách tin nhắn
+                setMessages([...fetchedMessages]);
+                setScrollToBottom(true);
             } else {
                 Swal.fire({
                     text: `Failed to fetch messages for ${name}.`,
@@ -815,9 +889,16 @@ import { auth, db } from "../../firebase";
                 });
             }
         };
-        setScrollToBottom(true); // Set state to scroll to bottom
+        setScrollToBottom(true);
     };
 
+    useEffect(() => {
+        setScrollToBottom(true);
+    }, [messages]);
+
+    useEffect(() => {
+        setScrollToBottom(true);
+    }, [messages]);
 
     const add7Hours = (dateString) => {
         const date = new Date(dateString);
@@ -837,6 +918,70 @@ import { auth, db } from "../../firebase";
 
     };
 
+// <<<<<<< HEAD
+
+    // Start of sendChat function
+    const [shouldFetchMessages, setShouldFetchMessages] = useState(false);
+
+
+    const sendChat = () => {
+        if (messageContentChat.trim() === '') return;
+        console.log('Message content:', messageContentChat);
+
+        // Encode message content
+        const messageBytes = new TextEncoder().encode(messageContentChat.trim());
+        const encodedMessage = fromByteArray(messageBytes);
+        const chatMessage = {
+
+            "action": "onchat",
+            "data": {
+                "event": "SEND_CHAT",
+                "data": {
+                    "type": "people",
+                    "to": displayName,
+                    "mes": encodedMessage
+                }
+
+            }
+        };
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            setMessageContentChat(''); // Xóa nội dung tin nhắn sau khi gửi
+            setScrollToBottom(true); // Kích hoạt cuộn xuống dưới
+            console.log('Message object:', chatMessage);
+            socket.send(JSON.stringify(chatMessage));
+            setShouldFetchMessages(true); // Kích hoạt việc tải lại tin nhắn
+
+        } else {
+            console.error('WebSocket is not open. Unable to send message.');
+        }
+    };
+
+    useEffect(() => {
+        if (shouldFetchMessages) {
+            handleLiClick(displayName, 0, roomOwner);
+            setShouldFetchMessages(false); // Đặt lại để ngăn không gọi lại khi messages thay đổi
+        }
+    }, [shouldFetchMessages]);
+
+
+
+    const handleInputChange = (event) => {
+        setMessageContentChat(event.target.value);
+    };
+
+    const handleSendClick = () => {
+        sendChat();
+    };
+
+    const handleKeyDown = (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            sendChat();
+        }
+    };
+    // End of sendChat function
+// =======
     // join room
     const handleJoinRoom = () => {
         const isAlreadyMember = userList.some((room) => room.name === joinRoomCode && room.type === 1);
@@ -947,7 +1092,192 @@ import { auth, db } from "../../firebase";
     };
 
 
+
 // >>>>>>> main
+    //chuc nang xoa, thu hoi chat
+    const [hoveredMessage, setHoveredMessage] = useState(null); // Thêm trạng thái để theo dõi tin nhắn được chọn
+    // Thêm các hàm xử lý
+    const handleDeleteMessage = (messageId) => {
+        // Xử lý xóa tin nhắn
+        console.log('Delete message:', messageId);
+    };
+
+    const handleReplyMessage = (message) => {
+        // Xử lý trả lời tin nhắn
+        console.log('Reply to message:', message);
+    };
+    const handleEmojiClick = (messageId) => {
+        // Mở một danh sách các biểu tượng cảm xúc cho người dùng chọn
+        // Sau khi người dùng chọn, gửi biểu tượng cảm xúc kèm theo tin nhắn
+        console.log(`Thả biểu tượng cảm xúc cho tin nhắn có ID: ${messageId}`);
+        // Thực hiện logic thêm biểu tượng cảm xúc vào tin nhắn
+    };
+    const handleAvatarChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (upload) => {
+                setAvatar({ url: upload.target.result, file: file });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+// Function to handle room avatar change
+    const handleRoomAvatarChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (upload) => {
+                setRoomAvatar({ url: upload.target.result, file: file });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+// Function to upload avatar to Firebase storage
+    const uploadAvatar = async (file) => {
+        const storage = getStorage();
+        const storageRef = ref(storage, `avatars/${file.name}`);
+        await uploadBytes(storageRef, file);
+        return getDownloadURL(storageRef);
+    };
+
+// Function to update avatar URL in Firestore
+    const updateAvatarURLInFirestore = async (uid, avatarURL) => {
+        const userDocRef = doc(db, 'users', uid);
+        await updateDoc(userDocRef, { avatar: avatarURL });
+    };
+
+// Function to update room avatar URL in Firestore
+    const updateRoomAvatarURLInFirestore = async (roomName, avatarURL) => {
+        const roomDocRef = doc(db, 'rooms', roomName);
+        await updateDoc(roomDocRef, { roomavatar: avatarURL });
+    };
+
+// Function to fetch username from Firebase
+    const getUsernameFromFirebase = async (uid) => {
+        const userDocRef = doc(db, 'users', uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+            return userDoc.data().username;
+        }
+        return null;
+    };
+
+// Function to update user avatar
+    const updateUserAvatar = async () => {
+        try {
+            const user = auth.currentUser;
+            if (user && avatar.file) {
+                const avatarURL = await uploadAvatar(avatar.file);
+                await updateAvatarURLInFirestore(user.uid, avatarURL);
+
+                const username = await getUsernameFromFirebase(user.uid);
+
+                if (username) {
+                    // Update sessionStorage with the new avatar URL
+                    const sessionData = JSON.parse(sessionStorage.getItem('userList'));
+                    if (sessionData) {
+                        const updatedSessionData = sessionData.map((userItem) =>
+                            userItem.name === username
+                                ? { ...userItem, avatar: avatarURL }
+                                : userItem
+                        );
+                        sessionStorage.setItem('userList', JSON.stringify(updatedSessionData));
+                    }
+
+                    // Update the state with the new avatar URL
+                    setUserAvatar(avatarURL);
+                    setUserList((prevUserList) =>
+                        prevUserList.map((userItem) =>
+                            userItem.name === username
+                                ? { ...userItem, avatar: avatarURL }
+                                : userItem
+                        )
+                    );
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Avatar updated successfully',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error updating avatar: ', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Failed to update avatar',
+                text: error.message,
+            });
+        }
+        setChangeAvatarModal(false);
+    };
+
+// Function to update room avatar
+    const updateRoomAvatar = async () => {
+        try {
+            const room = userList.find(user => user.type === 1 && user.name === roomNames);
+            if (room && roomAvatar.file) {
+                const avatarURL = await uploadAvatar(roomAvatar.file);
+                await updateRoomAvatarURLInFirestore(room.name, avatarURL);
+
+                // Update sessionStorage with the new room avatar URL
+                const sessionData = JSON.parse(sessionStorage.getItem('userList'));
+                if (sessionData) {
+                    const updatedSessionData = sessionData.map((userItem) =>
+                        userItem.name === room.name
+                            ? { ...userItem, roomavatar: avatarURL }
+                            : userItem
+                    );
+                    sessionStorage.setItem('userList', JSON.stringify(updatedSessionData));
+                }
+
+                // Update the state with the new room avatar URL
+                setUserList((prevUserList) =>
+                    prevUserList.map((userItem) =>
+                        userItem.name === room.name
+                            ? { ...userItem, roomavatar: avatarURL }
+                            : userItem
+                    )
+                );
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Room avatar updated successfully',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Failed to update room avatar',
+                    text: 'Invalid room name',
+                });
+            }
+        } catch (error) {
+            console.error('Error updating room avatar: ', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Failed to update room avatar',
+                text: error.message,
+            });
+        }
+        setChangeAvatarModal(false);
+    };
+
+// Component useEffect to load user list from sessionStorage
+    useEffect(() => {
+        const storedUserList = sessionStorage.getItem('userList');
+        if (storedUserList) {
+            setUserList(JSON.parse(storedUserList));
+        } else {
+            // Fetch the user list from Firestore or other sources if not in sessionStorage
+        }
+    }, []);
+
 
 
     return (
@@ -955,12 +1285,11 @@ import { auth, db } from "../../firebase";
             <div className="maincontainer">
                 <div className="container-fluid h-50">
                     <div className="row justify-content-center h-100">
-                        <div className="col-md-4 col-xl-3 chat">
+                        <div className="col-md-4 col-xl-3 chat"  id="chatleft">
                             <div className="card mb-sm-3 mb-md-0 contacts_card">
                                 <div className="card-header">
                                     <div className="input-group">
-                                        <div className="input-group-prepend">
-                                        </div>
+                                        <div className="input-group-prepend"></div>
                                         <input
                                             type="checkbox"
                                             className="cbox"
@@ -982,63 +1311,58 @@ import { auth, db } from "../../firebase";
                                                 .filter(user => !isCheckboxChecked ? user.type === 0 : user.type === 1)
                                                 .map((user, index) => (
                                                     <option key={index} value={user.name}/>
-                                                ))
-                                            }
+                                                ))}
                                         </datalist>
-
                                         <div className="input-group-prepend">
-                                            <span
-                                                className="input-group-text search_btn"
-                                                onClick={handleSearch}
-                                            >
-                                                <i className="fas fa-search"></i>
-                                            </span>
+                    <span className="input-group-text search_btn" onClick={handleSearch}>
+                        <i className="fas fa-search"></i>
+                    </span>
                                         </div>
+                                    </div>
+                                    <div className="tabs-wrapper">
+                                        <input type="radio" name="tab" id="userTab"
+                                               checked={activeContactsTab === 'user'}
+                                               onChange={() => setActiveContactsTab('user')}/>
+                                        <label htmlFor="userTab" className="tab-label">User</label>
+                                        <input type="radio" name="tab" id="roomTab"
+                                               checked={activeContactsTab === 'room'}
+                                               onChange={() => setActiveContactsTab('room')}/>
+                                        <label htmlFor="roomTab" className="tab-label">Room</label>
+                                        <div className="tab-slider"></div>
                                     </div>
                                 </div>
                                 <div className="card-body contacts_body"
-                                     style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
+                                     style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '550px'}}>
                                     <ul className="contacts">
                                         {userList.length > 0 ? (
-                                            userList.map((user, index) => {
-                                                const matchedUser = data.find(dbUser => dbUser.username === user.name);
-                                                let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
-                                                if (user.type === 1) { // If user type is 1, check for room avatar
-
-                                                    const roomName = user.name;
-
-                                                    const matchedRoom = rooms.find(room => room.roomname === roomName);
-
-
+                                            userList
+                                                .filter(user => activeContactsTab === 'user' ? user.type === 0 : user.type === 1)
+                                                .map((user, index) => {
+                                                    const matchedUser = data.find(dbUser => dbUser.username === user.name);
+                                                    const sessionUser = Array.isArray(sessionData) ? sessionData.find(sessionUser => sessionUser.name === user.name) : null;
+                                                    let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
 
                                                     if (user.avatar) {
-
                                                         avatarSrc = user.avatar;
-
-                                                    } else if (matchedRoom && matchedRoom.roomavatar) {
-
-                                                        avatarSrc = matchedRoom.roomavatar;
-
-                                                    }
-
-                                                } else {
-
-                                                    if (matchedUser) {
-
-                                                        if (matchedUser.avatar && matchedUser.avatar.length > 0) {
-
-                                                            avatarSrc = matchedUser.avatar;
-
-                                                        } else if (matchedUser.gender === 'male') {
-
-                                                            avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
-
-                                                        } else if (matchedUser.gender === 'female') {
-
-                                                            avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
-
+                                                    } else if (user.type === 1) {
+                                                        const matchedRoom = rooms.find(room => room.roomname === user.name);
+                                                        if (matchedRoom && matchedRoom.roomavatar) {
+                                                            avatarSrc = matchedRoom.roomavatar;
+                                                        }
+                                                    } else {
+                                                        if (sessionUser && sessionUser.avatar) {
+                                                            avatarSrc = sessionUser.avatar;
+                                                        } else if (matchedUser) {
+                                                            if (matchedUser.avatar && matchedUser.avatar.length > 0) {
+                                                                avatarSrc = matchedUser.avatar;
+                                                            } else if (matchedUser.gender === 'male') {
+                                                                avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
+                                                            } else if (matchedUser.gender === 'female') {
+                                                                avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                                                            }
                                                         }
                                                     }
+
                                                 }
 
                                                 return (
@@ -1065,6 +1389,7 @@ import { auth, db } from "../../firebase";
                                                     </li>
                                                 );
                                             })
+
                                         ) : (
                                             <li>No users found.</li>
                                         )}
@@ -1073,7 +1398,7 @@ import { auth, db } from "../../firebase";
                                 <div className="card-footer"></div>
                             </div>
                         </div>
-                        <div className="col-md-8 col-xl-6 chat">
+                        <div className="col-md-8 col-xl-6 chat" id="chatcenter">
                             <div className="card" id="chatcenter">
                                 <div className="card-header msg_head">
                                     <div className="d-flex bd-highlight">
@@ -1082,9 +1407,11 @@ import { auth, db } from "../../firebase";
                                                 src={userAvatar}
                                                 className="rounded-circle user_img"
                                             />
+
                                             {/*<span className="online_icon"></span>*/}
                                             <span
                                                 className={`online_icon ${userStatuses[displayName] ? 'online' : 'offline'}`}></span>
+
                                         </div>
                                         <div className="user_info">
                                         <span>{displayName}</span>
@@ -1099,7 +1426,7 @@ import { auth, db } from "../../firebase";
                                                     rounded
                                                     size="sm"
                                                     color="primary"
-                                                    onClick={toggleOpen}
+                                                    onClick={() => setRoomModal(true)}
                                                     style={{marginBottom: "3px"}}
                                                 >
                                                     <MDBIcon fas icon="plus-circle"/>
@@ -1119,25 +1446,25 @@ import { auth, db } from "../../firebase";
                                                     className={`${darkMode ? 'light' : 'dark'}`}>{darkMode ? 'Light mode' : 'Dark mode'}</span>
                                             </li>
                                             <li onClick={() => setChangeAvatarModal(true)}>
-                                                <i className="fas fa-user-circle"></i> Change Avatar</li>
-                                            {/*<li><i className="fas fa-plus"></i> Join room</li>*/}
-                                            <li onClick={() => setJoinRoomModal(true)}>
-                                                <i className="fas fa-plus"></i> Join room
+                                                <i className="fas fa-user-circle"></i> Change Avatar
                                             </li>
+
                                             <li id="logout-button" onClick={handleLogout}><i
                                                 className="fas fa-ban"></i> Logout
                                             </li>
                                         </ul>
                                     </div>
                                 </div>
-                                <div className="card-body msg_card_body"
-                                     ref={messagesEndRef}
-                                     style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
+                                <div className="card-body msg_card_body" ref={messagesEndRef} style={{ overflowY: 'auto', overflowX: 'auto', maxHeight: '600px' }}>
                                     {messages.map((message, index) => {
+                                        const sessionData = JSON.parse(sessionStorage.getItem('userList'));
                                         const matchedUser = data.find(dbUser => dbUser.username === message.name);
+                                        const sessionUser = Array.isArray(sessionData) ? sessionData.find(sessionUser => sessionUser.name === message.name) : null;
                                         let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
 
-                                        if (matchedUser) {
+                                        if (sessionUser && sessionUser.avatar) {
+                                            avatarSrc = sessionUser.avatar;
+                                        } else if (matchedUser) {
                                             if (matchedUser.avatar && matchedUser.avatar.length > 0) {
                                                 avatarSrc = matchedUser.avatar;
                                             } else if (matchedUser.gender === 'male') {
@@ -1148,27 +1475,31 @@ import { auth, db } from "../../firebase";
                                         }
 
                                         return (
-                                            <div key={index}
-                                                 className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`}>
+                                            <div key={index} className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`} onMouseEnter={() => setHoveredMessage(index)} onMouseLeave={() => setHoveredMessage(null)}>
                                                 {searchType === 'room' && message.name !== username && (
                                                     <span className="sender">{message.name} </span>
                                                 )}
                                                 <div className="img_cont_msg">
-                                                    <img
-                                                        src={avatarSrc}
-                                                        alt="avatar"
-                                                        className="rounded-circle user_img_msg"
-                                                    />
+                                                    <img src={avatarSrc} alt="avatar"
+                                                         className="rounded-circle user_img_msg"/>
+                                                    <span className="online_icon"></span>
                                                 </div>
-                                                <div
-                                                    className={`msg_cotainer${message.name === username ? '_send' : ''}`}>
+                                                <div className={`msg_cotainer${message.name === username ? '_send' : ''}`}>
                                                     <div className="message-content">
                                                         {renderMessageContent(message)}
-
-                                                        <span
-                                                            className={`msg_time${message.name === username ? '_send' : ''}`}>
+                                                        <span className={`msg_time${message.name === username ? '_send' : ''}`}>
                             {renderDateTime(message.createAt)}
                         </span>
+                                                        {hoveredMessage === index && (
+                                                            <div className={`message-icons ${message.name === username ? 'left' : 'right'}`}>
+                                                                <i className="fas fa-trash"
+                                                                   onClick={() => handleDeleteMessage(message.id)}></i>
+                                                                <i className="fas fa-reply"
+                                                                   onClick={() => handleReplyMessage(message)}></i>
+                                                                <i className="fas fa-smile"
+                                                                   onClick={() => handleEmojiClick(message.id)}></i>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1184,9 +1515,14 @@ import { auth, db } from "../../firebase";
                                                 className="fas fa-paperclip"></i></span>
                                         </div>
                                         <textarea name="" className="form-control type_msg"
-                                                  placeholder="Type your message..."></textarea>
+                                                  placeholder="Type your message..."
+                                                  value={messageContentChat}
+                                                  onChange={handleInputChange}
+                                                  onKeyDown={handleKeyDown}// Listen for Enter key press>
+                                        ></textarea>
                                         <div className="input-group-append">
-                                            <span className="input-group-text send_btn"><i
+                                            <span className="input-group-text send_btn"
+                                                  onClick={handleSendClick}><i
                                                 className="fas fa-location-arrow"></i></span>
                                         </div>
                                     </div>
@@ -1197,91 +1533,73 @@ import { auth, db } from "../../firebase";
                 </div>
 
             </div>
-            <MDBModal show={basicModal} onHide={() => setBasicModal(false)}>
+
+
+            <MDBModal show={roomModal} onHide={() => setRoomModal(false)}>
                 <MDBModalDialog>
                     <MDBModalContent>
                         <MDBModalHeader>
-                            <MDBModalTitle>Create Room</MDBModalTitle>
-                            <MDBBtn className="btn-close" color="none" onClick={toggleOpen}/>
+                            <MDBModalTitle>Room</MDBModalTitle>
+                            <MDBBtn className="btn-close" color="none" onClick={() => setRoomModal(false)}/>
                         </MDBModalHeader>
-                        <MDBModalBody>
-                            <MDBInput
-                                type={"text"}
-                                value={roomNames}
-                                onChange={(e) => setRoomNames(e.target.value)}
-                                label="Room Name"
-                            ></MDBInput>
-                            <br/>
+                        <MDBTabs className="mb-3" id="tabchangeava" style={{marginBottom: 0, marginLeft: 0}}>
+                            <MDBTabsItem>
+                                <MDBTabsLink onClick={() =>setActiveRoomTab('create')} active={activeRoomTab === 'create'}>
+                                    Create
+                                </MDBTabsLink>
+                            </MDBTabsItem>
+                            <MDBTabsItem>
+                                <MDBTabsLink onClick={() => setActiveRoomTab('join')} active={activeTab === 'join'}>
+                                    Join
+                                </MDBTabsLink>
+                            </MDBTabsItem>
+                        </MDBTabs>
+                        <MDBTabsContent>
+                            <MDBTabsPane show={activeRoomTab === 'create'}>
+                                <MDBInput
+                                    type="text"
+                                    value={roomNames}
+                                    onChange={(e) => setRoomNames(e.target.value)}
+                                    label="Room Name"
+                                />
+                                <br />
+                                <input
+                                    type="file"
+                                    id="file"
+                                    style={{ display: "none" }}
+                                    onChange={handleAvatar}
+                                />
+                                <label htmlFor="file" className="LabelUpload" style={{backgroundColor:"white"}}>
+                                    <div className="img_cont_msg">
+                                        <img src={avatar.url || ava} alt="" className="rounded-circle user_img_msg" />
+                                    </div>
+                                    <span id="UploadImg">Upload an image</span>
+                                </label>
+                            </MDBTabsPane>
+                            <MDBTabsPane show={activeRoomTab === 'join'}>
+                                <MDBInput
+                                    type="text"
+                                    value={joinRoomCode}
+                                    onChange={(e) => setJoinRoomCode(e.target.value)}
+                                    label="Room Code"
+                                />
+                                <br />
 
-                            <input
-
-                                type="file"
-
-                                id="file"
-
-                                style={{display: "none"}}
-
-                                onChange={handleAvatar}
-
-
-                            />
-
-                            <label htmlFor="file" className="LabelUpload">
-
-                                <div className="img_cont_msg">
-
-                                    <img src={avatar.url || ava} alt=""
-
-                                         className="rounded-circle user_img_msg"
-
-                                    />
-
-                                </div>
-
-                                <span id="UploadImg">Upload an image</span>
-
-
-                            </label>
-                        </MDBModalBody>
+                            </MDBTabsPane>
+                        </MDBTabsContent>
                         <MDBModalFooter>
-                            <MDBBtn color="secondary" onClick={toggleOpen}>
+                            <MDBBtn color="secondary" onClick={() => setRoomModal(false)}>
                                 Close
                             </MDBBtn>
-                            <MDBBtn onClick={handleCreateRoom}>Create</MDBBtn>
-                        </MDBModalFooter>
-                    </MDBModalContent>
-                </MDBModalDialog>
-            </MDBModal>
-
-            {/* Modal Join Room */}
-            <MDBModal show={joinRoomModal} onHide={() => setJoinRoomModal(false)}>
-                <MDBModalDialog>
-                    <MDBModalContent>
-                        <MDBModalHeader>
-                            <MDBModalTitle>Join Room</MDBModalTitle>
-                            <MDBBtn className="btn-close" color="none" onClick={() => setJoinRoomModal(false)}/>
-                        </MDBModalHeader>
-                        <MDBModalBody>
-                            <MDBInput
-                                type="text"
-                                value={joinRoomCode}
-                                onChange={(e) => setJoinRoomCode(e.target.value)}
-                                label="Room Code"
-                            />
-                        </MDBModalBody>
-                        <MDBModalFooter>
-                            <MDBBtn color="secondary" onClick={() => setJoinRoomModal(false)}>
-                                Close
-                            </MDBBtn>
-                            <MDBBtn onClick={handleJoinRoom}>
-                                Join
+                            <MDBBtn onClick={activeRoomTab === 'join' ? handleJoinRoom : handleCreateRoom}>
+                                {activeRoomTab === 'join' ? 'Join' : 'Create'}
                             </MDBBtn>
                         </MDBModalFooter>
                     </MDBModalContent>
                 </MDBModalDialog>
             </MDBModal>
 
-    {/* Modal Change Avatar */}
+            {/* Modal Change Avatar */}
             <MDBModal show={changeAvatarModal} onHide={() => setChangeAvatarModal(false)}>
                 <MDBModalDialog>
                     <MDBModalContent>
@@ -1304,22 +1622,21 @@ import { auth, db } from "../../firebase";
                         <MDBTabsContent>
                             <MDBTabsPane show={activeTab === 'user'}>
                                 <MDBInput style={{backgroundColor:"white"}}
-                                    type="text"
-                                    value={username}
-                                    label="Default Input"
-                                    disabled
-
+                                          type="text"
+                                          value={displayName}
+                                          label="Default Input"
+                                          disabled
                                 />
                                 <br />
                                 <input
                                     type="file"
                                     id="file"
                                     style={{ display: "none" }}
-                                    onChange={handleAvatar}
+                                    onChange={handleAvatarChange}
                                 />
                                 <label htmlFor="file" className="LabelUpload" style={{backgroundColor:"white"}}>
                                     <div className="img_cont_msg">
-                                        <img src={avatar.url || ava} alt="" className="rounded-circle user_img_msg" />
+                                        <img src={avatar.url || 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png'} alt="" className="rounded-circle user_img_msg" />
                                     </div>
                                     <span id="UploadImg">Upload an image</span>
                                 </label>
@@ -1330,17 +1647,25 @@ import { auth, db } from "../../firebase";
                                     value={roomNames}
                                     onChange={(e) => setRoomNames(e.target.value)}
                                     label="Room Name"
+                                    list="datalistOption"
                                 />
-                                <br />
+                                <datalist id="datalistOption">
+                                    {userList
+                                        .filter(user => user.type === 1)
+                                        .map((user, index) => (
+                                            <option key={index} value={user.name} />
+                                        ))}
+                                </datalist>
+                                <br/>
                                 <input
                                     type="file"
-                                    id="file"
-                                    style={{ display: "none" }}
-                                    onChange={handleAvatar}
+                                    id="fileRoom"
+                                    style={{display: "none"}}
+                                    onChange={handleRoomAvatarChange}
                                 />
-                                <label htmlFor="file" className="LabelUpload" style={{backgroundColor:"white"}}>
+                                <label htmlFor="fileRoom" className="LabelUpload" style={{backgroundColor: "white"}}>
                                     <div className="img_cont_msg">
-                                        <img src={avatar.url || ava} alt="" className="rounded-circle user_img_msg" />
+                                        <img src={roomAvatar.url || 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png'} alt="" className="rounded-circle user_img_msg"/>
                                     </div>
                                     <span id="UploadImg">Upload an image</span>
                                 </label>
@@ -1350,8 +1675,8 @@ import { auth, db } from "../../firebase";
                             <MDBBtn color="secondary" onClick={() => setChangeAvatarModal(false)}>
                                 Close
                             </MDBBtn>
-                            <MDBBtn onClick={activeTab === 'user' ? handleJoinRoom : handleCreateRoom}>
-                                {activeTab === 'user' ? 'Join' : 'Create'}
+                            <MDBBtn onClick={activeTab === 'user' ? updateUserAvatar : updateRoomAvatar}>
+                                Update Avatar
                             </MDBBtn>
                         </MDBModalFooter>
                     </MDBModalContent>
