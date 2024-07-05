@@ -14,14 +14,12 @@ const Login = () => {
   const socket = useWebSocket();
   const usernameRef = useRef(username);
   const passwordRef = useRef(password);
-
   useEffect(() => {
     const sessionData = localStorage.getItem('sessionData');
     if (sessionData) {
       navigate("/chat");
     }
   }, [navigate]);
-
   const handleUsernameChange = (event) => {
     const value = event.target.value;
     setUsername(value);
@@ -32,7 +30,6 @@ const Login = () => {
       });
     }
   };
-
   const handlePasswordChange = (event) => {
     const value = event.target.value;
     setPassword(value);
@@ -43,11 +40,9 @@ const Login = () => {
       });
     }
   };
-
   useEffect(() => {
     usernameRef.current = username;
   }, [username]);
-
   useEffect(() => {
     passwordRef.current = password;
   }, [password]);
@@ -175,13 +170,11 @@ const Login = () => {
         icon: 'warning',
       });
     }
-
     try {
       // Fetch the email associated with the provided username
       const usersRef = collection(db, "users");
       const q = query(usersRef, where("username", "==", username));
       const querySnapshot = await getDocs(q);
-
       if (querySnapshot.empty) {
         return Swal.fire({
           icon: 'error',
@@ -189,21 +182,17 @@ const Login = () => {
           text: 'Invalid username or password',
         });
       }
-
       const userDoc = querySnapshot.docs[0];
       const userData = userDoc.data();
       const email = userData.email;
-
       // Authenticate using the fetched email and provided password
       await signInWithEmailAndPassword(auth, email, password);
-
       if (!socket) {
         return Swal.fire({
           text: "WebSocket connection is not established",
           icon: 'error',
         });
       }
-
       const requestData = {
         action: "onchat",
         data: {

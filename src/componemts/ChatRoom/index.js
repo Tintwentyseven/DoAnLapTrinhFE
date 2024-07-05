@@ -23,13 +23,15 @@ import { useWebSocket } from "../WebSocket/WebSocketContext";
 
 import {fromByteArray, toByteArray } from 'base64-js';
 
-import { getFirestore, collection, getDocs, doc, setDoc, query, where, addDoc} from "firebase/firestore";
 
+import { getFirestore, collection, getDocs,getDoc, doc, setDoc, query, where, addDoc,updateDoc} from "firebase/firestore";
 import ava from "../../img/addAvatar.png";
 
 import upload from "../../componemts/ChatRoom/upload";
 
 import { auth, db } from "../../firebase";
+
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 
 export default function ChatRoom() {
@@ -75,7 +77,9 @@ export default function ChatRoom() {
     const [data, setData] = useState([]);
     const [rooms, setRooms] = useState([])
     const [roomAvatar, setRoomAvatar] = useState('');
+    const [userStatuses, setUserStatuses] = useState({});
 
+    const [avatarUrls, setAvatarUrls] = useState({});
 
 
 
@@ -448,6 +452,7 @@ export default function ChatRoom() {
     };
 
     const handleSearch = () => {
+
         if (!socket || socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket connection is not open');
             Swal.fire({
@@ -469,16 +474,19 @@ export default function ChatRoom() {
 
                 // Set user avatar
                 let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
-                const matchedUser = data.find(dbUser => dbUser.username === user.name);
-                if (matchedUser) {
-                    if (matchedUser.avatar && matchedUser.avatar.length > 0) {
-                        avatarSrc = matchedUser.avatar;
-                    } else if (matchedUser.gender === 'male') {
-                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
-                    } else if (matchedUser.gender === 'female') {
-                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                if (user.avatar) {
+                    avatarSrc = user.avatar;
+                } else {
+                    const matchedUser = data.find(dbUser => dbUser.username === user.name);
+                    if (matchedUser) {
+                        if (matchedUser.gender === 'male') {
+                            avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
+                        } else if (matchedUser.gender === 'female') {
+                            avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                        }
                     }
                 }
+
                 setUserAvatar(avatarSrc);
 
                 Swal.fire({
@@ -599,23 +607,30 @@ export default function ChatRoom() {
         };
     };
 
-
-
-    const handleLiClick = (name, type, roomOwner) => {
+    const handleLiClick = async (name, type, roomOwner) => {
         setDisplayName(name);
         setMessageContent(type === 0 ? 'Người dùng' : 'Phòng');
         setSearchType(type === 0 ? 'user' : 'room');
         let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
 
+        const sessionData = JSON.parse(sessionStorage.getItem('userList'));
+
         if (type === 0) {
-            const matchedUser = data.find(dbUser => dbUser.username === name);
-            if (matchedUser) {
-                if (matchedUser.avatar && matchedUser.avatar.length > 0) {
-                    avatarSrc = matchedUser.avatar;
-                } else if (matchedUser.gender === 'male') {
-                    avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
-                } else if (matchedUser.gender === 'female') {
-                    avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+            const sessionUser = sessionData ? sessionData.find(user => user.name === name) : null;
+
+            if (sessionUser && sessionUser.avatar) {
+                avatarSrc = sessionUser.avatar;
+            } else {
+                const matchedUser = data.find(dbUser => dbUser.username === name);
+
+                if (matchedUser) {
+                    if (matchedUser.avatar && matchedUser.avatar.length > 0) {
+                        avatarSrc = matchedUser.avatar;
+                    } else if (matchedUser.gender === 'male') {
+                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
+                    } else if (matchedUser.gender === 'female') {
+                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                    }
                 }
             }
         } else if (type === 1) {
@@ -626,6 +641,16 @@ export default function ChatRoom() {
         }
 
         setUserAvatar(avatarSrc);
+        setAvatarUrls(prevState => ({ ...prevState, [name]: avatarSrc }));
+
+        // Update sessionStorage
+        const updatedSessionData = sessionData.map(user => {
+            if (user.name === name) {
+                return { ...user, avatar: avatarSrc };
+            }
+            return user;
+        });
+        sessionStorage.setItem('userList', JSON.stringify(updatedSessionData));
 
         if (!socket || socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket connection is not open');
@@ -659,8 +684,8 @@ export default function ChatRoom() {
                 } else if (type === 1 && response.data && Array.isArray(response.data.chatData)) {
                     fetchedMessages = response.data.chatData.reverse();
                 }
-                // Giải mã tin nhắn
 
+                // Giải mã tin nhắn
                 let lastIndex = fetchedMessages.length - 1;
                 const lastmessage = fetchedMessages[lastIndex];
                 setLastMessage(lastmessage);
@@ -676,6 +701,7 @@ export default function ChatRoom() {
                         }
                     }
                 });
+
                 // Cập nhật lại danh sách tin nhắn
                 setMessages([...fetchedMessages]);
                 setScrollToBottom(true);
@@ -688,6 +714,10 @@ export default function ChatRoom() {
         };
         setScrollToBottom(true);
     };
+
+    useEffect(() => {
+        setScrollToBottom(true);
+    }, [messages]);
 
     useEffect(() => {
         setScrollToBottom(true);
@@ -905,6 +935,171 @@ export default function ChatRoom() {
         console.log(`Thả biểu tượng cảm xúc cho tin nhắn có ID: ${messageId}`);
         // Thực hiện logic thêm biểu tượng cảm xúc vào tin nhắn
     };
+    const handleAvatarChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (upload) => {
+                setAvatar({ url: upload.target.result, file: file });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+// Function to handle room avatar change
+    const handleRoomAvatarChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (upload) => {
+                setRoomAvatar({ url: upload.target.result, file: file });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+// Function to upload avatar to Firebase storage
+    const uploadAvatar = async (file) => {
+        const storage = getStorage();
+        const storageRef = ref(storage, `avatars/${file.name}`);
+        await uploadBytes(storageRef, file);
+        return getDownloadURL(storageRef);
+    };
+
+// Function to update avatar URL in Firestore
+    const updateAvatarURLInFirestore = async (uid, avatarURL) => {
+        const userDocRef = doc(db, 'users', uid);
+        await updateDoc(userDocRef, { avatar: avatarURL });
+    };
+
+// Function to update room avatar URL in Firestore
+    const updateRoomAvatarURLInFirestore = async (roomName, avatarURL) => {
+        const roomDocRef = doc(db, 'rooms', roomName);
+        await updateDoc(roomDocRef, { roomavatar: avatarURL });
+    };
+
+// Function to fetch username from Firebase
+    const getUsernameFromFirebase = async (uid) => {
+        const userDocRef = doc(db, 'users', uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+            return userDoc.data().username;
+        }
+        return null;
+    };
+
+// Function to update user avatar
+    const updateUserAvatar = async () => {
+        try {
+            const user = auth.currentUser;
+            if (user && avatar.file) {
+                const avatarURL = await uploadAvatar(avatar.file);
+                await updateAvatarURLInFirestore(user.uid, avatarURL);
+
+                const username = await getUsernameFromFirebase(user.uid);
+
+                if (username) {
+                    // Update sessionStorage with the new avatar URL
+                    const sessionData = JSON.parse(sessionStorage.getItem('userList'));
+                    if (sessionData) {
+                        const updatedSessionData = sessionData.map((userItem) =>
+                            userItem.name === username
+                                ? { ...userItem, avatar: avatarURL }
+                                : userItem
+                        );
+                        sessionStorage.setItem('userList', JSON.stringify(updatedSessionData));
+                    }
+
+                    // Update the state with the new avatar URL
+                    setUserAvatar(avatarURL);
+                    setUserList((prevUserList) =>
+                        prevUserList.map((userItem) =>
+                            userItem.name === username
+                                ? { ...userItem, avatar: avatarURL }
+                                : userItem
+                        )
+                    );
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Avatar updated successfully',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error updating avatar: ', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Failed to update avatar',
+                text: error.message,
+            });
+        }
+        setChangeAvatarModal(false);
+    };
+
+// Function to update room avatar
+    const updateRoomAvatar = async () => {
+        try {
+            const room = userList.find(user => user.type === 1 && user.name === roomNames);
+            if (room && roomAvatar.file) {
+                const avatarURL = await uploadAvatar(roomAvatar.file);
+                await updateRoomAvatarURLInFirestore(room.name, avatarURL);
+
+                // Update sessionStorage with the new room avatar URL
+                const sessionData = JSON.parse(sessionStorage.getItem('userList'));
+                if (sessionData) {
+                    const updatedSessionData = sessionData.map((userItem) =>
+                        userItem.name === room.name
+                            ? { ...userItem, roomavatar: avatarURL }
+                            : userItem
+                    );
+                    sessionStorage.setItem('userList', JSON.stringify(updatedSessionData));
+                }
+
+                // Update the state with the new room avatar URL
+                setUserList((prevUserList) =>
+                    prevUserList.map((userItem) =>
+                        userItem.name === room.name
+                            ? { ...userItem, roomavatar: avatarURL }
+                            : userItem
+                    )
+                );
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Room avatar updated successfully',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Failed to update room avatar',
+                    text: 'Invalid room name',
+                });
+            }
+        } catch (error) {
+            console.error('Error updating room avatar: ', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Failed to update room avatar',
+                text: error.message,
+            });
+        }
+        setChangeAvatarModal(false);
+    };
+
+// Component useEffect to load user list from sessionStorage
+    useEffect(() => {
+        const storedUserList = sessionStorage.getItem('userList');
+        if (storedUserList) {
+            setUserList(JSON.parse(storedUserList));
+        } else {
+            // Fetch the user list from Firestore or other sources if not in sessionStorage
+        }
+    }, []);
 
 
 
@@ -967,17 +1162,20 @@ export default function ChatRoom() {
                                                 .filter(user => activeContactsTab === 'user' ? user.type === 0 : user.type === 1)
                                                 .map((user, index) => {
                                                     const matchedUser = data.find(dbUser => dbUser.username === user.name);
+                                                    const sessionUser = Array.isArray(sessionData) ? sessionData.find(sessionUser => sessionUser.name === user.name) : null;
                                                     let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
 
-                                                    if (user.type === 1) {
+                                                    if (user.avatar) {
+                                                        avatarSrc = user.avatar;
+                                                    } else if (user.type === 1) {
                                                         const matchedRoom = rooms.find(room => room.roomname === user.name);
-                                                        if (user.avatar) {
-                                                            avatarSrc = user.avatar;
-                                                        } else if (matchedRoom && matchedRoom.roomavatar) {
+                                                        if (matchedRoom && matchedRoom.roomavatar) {
                                                             avatarSrc = matchedRoom.roomavatar;
                                                         }
                                                     } else {
-                                                        if (matchedUser) {
+                                                        if (sessionUser && sessionUser.avatar) {
+                                                            avatarSrc = sessionUser.avatar;
+                                                        } else if (matchedUser) {
                                                             if (matchedUser.avatar && matchedUser.avatar.length > 0) {
                                                                 avatarSrc = matchedUser.avatar;
                                                             } else if (matchedUser.gender === 'male') {
@@ -987,7 +1185,6 @@ export default function ChatRoom() {
                                                             }
                                                         }
                                                     }
-
                                                     return (
                                                         <li key={index}
                                                             className={user.name === displayName ? 'active' : ''}
@@ -1028,7 +1225,7 @@ export default function ChatRoom() {
                                                 src={userAvatar}
                                                 className="rounded-circle user_img"
                                             />
-                                            <span className="online_icon"></span>
+                                             <span className="online_icon"></span>
                                         </div>
                                         <div className="user_info">
                                             <span>{displayName}</span>
@@ -1065,45 +1262,23 @@ export default function ChatRoom() {
                                             <li onClick={() => setChangeAvatarModal(true)}>
                                                 <i className="fas fa-user-circle"></i> Change Avatar
                                             </li>
-                                            {/*<li><i className="fas fa-plus"></i> Join room</li>*/}
-                                            {/*<li onClick={() => setJoinRoomModal(true)}>*/}
-                                            {/*    <i className="fas fa-plus"></i> Join room*/}
-                                            {/*</li>*/}
+
                                             <li id="logout-button" onClick={handleLogout}><i
                                                 className="fas fa-ban"></i> Logout
                                             </li>
                                         </ul>
                                     </div>
                                 </div>
-                                <div className="card-body msg_card_body"
-                                     ref={messagesEndRef}
-                                     style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
-                                    {/*<<<<<<< HEAD*/}
-                                    {/*                                    {messages.map((message, index) => (*/}
-                                    {/*                                        <div key={index}*/}
-                                    {/*                                             className={`d-flex mb-4 ${(  message.name === username ) ? 'justify-content-end' : 'justify-content-start'}`}>*/}
-
-                                    {/*                                            {searchType === 'room' && (lastMessage.name!==username || message.name !== username) && (*/}
-                                    {/*                                                <span className="sender">{message.name} </span>*/}
-                                    {/*                                            )}*/}
-                                    {/*                                            <div className="img_cont_msg">*/}
-                                    {/*                                                <img*/}
-
-                                    {/*                                                    src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"*/}
-                                    {/*                                                    className="rounded-circle user_img_msg"/>*/}
-                                    {/*                                            </div>*/}
-                                    {/*                                            <div*/}
-                                    {/*                                                className={`msg_cotainer${( message.name === username) ? '_send' : ''}`}>*/}
-                                    {/*                                                <div className="message-content">*/}
-                                    {/*                                                    { message.mes }*/}
-                                    {/*                                                    <span*/}
-                                    {/*                                                        className={`msg_time${(lastMessage.name===username ||  message.name === username) ? '_send' : ''}`}>{ renderDateTime( message.createAt)}</span>*/}
-                                    {/*=======*/}
+                                <div className="card-body msg_card_body" ref={messagesEndRef} style={{ overflowY: 'auto', overflowX: 'auto', maxHeight: '600px' }}>
                                     {messages.map((message, index) => {
+                                        const sessionData = JSON.parse(sessionStorage.getItem('userList'));
                                         const matchedUser = data.find(dbUser => dbUser.username === message.name);
+                                        const sessionUser = Array.isArray(sessionData) ? sessionData.find(sessionUser => sessionUser.name === message.name) : null;
                                         let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
 
-                                        if (matchedUser) {
+                                        if (sessionUser && sessionUser.avatar) {
+                                            avatarSrc = sessionUser.avatar;
+                                        } else if (matchedUser) {
                                             if (matchedUser.avatar && matchedUser.avatar.length > 0) {
                                                 avatarSrc = matchedUser.avatar;
                                             } else if (matchedUser.gender === 'male') {
@@ -1114,34 +1289,23 @@ export default function ChatRoom() {
                                         }
 
                                         return (
-                                            <div key={index}
-                                                 className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`}
-                                                 onMouseEnter={() => setHoveredMessage(index)}
-                                                 onMouseLeave={() => setHoveredMessage(null)}>
-
-
+                                            <div key={index} className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`} onMouseEnter={() => setHoveredMessage(index)} onMouseLeave={() => setHoveredMessage(null)}>
                                                 {searchType === 'room' && message.name !== username && (
                                                     <span className="sender">{message.name} </span>
                                                 )}
                                                 <div className="img_cont_msg">
-                                                    <img
-                                                        src={avatarSrc}
-                                                        alt="avatar"
-                                                        className="rounded-circle user_img_msg"
-                                                    />
+                                                    <img src={avatarSrc} alt="avatar"
+                                                         className="rounded-circle user_img_msg"/>
+                                                    <span className="online_icon"></span>
                                                 </div>
-                                                <div
-                                                    className={`msg_cotainer${message.name === username ? '_send' : ''}`}>
+                                                <div className={`msg_cotainer${message.name === username ? '_send' : ''}`}>
                                                     <div className="message-content">
                                                         {renderMessageContent(message)}
-
-                                                        <span
-                                                            className={`msg_time${message.name === username ? '_send' : ''}`}>
-                                                                 {renderDateTime(message.createAt)}
-                                                        </span>
+                                                        <span className={`msg_time${message.name === username ? '_send' : ''}`}>
+                            {renderDateTime(message.createAt)}
+                        </span>
                                                         {hoveredMessage === index && (
-                                                            <div
-                                                                className={`message-icons ${message.name === username ? 'left' : 'right'}`}>
+                                                            <div className={`message-icons ${message.name === username ? 'left' : 'right'}`}>
                                                                 <i className="fas fa-trash"
                                                                    onClick={() => handleDeleteMessage(message.id)}></i>
                                                                 <i className="fas fa-reply"
@@ -1151,14 +1315,7 @@ export default function ChatRoom() {
                                                             </div>
                                                         )}
                                                     </div>
-                                                    {/*>>>>>>> main*/}
                                                 </div>
-                                                {/*<div className={`message-icons ${message.name === username  ? 'right' : 'left'}`}>*/}
-                                                {/*    <i className="fas fa-trash"*/}
-                                                {/*       onClick={() => handleDeleteMessage(index)}></i>*/}
-                                                {/*    <i className="fas fa-reply"*/}
-                                                {/*       onClick={() => handleReplyMessage(message)}></i>*/}
-                                                {/*</div>*/}
                                             </div>
                                         );
                                     })}
@@ -1262,9 +1419,9 @@ export default function ChatRoom() {
                     <MDBModalContent>
                         <MDBModalHeader>
                             <MDBModalTitle>Change Avatar</MDBModalTitle>
-                            <MDBBtn className="btn-close" color="none" onClick={() => setChangeAvatarModal(false)}/>
+                            <MDBBtn className="btn-close" color="none" onClick={() => setChangeAvatarModal(false)} />
                         </MDBModalHeader>
-                        <MDBTabs className="mb-3" id="tabchangeava" style={{marginBottom: 0, marginLeft: 0}}>
+                        <MDBTabs className="mb-3" style={{marginBottom:0}}>
                             <MDBTabsItem>
                                 <MDBTabsLink onClick={() => setActiveTab('user')} active={activeTab === 'user'}>
                                     User
@@ -1278,23 +1435,22 @@ export default function ChatRoom() {
                         </MDBTabs>
                         <MDBTabsContent>
                             <MDBTabsPane show={activeTab === 'user'}>
-                                <MDBInput style={{backgroundColor: "white"}}
+                                <MDBInput style={{backgroundColor:"white"}}
                                           type="text"
-                                          value={username}
+                                          value={displayName}
                                           label="Default Input"
                                           disabled
-
                                 />
-                                <br/>
+                                <br />
                                 <input
                                     type="file"
                                     id="file"
-                                    style={{display: "none"}}
-                                    onChange={handleAvatar}
+                                    style={{ display: "none" }}
+                                    onChange={handleAvatarChange}
                                 />
-                                <label htmlFor="file" className="LabelUpload" style={{backgroundColor: "white"}}>
+                                <label htmlFor="file" className="LabelUpload" style={{backgroundColor:"white"}}>
                                     <div className="img_cont_msg">
-                                        <img src={avatar.url || ava} alt="" className="rounded-circle user_img_msg"/>
+                                        <img src={avatar.url || 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png'} alt="" className="rounded-circle user_img_msg" />
                                     </div>
                                     <span id="UploadImg">Upload an image</span>
                                 </label>
@@ -1305,17 +1461,25 @@ export default function ChatRoom() {
                                     value={roomNames}
                                     onChange={(e) => setRoomNames(e.target.value)}
                                     label="Room Name"
+                                    list="datalistOption"
                                 />
-                                <br />
+                                <datalist id="datalistOption">
+                                    {userList
+                                        .filter(user => user.type === 1)
+                                        .map((user, index) => (
+                                            <option key={index} value={user.name} />
+                                        ))}
+                                </datalist>
+                                <br/>
                                 <input
                                     type="file"
-                                    id="file"
-                                    style={{ display: "none" }}
-                                    onChange={handleAvatar}
+                                    id="fileRoom"
+                                    style={{display: "none"}}
+                                    onChange={handleRoomAvatarChange}
                                 />
-                                <label htmlFor="file" className="LabelUpload" style={{backgroundColor:"white"}}>
+                                <label htmlFor="fileRoom" className="LabelUpload" style={{backgroundColor: "white"}}>
                                     <div className="img_cont_msg">
-                                        <img src={avatar.url || ava} alt="" className="rounded-circle user_img_msg" />
+                                        <img src={roomAvatar.url || 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png'} alt="" className="rounded-circle user_img_msg"/>
                                     </div>
                                     <span id="UploadImg">Upload an image</span>
                                 </label>
@@ -1325,8 +1489,8 @@ export default function ChatRoom() {
                             <MDBBtn color="secondary" onClick={() => setChangeAvatarModal(false)}>
                                 Close
                             </MDBBtn>
-                            <MDBBtn onClick={activeTab === 'user' ? handleJoinRoom : handleCreateRoom}>
-                                {activeTab === 'user' ? 'Join' : 'Create'}
+                            <MDBBtn onClick={activeTab === 'user' ? updateUserAvatar : updateRoomAvatar}>
+                                Update Avatar
                             </MDBBtn>
                         </MDBModalFooter>
                     </MDBModalContent>
