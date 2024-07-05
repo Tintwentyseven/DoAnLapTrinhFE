@@ -30,6 +30,7 @@ import ava from "../../img/addAvatar.png";
 import upload from "../../componemts/ChatRoom/upload";
 
 import { auth, db } from "../../firebase";
+import EmojiPicker from 'emoji-picker-react';
 
 
 export default function ChatRoom() {
@@ -911,12 +912,51 @@ export default function ChatRoom() {
         // Xử lý trả lời tin nhắn
         console.log('Reply to message:', message);
     };
-    const handleEmojiClick = (messageId) => {
-        // Mở một danh sách các biểu tượng cảm xúc cho người dùng chọn
-        // Sau khi người dùng chọn, gửi biểu tượng cảm xúc kèm theo tin nhắn
+    // const handleEmojiClick = (messageId) => {
+    //     // Mở một danh sách các biểu tượng cảm xúc cho người dùng chọn
+    //     // Sau khi người dùng chọn, gửi biểu tượng cảm xúc kèm theo tin nhắn
+    //     console.log(`Thả biểu tượng cảm xúc cho tin nhắn có ID: ${messageId}`);
+    //     // Thực hiện logic thêm biểu tượng cảm xúc vào tin nhắn
+    // };
+    // const [showEmojiPicker, setShowEmojiPicker] = useState(false); // State để điều khiển hiển thị Emoji Picker
+    //
+    // const toggleEmojiPicker = () => {
+    //     setShowEmojiPicker(!showEmojiPicker);
+    // };
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false); // State để điều khiển hiển thị Emoji Picker
+    const [emojiPickerMessageId, setEmojiPickerMessageId] = useState(null); // Trạng thái để lưu trữ ID tin nhắn hiện tại
+
+
+    // Thêm hàm xử lý click vào biểu tượng cảm xúc
+    const handleEmojiClick = (messageId) => { // Thay đổi
+        setEmojiPickerMessageId(messageId);
+        setShowEmojiPicker(!showEmojiPicker);
         console.log(`Thả biểu tượng cảm xúc cho tin nhắn có ID: ${messageId}`);
-        // Thực hiện logic thêm biểu tượng cảm xúc vào tin nhắn
     };
+
+    // Thêm hàm xử lý chọn biểu tượng cảm xúc
+    const handleEmojiSelect = (emojiData, event) => {
+        console.log("emojiData: "+emojiData.emoji);
+        if (emojiPickerMessageId !== null) {
+            const updatedMessages = messages.map(message => {
+                if (message.id === emojiPickerMessageId) {
+                    // Kiểm tra và khởi tạo mảng reactions nếu chưa tồn tại
+                    message.reactions = message.reactions || [];
+
+                    // Thêm emoji vào mảng reactions
+                    message.reactions.push(emojiData.native || emojiData.emoji || emojiData.unicode);
+                }
+                return message;
+            });
+            setMessages(updatedMessages);
+        }
+        setShowEmojiPicker(false);
+    };
+
+
+
+
+
 
 
 
@@ -1099,27 +1139,7 @@ export default function ChatRoom() {
                                 <div className="card-body msg_card_body"
                                      ref={messagesEndRef}
                                      style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
-{/*<<<<<<< HEAD*/}
-{/*                                    {messages.map((message, index) => (*/}
-{/*                                        <div key={index}*/}
-{/*                                             className={`d-flex mb-4 ${(  message.name === username ) ? 'justify-content-end' : 'justify-content-start'}`}>*/}
 
-{/*                                            {searchType === 'room' && (lastMessage.name!==username || message.name !== username) && (*/}
-{/*                                                <span className="sender">{message.name} </span>*/}
-{/*                                            )}*/}
-{/*                                            <div className="img_cont_msg">*/}
-{/*                                                <img*/}
-
-{/*                                                    src="https://therichpost.com/wp-content/uploads/2020/06/avatar2.png"*/}
-{/*                                                    className="rounded-circle user_img_msg"/>*/}
-{/*                                            </div>*/}
-{/*                                            <div*/}
-{/*                                                className={`msg_cotainer${( message.name === username) ? '_send' : ''}`}>*/}
-{/*                                                <div className="message-content">*/}
-{/*                                                    { message.mes }*/}
-{/*                                                    <span*/}
-{/*                                                        className={`msg_time${(lastMessage.name===username ||  message.name === username) ? '_send' : ''}`}>{ renderDateTime( message.createAt)}</span>*/}
-{/*=======*/}
                                     {messages.map((message, index) => {
                                         const matchedUser = data.find(dbUser => dbUser.username === message.name);
                                         let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
@@ -1160,15 +1180,25 @@ export default function ChatRoom() {
                                                             className={`msg_time${message.name === username ? '_send' : ''}`}>
                                                                  {renderDateTime(message.createAt)}
                                                         </span>
+                                                        {/* Hiển thị các biểu tượng cảm xúc */}
+                                                        {message.reactions && (
+                                                            <div className="message-reactions">
+                                                                {message.reactions.map((reaction, reactionIndex) => (
+                                                                    <span key={reactionIndex}>{reaction}</span>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                         {hoveredMessage === index && (
-                                                            <div
-                                                                className={`message-icons ${message.name === username ? 'left' : 'right'}`}>
-                                                                <i className="fas fa-trash"
-                                                                   onClick={() => handleDeleteMessage(message.id)}></i>
-                                                                <i className="fas fa-reply"
-                                                                   onClick={() => handleReplyMessage(message)}></i>
+                                                            <div className={`message-icons ${message.name === username ? 'left' : 'right'}`}>
+                                                                <i className="fas fa-trash" onClick={() => handleDeleteMessage(message.id)}></i>
+                                                                <i className="fas fa-reply" onClick={() => handleReplyMessage(message)}></i>
                                                                 <i className="fas fa-smile"
                                                                    onClick={() => handleEmojiClick(message.id)}></i>
+                                                            </div>
+                                                        )}
+                                                        {showEmojiPicker && emojiPickerMessageId === message.id && (
+                                                            <div className="emoji-picker-container">
+                                                                <EmojiPicker onEmojiClick={(emojiData, event) => handleEmojiSelect(emojiData, event)} />
                                                             </div>
                                                         )}
                                                     </div>
