@@ -28,51 +28,52 @@ import upload from "../../componemts/ChatRoom/upload";
 
 import { auth, db } from "../../firebase";
 
-export default function ChatRoom() {
-    const [basicModal, setBasicModal] = useState(false);
-    const navigate = useNavigate();
-    const [isOpen, setIsOpen] = useState(false);
-    const socket = useWebSocket();
+    export default function ChatRoom() {
+        const [basicModal, setBasicModal] = useState(false);
+        const navigate = useNavigate();
+        const [isOpen, setIsOpen] = useState(false);
+        const socket = useWebSocket();
 
-    const sessionData = JSON.parse(sessionStorage.getItem('sessionData')) || {};
-    const { username, code } = sessionData;
-    const initialUserList = JSON.parse(sessionStorage.getItem('userList')) || [];
+        const sessionData = JSON.parse(sessionStorage.getItem('sessionData')) || {};
+        const { username, code } = sessionData;
+        const initialUserList = JSON.parse(sessionStorage.getItem('userList')) || [];
 
-    const toggleOpen = () => setBasicModal(!basicModal);
-    const toggleMenu = () => setIsOpen(!isOpen);
-    const [activeTab, setActiveTab] = useState('user');
+        const toggleOpen = () => setBasicModal(!basicModal);
+        const toggleMenu = () => setIsOpen(!isOpen);
+        const [activeTab, setActiveTab] = useState('user');
 
-    const [searchInput, setSearchInput] = useState('');
-    const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
-    const [userList, setUserList] = useState(initialUserList);
-    const [roomOwner, setRoomOwner] = useState('');
-    const [messageContent, setMessageContent] = useState('');
-    const [displayName, setDisplayName] = useState(username);
-    const [searchType, setSearchType] = useState('');
-    const [messages, setMessages] = useState([]);
-    const [darkMode, setDarkMode] = useState(false);
-    const [roomNames, setRoomNames] = useState('');
-    const messagesEndRef = useRef(null);
-    const [scrollToBottom, setScrollToBottom] = useState(false); // State để xác định cuộn xuống dưới cùng
-    const [userAvatar, setUserAvatar] = useState('https://therichpost.com/wp-content/uploads/2020/06/avatar2.png');
-    const [data, setData] = useState([]);
-    const [rooms, setRooms] = useState([])
-    const [roomAvatar, setRoomAvatar] = useState('');
-
-
-
-
-    const [avatar, setAvatar] = useState({
-
-        file: null,
-
-        url: "",
-
-    });
+        const [searchInput, setSearchInput] = useState('');
+        const [isCheckboxChecked, setIsCheckboxChecked] = useState(false);
+        const [userList, setUserList] = useState(initialUserList);
+        const [roomOwner, setRoomOwner] = useState('');
+        const [messageContent, setMessageContent] = useState('');
+        const [displayName, setDisplayName] = useState(username);
+        const [searchType, setSearchType] = useState('');
+        const [messages, setMessages] = useState([]);
+        const [darkMode, setDarkMode] = useState(false);
+        const [roomNames, setRoomNames] = useState('');
+        const messagesEndRef = useRef(null);
+        const [scrollToBottom, setScrollToBottom] = useState(false); // State để xác định cuộn xuống dưới cùng
+        const [userAvatar, setUserAvatar] = useState('https://therichpost.com/wp-content/uploads/2020/06/avatar2.png');
+        const [data, setData] = useState([]);
+        const [rooms, setRooms] = useState([])
+        const [roomAvatar, setRoomAvatar] = useState('');
 
 
 
-    const handleAvatar = (e) => {
+
+        const [avatar, setAvatar] = useState({
+
+            file: null,
+
+            url: "",
+
+        });
+
+
+        const [userStatuses, setUserStatuses] = useState({});
+
+        const handleAvatar = (e) => {
 
         if (e.target.files[0]) {
 
@@ -88,8 +89,182 @@ export default function ChatRoom() {
 
     };
 
+        // Hàm kiểm tra trạng thái user
+        // const checkUserStatus = (usernameToCheck) => {
+        //     if (!socket || socket.readyState !== WebSocket.OPEN) {
+        //         console.error('WebSocket connection is not open');
+        //         return;
+        //     }
+        //
+        //     const requestData = {
+        //         action: "onchat",
+        //         data: {
+        //             event: "CHECK_USER",
+        //             data: {
+        //                 user: usernameToCheck
+        //             }
+        //         }
+        //     };
+        //
+        //     console.log('Sent request:', requestData); // In ra yêu cầu để kiểm tra
+        //     socket.send(JSON.stringify(requestData));
+        // };
+        //
+        // // Xử lý khi nhận được tin nhắn kiểm tra trạng thái người dùng
+        // const handleCheckUserMessage = (event) => {
+        //     const response = JSON.parse(event.data);
+        //     console.log('Received response:', response); // In ra toàn bộ phản hồi để kiểm tra
+        //
+        //     if (response.event === "CHECK_USER") {
+        //         const isOnline = response.data.status;
+        //
+        //         // Tìm người dùng đang chờ phản hồi và cập nhật trạng thái
+        //         const userIndex = userList.findIndex(user => user.pending);
+        //         if (userIndex !== -1) {
+        //             const usernameToCheck = userList[userIndex].name;
+        //             userList[userIndex].status = isOnline; // Cập nhật trạng thái trong userList
+        //             userList[userIndex].pending = false; // Đánh dấu là đã nhận phản hồi
+        //
+        //             console.log('response.data:', response.data);
+        //             console.log('usernameToCheck:', usernameToCheck);
+        //
+        //             setUserStatuses(prevStatuses => ({
+        //                 ...prevStatuses,
+        //                 [usernameToCheck]: isOnline
+        //             }));
+        //
+        //             if (isOnline) {
+        //                 console.log(`${usernameToCheck} is online`);
+        //             } else {
+        //                 console.log(`${usernameToCheck} is offline`);
+        //             }
+        //         }
+        //     } else if (response.event === "ACTION_NOT_EXIST") {
+        //         console.error('Received an unknown action:', response); // Thông báo lỗi nếu sự kiện không tồn tại
+        //     }
+        // };
+        //
+        // useEffect(() => {
+        //     if (!socket) return;
+        //
+        //     console.log('userList:', userList); // Log để kiểm tra dữ liệu userList
+        //
+        //     if (userList.length > 0) {
+        //         // Đánh dấu tất cả người dùng là đang chờ phản hồi nếu chưa đánh dấu
+        //         userList.forEach(user => {
+        //             if (!user.pending) {
+        //                 user.pending = true;
+        //                 console.log('Checking user:', user.name); // Log để kiểm tra mỗi lần kiểm tra user
+        //                 checkUserStatus(user.name);
+        //             }
+        //         });
+        //
+        //         socket.addEventListener('message', handleCheckUserMessage);
+        //
+        //         return () => {
+        //             // Cleanup khi component unmount
+        //             socket.removeEventListener('message', handleCheckUserMessage);
+        //         };
+        //     }
+        // }, [socket, userList]);
 
-    // Sử dụng useEffect để cuộn xuống dưới cùng khi có tin nhắn mới
+
+        const checkUserStatus = (usernameToCheck) => {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                console.error('WebSocket connection is not open');
+                return;
+            }
+
+            const requestData = {
+                action: "onchat",
+                data: {
+                    event: "CHECK_USER",
+                    data: {
+                        user: usernameToCheck
+                    }
+                }
+            };
+
+            console.log('Sent request:', requestData); // In ra yêu cầu để kiểm tra
+            socket.send(JSON.stringify(requestData));
+        };
+
+// Xử lý khi nhận được tin nhắn kiểm tra trạng thái người dùng
+        const handleCheckUserMessage = (event) => {
+            const response = JSON.parse(event.data);
+            console.log('Received response:', response); // In ra toàn bộ phản hồi để kiểm tra
+
+            if (response.event === "CHECK_USER") {
+                const isOnline = response.data.status;
+
+                // Tìm người dùng đang chờ phản hồi và cập nhật trạng thái
+                const userIndex = userList.findIndex(user => user.pending);
+                if (userIndex !== -1) {
+                    const usernameToCheck = userList[userIndex].name;
+                    userList[userIndex].status = isOnline; // Cập nhật trạng thái trong userList
+                    userList[userIndex].pending = false; // Đánh dấu là đã nhận phản hồi
+
+                    console.log('response.data:', response.data);
+                    console.log('usernameToCheck:', usernameToCheck);
+
+                    setUserStatuses(prevStatuses => ({
+                        ...prevStatuses,
+                        [usernameToCheck]: isOnline
+                    }));
+
+                    if (isOnline) {
+                        console.log(`${usernameToCheck} is online`);
+                        // If any user is online, mark all rooms as online
+                        userList.forEach(user => {
+                            if (user.type === 1) { // type === 1 indicates a room
+                                setUserStatuses(prevStatuses => ({
+                                    ...prevStatuses,
+                                    [user.name]: true
+                                }));
+                            }
+                        });
+                    } else {
+                        console.log(`${usernameToCheck} is offline`);
+                    }
+                }
+            } else if (response.event === "ACTION_NOT_EXIST") {
+                console.error('Received an unknown action:', response); // Thông báo lỗi nếu sự kiện không tồn tại
+            }
+        };
+
+        useEffect(() => {
+            if (!socket) return;
+
+            console.log('userList:', userList); // Log để kiểm tra dữ liệu userList
+
+            if (userList.length > 0) {
+                // Đánh dấu tất cả người dùng là đang chờ phản hồi nếu chưa đánh dấu
+                userList.forEach(user => {
+                    if (user.type === 0 && !user.pending) { // Only check users (type === 0)
+                        user.pending = true;
+                        console.log('Checking user:', user.name); // Log để kiểm tra mỗi lần kiểm tra user
+                        checkUserStatus(user.name);
+                    } else if (user.type === 1) { // Mark all rooms as online initially
+                        setUserStatuses(prevStatuses => ({
+                            ...prevStatuses,
+                            [user.name]: true
+                        }));
+                    }
+                });
+
+                socket.addEventListener('message', handleCheckUserMessage);
+
+                return () => {
+                    // Cleanup khi component unmount
+                    socket.removeEventListener('message', handleCheckUserMessage);
+                };
+            }
+        }, [socket, userList]);
+
+
+
+
+        // Sử dụng useEffect để cuộn xuống dưới cùng khi có tin nhắn mới
     useEffect(() => {
         if (scrollToBottom) {
             const msgCardBody = document.querySelector('.msg_card_body');
@@ -620,6 +795,7 @@ export default function ChatRoom() {
         };
 
         socket.send(JSON.stringify(requestData));
+        checkUserStatus(name);
 
         socket.onmessage = (event) => {
             const response = JSON.parse(event.data);
@@ -876,10 +1052,12 @@ export default function ChatRoom() {
                                                                     alt="avatar"
                                                                     className="rounded-circle user_img"
                                                                 />
-                                                                <span className="online_icon"></span>
+                                                                {/*<span className="online_icon"></span>*/}
+                                                                <span
+                                                                    className={`online_icon ${userStatuses[user.name] ? 'online' : 'offline'}`}></span>
                                                             </div>
                                                             <div className="user_info">
-                                                                <span>{user.name}</span>
+                                                            <span>{user.name}</span>
                                                                 <p className="typechat">Type: {user.type}</p>
                                                                 <p>Last Action: {renderDateTime(user.actionTime)}</p>
                                                             </div>
@@ -904,10 +1082,12 @@ export default function ChatRoom() {
                                                 src={userAvatar}
                                                 className="rounded-circle user_img"
                                             />
-                                            <span className="online_icon"></span>
+                                            {/*<span className="online_icon"></span>*/}
+                                            <span
+                                                className={`online_icon ${userStatuses[displayName] ? 'online' : 'offline'}`}></span>
                                         </div>
                                         <div className="user_info">
-                                            <span>{displayName}</span>
+                                        <span>{displayName}</span>
                                             {searchType === 'room' && messageContent && <p>{messageContent}</p>}
                                         </div>
 
