@@ -24,6 +24,8 @@ import { useWebSocket } from "../WebSocket/WebSocketContext";
 import {fromByteArray, toByteArray } from 'base64-js';
 
 import { getFirestore, collection, getDocs, doc, setDoc, query, where, addDoc} from "firebase/firestore";
+import { getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+
 
 import ava from "../../img/addAvatar.png";
 
@@ -595,6 +597,15 @@ export default function ChatRoom() {
     };
 
 
+    // Hàm để lấy tất cả phản ứng từ Firestore
+    const fetchReactions = async () => {
+        const querySnapshot = await getDocs(collection(db, "messages"));
+        const reactionsMap = {};
+        querySnapshot.forEach((doc) => {
+            reactionsMap[doc.id] = doc.data().reactions;
+        });
+        return reactionsMap;
+    };
 
     const handleLiClick = (name, type, roomOwner) => {
         console.log("toi da vao hien thi");
@@ -647,7 +658,8 @@ export default function ChatRoom() {
 
         socket.send(JSON.stringify(requestData));
 
-        socket.onmessage = (event) => {
+
+        socket.onmessage =  async (event) => {
             const response = JSON.parse(event.data);
             if (response.status === "success") {
                 let fetchedMessages = [];
@@ -656,6 +668,32 @@ export default function ChatRoom() {
                 } else if (type === 1 && response.data && Array.isArray(response.data.chatData)) {
                     fetchedMessages = response.data.chatData.reverse();
                 }
+                // Lấy dữ liệu reactions từ localStorage
+                // const storedReactions = JSON.parse(localStorage.getItem('reactions')) || {};
+                //
+                // // Cập nhật messages với reactions từ localStorage
+                // const updatedMessages = fetchedMessages.map(message => {
+                //     if (storedReactions[message.id]) {
+                //         message.reactions = storedReactions[message.id];
+                //     } else {
+                //         message.reactions = [];
+                //     }
+                //     return message;
+                // });
+                // setMessages(updatedMessages);
+                // console.log("danh sach: "+fetchedMessages);
+
+                // Lấy phản ứng từ Firestore
+                const reactions = await fetchReactions();
+
+                // Kết hợp phản ứng vào tin nhắn
+                const updatedMessages = fetchedMessages.map(message => {
+                    message.reactions = reactions[message.id] || [];
+                    return message;
+                });
+
+                setMessages(updatedMessages);
+
 // <<<<<<< HEAD
                 let lastIndex = fetchedMessages.length - 1;
                 const lastmessage = fetchedMessages[lastIndex];
@@ -681,8 +719,8 @@ export default function ChatRoom() {
                 });
 
 
-                // Cập nhật lại danh sách tin nhắn
-                setMessages([...fetchedMessages]);
+                // // Cập nhật lại danh sách tin nhắn
+                // setMessages([...fetchedMessages]);
 
 
                 // setMessages(fetchedMessages);
@@ -935,22 +973,77 @@ export default function ChatRoom() {
     };
 
     // Thêm hàm xử lý chọn biểu tượng cảm xúc
-    const handleEmojiSelect = (emojiData, event) => {
-        console.log("emojiData: "+emojiData.emoji);
+    // const handleEmojiSelect = (emojiData, event) => {
+    //     console.log("emojiData: "+emojiData.emoji);
+    //     if (emojiPickerMessageId !== null) {
+    //         const updatedMessages = messages.map(message => {
+    //             if (message.id === emojiPickerMessageId) {
+    //                 // Kiểm tra và khởi tạo mảng reactions nếu chưa tồn tại
+    //                 message.reactions = message.reactions || [];
+    //
+    //                 // Thêm emoji vào mảng reactions
+    //                 message.reactions.push(emojiData.native || emojiData.emoji || emojiData.unicode);
+    //             }
+    //             return message;
+    //         });
+    //         setMessages(updatedMessages);
+    //     }
+    //     setShowEmojiPicker(false);
+    // };
+
+    // //sua
+    // const handleEmojiSelect = (emojiData, event) => {
+    //     if (emojiPickerMessageId !== null) {
+    //         const updatedMessages = messages.map(message => {
+    //             if (message.id === emojiPickerMessageId) {
+    //                 message.reactions = message.reactions || [];
+    //                 message.reactions.push(emojiData.native || emojiData.emoji || emojiData.unicode);
+    //
+    //                 // Lưu reactions vào localStorage
+    //                 const storedReactions = JSON.parse(localStorage.getItem('reactions')) || {};
+    //                 storedReactions[message.id] = message.reactions;
+    //                 localStorage.setItem('reactions', JSON.stringify(storedReactions));
+    //             }
+    //             return message;
+    //         });
+    //         setMessages(updatedMessages);
+    //     }
+    //     setShowEmojiPicker(false);
+    // };
+// Thêm phản ứng vào tin nhắn và lưu trữ vào Firestore
+    const handleEmojiSelect = async (emojiData, event) => {
         if (emojiPickerMessageId !== null) {
+            const reaction = emojiData.native || emojiData.emoji || emojiData.unicode;
+
+            // Tìm tin nhắn cần cập nhật
             const updatedMessages = messages.map(message => {
                 if (message.id === emojiPickerMessageId) {
-                    // Kiểm tra và khởi tạo mảng reactions nếu chưa tồn tại
+                    // Khởi tạo mảng phản ứng nếu chưa có
                     message.reactions = message.reactions || [];
-
-                    // Thêm emoji vào mảng reactions
-                    message.reactions.push(emojiData.native || emojiData.emoji || emojiData.unicode);
+                    // Thêm phản ứng vào tin nhắn
+                    message.reactions.push(reaction);
                 }
                 return message;
             });
             setMessages(updatedMessages);
+
+            // Lưu phản ứng vào Firestore
+            const messageRef = doc(db, "messages", String(emojiPickerMessageId));
+            const messageDoc = await getDoc(messageRef);
+
+            if (messageDoc.exists()) {
+                await updateDoc(messageRef, {
+                    reactions: arrayUnion(reaction)
+                });
+            } else {
+                await setDoc(messageRef, {
+                    id: emojiPickerMessageId,
+                    reactions: [reaction]
+                });
+            }
+
+            setShowEmojiPicker(false);
         }
-        setShowEmojiPicker(false);
     };
 
 
@@ -1201,6 +1294,7 @@ export default function ChatRoom() {
                                                                 <EmojiPicker onEmojiClick={(emojiData, event) => handleEmojiSelect(emojiData, event)} />
                                                             </div>
                                                         )}
+
                                                     </div>
                                                     {/*>>>>>>> main*/}
                                                 </div>
