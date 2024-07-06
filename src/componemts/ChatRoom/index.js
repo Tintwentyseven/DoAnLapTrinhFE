@@ -77,7 +77,8 @@ export default function ChatRoom() {
     const [data, setData] = useState([]);
     const [rooms, setRooms] = useState([])
     const [roomAvatar, setRoomAvatar] = useState('');
-    // const [userStatuses, setUserStatuses] = useState({});
+
+
 
 
     const [avatarUrls, setAvatarUrls] = useState({});
@@ -205,11 +206,14 @@ export default function ChatRoom() {
         }, [socket, userList]);
 
 
-
     useEffect(() => {
         usernameRef.current = username;
     }, [username]);
     // Sử dụng useEffect để cuộn xuống dưới cùng khi có tin nhắn mới
+
+
+    // Sử dụng useEffect để cuộn xuống dưới cùng khi có tin nhắn mới
+
 
     useEffect(() => {
         if (scrollToBottom) {
