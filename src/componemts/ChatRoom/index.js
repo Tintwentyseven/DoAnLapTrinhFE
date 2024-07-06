@@ -31,7 +31,6 @@ import upload from "../../componemts/ChatRoom/upload";
 
 import { auth, db } from "../../firebase";
 
-
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 
@@ -78,7 +77,8 @@ export default function ChatRoom() {
     const [data, setData] = useState([]);
     const [rooms, setRooms] = useState([])
     const [roomAvatar, setRoomAvatar] = useState('');
-    const [userStatuses, setUserStatuses] = useState({});
+
+
 
 
     const [avatarUrls, setAvatarUrls] = useState({});
@@ -113,85 +113,6 @@ export default function ChatRoom() {
     };
 
         // Hàm kiểm tra trạng thái user
-        // const checkUserStatus = (usernameToCheck) => {
-        //     if (!socket || socket.readyState !== WebSocket.OPEN) {
-        //         console.error('WebSocket connection is not open');
-        //         return;
-        //     }
-        //
-        //     const requestData = {
-        //         action: "onchat",
-        //         data: {
-        //             event: "CHECK_USER",
-        //             data: {
-        //                 user: usernameToCheck
-        //             }
-        //         }
-        //     };
-        //
-        //     console.log('Sent request:', requestData); // In ra yêu cầu để kiểm tra
-        //     socket.send(JSON.stringify(requestData));
-        // };
-        //
-        // // Xử lý khi nhận được tin nhắn kiểm tra trạng thái người dùng
-        // const handleCheckUserMessage = (event) => {
-        //     const response = JSON.parse(event.data);
-        //     console.log('Received response:', response); // In ra toàn bộ phản hồi để kiểm tra
-        //
-        //     if (response.event === "CHECK_USER") {
-        //         const isOnline = response.data.status;
-        //
-        //         // Tìm người dùng đang chờ phản hồi và cập nhật trạng thái
-        //         const userIndex = userList.findIndex(user => user.pending);
-        //         if (userIndex !== -1) {
-        //             const usernameToCheck = userList[userIndex].name;
-        //             userList[userIndex].status = isOnline; // Cập nhật trạng thái trong userList
-        //             userList[userIndex].pending = false; // Đánh dấu là đã nhận phản hồi
-        //
-        //             console.log('response.data:', response.data);
-        //             console.log('usernameToCheck:', usernameToCheck);
-        //
-        //             setUserStatuses(prevStatuses => ({
-        //                 ...prevStatuses,
-        //                 [usernameToCheck]: isOnline
-        //             }));
-        //
-        //             if (isOnline) {
-        //                 console.log(`${usernameToCheck} is online`);
-        //             } else {
-        //                 console.log(`${usernameToCheck} is offline`);
-        //             }
-        //         }
-        //     } else if (response.event === "ACTION_NOT_EXIST") {
-        //         console.error('Received an unknown action:', response); // Thông báo lỗi nếu sự kiện không tồn tại
-        //     }
-        // };
-        //
-        // useEffect(() => {
-        //     if (!socket) return;
-        //
-        //     console.log('userList:', userList); // Log để kiểm tra dữ liệu userList
-        //
-        //     if (userList.length > 0) {
-        //         // Đánh dấu tất cả người dùng là đang chờ phản hồi nếu chưa đánh dấu
-        //         userList.forEach(user => {
-        //             if (!user.pending) {
-        //                 user.pending = true;
-        //                 console.log('Checking user:', user.name); // Log để kiểm tra mỗi lần kiểm tra user
-        //                 checkUserStatus(user.name);
-        //             }
-        //         });
-        //
-        //         socket.addEventListener('message', handleCheckUserMessage);
-        //
-        //         return () => {
-        //             // Cleanup khi component unmount
-        //             socket.removeEventListener('message', handleCheckUserMessage);
-        //         };
-        //     }
-        // }, [socket, userList]);
-
-
         const checkUserStatus = (usernameToCheck) => {
             if (!socket || socket.readyState !== WebSocket.OPEN) {
                 console.error('WebSocket connection is not open');
@@ -212,7 +133,7 @@ export default function ChatRoom() {
             socket.send(JSON.stringify(requestData));
         };
 
-// Xử lý khi nhận được tin nhắn kiểm tra trạng thái người dùng
+        // Xử lý khi nhận được tin nhắn kiểm tra trạng thái người dùng
         const handleCheckUserMessage = (event) => {
             const response = JSON.parse(event.data);
             console.log('Received response:', response); // In ra toàn bộ phản hồi để kiểm tra
@@ -237,7 +158,7 @@ export default function ChatRoom() {
 
                     if (isOnline) {
                         console.log(`${usernameToCheck} is online`);
-                        // If any user is online, mark all rooms as online
+                        // Nếu bất kỳ người dùng nào trực tuyến, đánh dấu tất cả phòng là trực tuyến
                         userList.forEach(user => {
                             if (user.type === 1) { // type === 1 indicates a room
                                 setUserStatuses(prevStatuses => ({
@@ -289,6 +210,10 @@ export default function ChatRoom() {
         usernameRef.current = username;
     }, [username]);
     // Sử dụng useEffect để cuộn xuống dưới cùng khi có tin nhắn mới
+
+
+    // Sử dụng useEffect để cuộn xuống dưới cùng khi có tin nhắn mới
+
 
     useEffect(() => {
         if (scrollToBottom) {
@@ -850,7 +775,6 @@ export default function ChatRoom() {
         };
 
         socket.send(JSON.stringify(requestData));
-        checkUserStatus(name);
 
         socket.onmessage = (event) => {
             const response = JSON.parse(event.data);
@@ -980,6 +904,8 @@ export default function ChatRoom() {
             sendChat();
         }
     };
+
+
     // End of sendChat function
 // =======
     // join room
@@ -1363,7 +1289,7 @@ export default function ChatRoom() {
                                                         }
                                                     }
 
-                                                }
+
 
                                                 return (
                                                     <li key={index}
