@@ -848,34 +848,109 @@ export default function ChatRoom() {
     const [shouldFetchMessages, setShouldFetchMessages] = useState(false);
 
 
+    // const sendChat = () => {
+    //     if (messageContentChat.trim() === '') return;
+    //     console.log('Message content:', messageContentChat);
+    //
+    //     // Encode message content
+    //     const messageBytes = new TextEncoder().encode(messageContentChat.trim());
+    //     const encodedMessage = fromByteArray(messageBytes);
+    //     const chatMessage = {
+    //
+    //         "action": "onchat",
+    //         "data": {
+    //             "event": "SEND_CHAT",
+    //             "data": {
+    //                 "type": "people",
+    //                 "to": displayName,
+    //                 "mes": encodedMessage
+    //             }
+    //
+    //         }
+    //     };
+    //
+    //     if (socket && socket.readyState === WebSocket.OPEN) {
+    //         setMessageContentChat(''); // Xóa nội dung tin nhắn sau khi gửi
+    //         setScrollToBottom(true); // Kích hoạt cuộn xuống dưới
+    //         console.log('Message object:', chatMessage);
+    //         socket.send(JSON.stringify(chatMessage));
+    //         setShouldFetchMessages(true); // Kích hoạt việc tải lại tin nhắn
+    //
+    //     } else {
+    //         console.error('WebSocket is not open. Unable to send message.');
+    //     }
+    // };
+    //
+    // useEffect(() => {
+    //     if (shouldFetchMessages) {
+    //         handleLiClick(displayName, 0, roomOwner);
+    //         setShouldFetchMessages(false); // Đặt lại để ngăn không gọi lại khi messages thay đổi
+    //     }
+    // }, [shouldFetchMessages]);
+    //
+    //
+    //
+    // const handleInputChange = (event) => {
+    //     setMessageContentChat(event.target.value);
+    // };
+    //
+    // const handleSendClick = () => {
+    //     sendChat();
+    // };
+    //
+    // const handleKeyDown = (event) => {
+    //     if (event.key === 'Enter') {
+    //         event.preventDefault();
+    //         sendChat();
+    //     }
+    // };
+
+
     const sendChat = () => {
         if (messageContentChat.trim() === '') return;
-        console.log('Message content:', messageContentChat);
 
         // Encode message content
         const messageBytes = new TextEncoder().encode(messageContentChat.trim());
         const encodedMessage = fromByteArray(messageBytes);
-        const chatMessage = {
 
-            "action": "onchat",
-            "data": {
-                "event": "SEND_CHAT",
-                "data": {
-                    "type": "people",
-                    "to": displayName,
-                    "mes": encodedMessage
+        // Determine if displayName is a room
+        const isRoom = userList.some(user => user.name === displayName && user.type === 1);
+
+        let chatMessage;
+        if (isRoom) {
+            console.log("Sending message to room:", displayName);
+            chatMessage = {
+                action: "onchat",
+                data: {
+                    event: "SEND_CHAT",
+                    data: {
+                        type: "room",
+                        to: displayName,
+                        mes: encodedMessage
+                    }
                 }
-
-            }
-        };
+            };
+        } else {
+            console.log("Sending message to user:", displayName);
+            chatMessage = {
+                action: "onchat",
+                data: {
+                    event: "SEND_CHAT",
+                    data: {
+                        type: "people",
+                        to: displayName,
+                        mes: encodedMessage
+                    }
+                }
+            };
+        }
 
         if (socket && socket.readyState === WebSocket.OPEN) {
-            setMessageContentChat(''); // Xóa nội dung tin nhắn sau khi gửi
-            setScrollToBottom(true); // Kích hoạt cuộn xuống dưới
+            setMessageContentChat(''); // Clear message content after sending
+            setScrollToBottom(true); // Scroll to bottom
             console.log('Message object:', chatMessage);
             socket.send(JSON.stringify(chatMessage));
-            setShouldFetchMessages(true); // Kích hoạt việc tải lại tin nhắn
-
+            setShouldFetchMessages(true); // Trigger fetching messages
         } else {
             console.error('WebSocket is not open. Unable to send message.');
         }
@@ -884,11 +959,9 @@ export default function ChatRoom() {
     useEffect(() => {
         if (shouldFetchMessages) {
             handleLiClick(displayName, 0, roomOwner);
-            setShouldFetchMessages(false); // Đặt lại để ngăn không gọi lại khi messages thay đổi
+            setShouldFetchMessages(false); // Reset to prevent re-calling when messages change
         }
     }, [shouldFetchMessages]);
-
-
 
     const handleInputChange = (event) => {
         setMessageContentChat(event.target.value);
@@ -904,6 +977,7 @@ export default function ChatRoom() {
             sendChat();
         }
     };
+
 
 
     // End of sendChat function
@@ -1288,6 +1362,7 @@ export default function ChatRoom() {
                                                             }
                                                         }
                                                     }
+
 
 
 
