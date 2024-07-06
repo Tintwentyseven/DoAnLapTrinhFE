@@ -42,7 +42,7 @@ export default function ChatRoom() {
 
     const sessionData = JSON.parse(sessionStorage.getItem('sessionData')) || {};
     const { username, code } = sessionData;
-// <<<<<<< HEAD
+
     const usernameRef = useRef(username);
     const initialUserList = JSON.parse(localStorage.getItem('userList')) || [];
 // =======
@@ -77,7 +77,8 @@ export default function ChatRoom() {
     const [data, setData] = useState([]);
     const [rooms, setRooms] = useState([])
     const [roomAvatar, setRoomAvatar] = useState('');
-    const [userStatuses, setUserStatuses] = useState({});
+    // const [userStatuses, setUserStatuses] = useState({});
+
 
     const [avatarUrls, setAvatarUrls] = useState({});
 
@@ -92,6 +93,7 @@ export default function ChatRoom() {
     });
 
 
+    const [userStatuses, setUserStatuses] = useState({});
 
     const handleAvatar = (e) => {
 
@@ -109,11 +111,188 @@ export default function ChatRoom() {
 
     };
 
+    // Hàm kiểm tra trạng thái user
+    // const checkUserStatus = (usernameToCheck) => {
+    //     if (!socket || socket.readyState !== WebSocket.OPEN) {
+    //         console.error('WebSocket connection is not open');
+    //         return;
+    //     }
+    //
+    //     const requestData = {
+    //         action: "onchat",
+    //         data: {
+    //             event: "CHECK_USER",
+    //             data: {
+    //                 user: usernameToCheck
+    //             }
+    //         }
+    //     };
+    //
+    //     console.log('Sent request:', requestData); // In ra yêu cầu để kiểm tra
+    //     socket.send(JSON.stringify(requestData));
+    // };
+    //
+    // // Xử lý khi nhận được tin nhắn kiểm tra trạng thái người dùng
+    // const handleCheckUserMessage = (event) => {
+    //     const response = JSON.parse(event.data);
+    //     console.log('Received response:', response); // In ra toàn bộ phản hồi để kiểm tra
+    //
+    //     if (response.event === "CHECK_USER") {
+    //         const isOnline = response.data.status;
+    //
+    //         // Tìm người dùng đang chờ phản hồi và cập nhật trạng thái
+    //         const userIndex = userList.findIndex(user => user.pending);
+    //         if (userIndex !== -1) {
+    //             const usernameToCheck = userList[userIndex].name;
+    //             userList[userIndex].status = isOnline; // Cập nhật trạng thái trong userList
+    //             userList[userIndex].pending = false; // Đánh dấu là đã nhận phản hồi
+    //
+    //             console.log('response.data:', response.data);
+    //             console.log('usernameToCheck:', usernameToCheck);
+    //
+    //             setUserStatuses(prevStatuses => ({
+    //                 ...prevStatuses,
+    //                 [usernameToCheck]: isOnline
+    //             }));
+    //
+    //             if (isOnline) {
+    //                 console.log(`${usernameToCheck} is online`);
+    //             } else {
+    //                 console.log(`${usernameToCheck} is offline`);
+    //             }
+    //         }
+    //     } else if (response.event === "ACTION_NOT_EXIST") {
+    //         console.error('Received an unknown action:', response); // Thông báo lỗi nếu sự kiện không tồn tại
+    //     }
+    // };
+    //
+    // useEffect(() => {
+    //     if (!socket) return;
+    //
+    //     console.log('userList:', userList); // Log để kiểm tra dữ liệu userList
+    //
+    //     if (userList.length > 0) {
+    //         // Đánh dấu tất cả người dùng là đang chờ phản hồi nếu chưa đánh dấu
+    //         userList.forEach(user => {
+    //             if (!user.pending) {
+    //                 user.pending = true;
+    //                 console.log('Checking user:', user.name); // Log để kiểm tra mỗi lần kiểm tra user
+    //                 checkUserStatus(user.name);
+    //             }
+    //         });
+    //
+    //         socket.addEventListener('message', handleCheckUserMessage);
+    //
+    //         return () => {
+    //             // Cleanup khi component unmount
+    //             socket.removeEventListener('message', handleCheckUserMessage);
+    //         };
+    //     }
+    // }, [socket, userList]);
+
+
+
+    const checkUserStatus = (usernameToCheck) => {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            console.error('WebSocket connection is not open');
+            return;
+        }
+
+        const requestData = {
+            action: "onchat",
+            data: {
+                event: "CHECK_USER",
+                data: {
+                    user: usernameToCheck
+                }
+            }
+        };
+
+        console.log('Sent request:', requestData); // In ra yêu cầu để kiểm tra
+        socket.send(JSON.stringify(requestData));
+    };
+
+// Xử lý khi nhận được tin nhắn kiểm tra trạng thái người dùng
+    const handleCheckUserMessage = (event) => {
+        const response = JSON.parse(event.data);
+        console.log('Received response:', response); // In ra toàn bộ phản hồi để kiểm tra
+
+        if (response.event === "CHECK_USER") {
+            const isOnline = response.data.status;
+
+            // Tìm người dùng đang chờ phản hồi và cập nhật trạng thái
+            const userIndex = userList.findIndex(user => user.pending);
+            if (userIndex !== -1) {
+                const usernameToCheck = userList[userIndex].name;
+                userList[userIndex].status = isOnline; // Cập nhật trạng thái trong userList
+                userList[userIndex].pending = false; // Đánh dấu là đã nhận phản hồi
+
+                console.log('response.data:', response.data);
+                console.log('usernameToCheck:', usernameToCheck);
+
+                setUserStatuses(prevStatuses => ({
+                    ...prevStatuses,
+                    [usernameToCheck]: isOnline
+                }));
+
+                if (isOnline) {
+                    console.log(`${usernameToCheck} is online`);
+                    // If any user is online, mark all rooms as online
+                    userList.forEach(user => {
+                        if (user.type === 1) { // type === 1 indicates a room
+                            setUserStatuses(prevStatuses => ({
+                                ...prevStatuses,
+                                [user.name]: true
+                            }));
+                        }
+                    });
+                } else {
+                    console.log(`${usernameToCheck} is offline`);
+                }
+            }
+        } else if (response.event === "ACTION_NOT_EXIST") {
+            console.error('Received an unknown action:', response); // Thông báo lỗi nếu sự kiện không tồn tại
+        }
+    };
+
+    useEffect(() => {
+        if (!socket) return;
+
+        console.log('userList:', userList); // Log để kiểm tra dữ liệu userList
+
+        if (userList.length > 0) {
+            // Đánh dấu tất cả người dùng là đang chờ phản hồi nếu chưa đánh dấu
+            userList.forEach(user => {
+                if (user.type === 0 && !user.pending) { // Only check users (type === 0)
+                    user.pending = true;
+                    console.log('Checking user:', user.name); // Log để kiểm tra mỗi lần kiểm tra user
+                    checkUserStatus(user.name);
+                } else if (user.type === 1) { // Mark all rooms as online initially
+                    setUserStatuses(prevStatuses => ({
+                        ...prevStatuses,
+                        [user.name]: true
+                    }));
+                }
+            });
+
+            socket.addEventListener('message', handleCheckUserMessage);
+
+            return () => {
+                // Cleanup khi component unmount
+                socket.removeEventListener('message', handleCheckUserMessage);
+            };
+        }
+    }, [socket, userList]);
+
+
+
+
 
     useEffect(() => {
         usernameRef.current = username;
     }, [username]);
     // Sử dụng useEffect để cuộn xuống dưới cùng khi có tin nhắn mới
+
     useEffect(() => {
         if (scrollToBottom) {
             const msgCardBody = document.querySelector('.msg_card_body');
@@ -354,15 +533,21 @@ export default function ChatRoom() {
 
         setRoomAvatar(roomAvatar);
 
-        const roomData = {
+        // Generate a new document ID for the room
+        const roomDocRef = doc(collection(db, 'rooms'));
+        const roomId = roomDocRef.id;
+
+        // Create room data with the generated ID
+        const firestoreRoomData = {
+            id: roomId,
             roomname: roomNames,
             roomavatar: roomAvatar,
             createdBy: sessionUsername // Use username from sessionData
         };
 
-        // Add room to Firestore
-        const roomRef = await addDoc(collection(db, 'rooms'), roomData);
-// >>>>>>> main
+        // Add room to Firestore with the specified ID
+        await setDoc(roomDocRef, firestoreRoomData);
+
         const createRoom = {
             action: "onchat",
             data: {
@@ -383,8 +568,9 @@ export default function ChatRoom() {
 
     useEffect(() => {
         const handleCreateRoomResponse = (event) => {
-
             const response = JSON.parse(event.data);
+            console.log('Received response:', response);
+
             if (response.event === "CREATE_ROOM") {
                 if (response.status === "success") {
                     Swal.fire({
@@ -411,14 +597,26 @@ export default function ChatRoom() {
                     setUserList(newUserList);
                     sessionStorage.setItem('userList', JSON.stringify(newUserList));
 
-                    // Update the rooms state
-                    setRooms(prevRooms => [...prevRooms, roomData]);
+                    // Extract the room data from the response
+                    const roomResponseData = {
+                        id: response.data.id,
+                        name: response.data.name,
+                        own: response.data.own,
+                        userList: response.data.userList,
+                        chatData: response.data.chatData
+                    };
+
+                    // Update the rooms state with the extracted room data
+                    setRooms(prevRooms => [...prevRooms, roomResponseData]);
 
                     // Save room data to sessionStorage
-                    const roomData = {
+                    const roomSessionData = {
                         own: username
                     };
-                    sessionStorage.setItem('data', JSON.stringify(roomData));
+                    sessionStorage.setItem('data', JSON.stringify(roomSessionData));
+
+                    // Log the response data
+                    console.log('Room created successfully:', response.data);
                 } else {
                     Swal.fire({
                         icon: 'warning',
@@ -439,10 +637,6 @@ export default function ChatRoom() {
             }
         };
     }, [socket, userList, roomNames, username, roomAvatar]);
-
-
-
-
     const handleSearchInputChange = (event) => {
         setSearchInput(event.target.value);
     };
@@ -450,9 +644,7 @@ export default function ChatRoom() {
     const handleCheckboxChange = (event) => {
         setIsCheckboxChecked(event.target.checked);
     };
-
     const handleSearch = () => {
-
         if (!socket || socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket connection is not open');
             Swal.fire({
@@ -530,7 +722,7 @@ export default function ChatRoom() {
                         return;
                     }
 
-                    const savedUserList = JSON.parse(sessionStorage.getItem('userList')) || [];
+                    let savedUserList = JSON.parse(sessionStorage.getItem('userList')) || [];
                     const existingRoom = savedUserList.find(room => room.name === roomName);
                     if (!existingRoom) {
                         savedUserList.push(matchedRoom);
@@ -541,12 +733,19 @@ export default function ChatRoom() {
                     setMessageContent('Phòng');
                     setSearchType('room');
 
-                    // Set room avatar
+                    // Update room avatar similar to handleLiClick
                     let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
-                    if (matchedRoom.roomavatar) {
-                        avatarSrc = matchedRoom.roomavatar;
+                    const sessionRoom = savedUserList.find(room => room.name === roomName && room.type === 1);
+                    if (sessionRoom && sessionRoom.avatar) {
+                        avatarSrc = sessionRoom.avatar;
+                    } else {
+                        if (matchedRoom && matchedRoom.roomavatar) {
+                            avatarSrc = matchedRoom.roomavatar;
+                        }
                     }
+
                     setUserAvatar(avatarSrc);
+                    setAvatarUrls(prevState => ({ ...prevState, [roomName]: avatarSrc }));
 
                     Swal.fire({
                         text: `Room ${roomName} exists.`,
@@ -564,7 +763,6 @@ export default function ChatRoom() {
             };
         }
     };
-
 // <<<<<<< HEAD
 //
 //     const fetchMessages = (event, name) => {
@@ -634,9 +832,14 @@ export default function ChatRoom() {
                 }
             }
         } else if (type === 1) {
-            const matchedRoom = rooms.find(room => room.roomname === name);
-            if (matchedRoom && matchedRoom.roomavatar) {
-                avatarSrc = matchedRoom.roomavatar;
+            const sessionRoom = sessionData ? sessionData.find(room => room.name === name && room.type === 1) : null;
+            if (sessionRoom && sessionRoom.avatar) {
+                avatarSrc = sessionRoom.avatar;
+            } else {
+                const matchedRoom = rooms.find(room => room.roomname === name);
+                if (matchedRoom && matchedRoom.roomavatar) {
+                    avatarSrc = matchedRoom.roomavatar;
+                }
             }
         }
 
@@ -685,7 +888,7 @@ export default function ChatRoom() {
                     fetchedMessages = response.data.chatData.reverse();
                 }
 
-                // Giải mã tin nhắn
+                // Decode messages
                 let lastIndex = fetchedMessages.length - 1;
                 const lastmessage = fetchedMessages[lastIndex];
                 setLastMessage(lastmessage);
@@ -702,7 +905,7 @@ export default function ChatRoom() {
                     }
                 });
 
-                // Cập nhật lại danh sách tin nhắn
+                // Update message list
                 setMessages([...fetchedMessages]);
                 setScrollToBottom(true);
             } else {
@@ -714,7 +917,6 @@ export default function ChatRoom() {
         };
         setScrollToBottom(true);
     };
-
     useEffect(() => {
         setScrollToBottom(true);
     }, [messages]);
@@ -947,24 +1149,7 @@ export default function ChatRoom() {
     };
 
 // Function to handle room avatar change
-    const handleRoomAvatarChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (upload) => {
-                setRoomAvatar({ url: upload.target.result, file: file });
-            };
-            reader.readAsDataURL(file);
-        }
-    };
 
-// Function to upload avatar to Firebase storage
-    const uploadAvatar = async (file) => {
-        const storage = getStorage();
-        const storageRef = ref(storage, `avatars/${file.name}`);
-        await uploadBytes(storageRef, file);
-        return getDownloadURL(storageRef);
-    };
 
 // Function to update avatar URL in Firestore
     const updateAvatarURLInFirestore = async (uid, avatarURL) => {
@@ -973,10 +1158,6 @@ export default function ChatRoom() {
     };
 
 // Function to update room avatar URL in Firestore
-    const updateRoomAvatarURLInFirestore = async (roomName, avatarURL) => {
-        const roomDocRef = doc(db, 'rooms', roomName);
-        await updateDoc(roomDocRef, { roomavatar: avatarURL });
-    };
 
 // Function to fetch username from Firebase
     const getUsernameFromFirebase = async (uid) => {
@@ -1040,29 +1221,85 @@ export default function ChatRoom() {
     };
 
 // Function to update room avatar
+
+
+// Function to upload avatar to Firebase storage
+
+// Function to update room avatar URL in Firestore
+    // Function to handle room avatar change
+    const handleRoomAvatarChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (upload) => {
+                setRoomAvatar({ url: upload.target.result, file: file });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+// Function to upload avatar to Firebase storage
+    const uploadAvatar = async (file) => {
+        const storage = getStorage();
+        const storageRef = ref(storage, `avatars/${file.name}`);
+        await uploadBytes(storageRef, file);
+        return getDownloadURL(storageRef);
+    };
+
+// Function to update room avatar URL in Firestore
+    const updateRoomAvatarURLInFirestore = async (roomName, avatarURL) => {
+        const roomQuery = query(collection(db, 'rooms'), where('roomname', '==', roomName));
+        const querySnapshot = await getDocs(roomQuery);
+
+        if (!querySnapshot.empty) {
+            const roomDocRef = querySnapshot.docs[0].ref;
+            await updateDoc(roomDocRef, { roomavatar: avatarURL });
+            return roomDocRef.id;
+        }
+
+        throw new Error('Room not found');
+    };
+
+// Function to get the latest room avatar URL from Firestore
+    const getLatestRoomAvatarURLFromFirestore = async (roomName) => {
+        const roomQuery = query(collection(db, 'rooms'), where('roomname', '==', roomName));
+        const querySnapshot = await getDocs(roomQuery);
+
+        if (!querySnapshot.empty) {
+            const roomData = querySnapshot.docs[0].data();
+            return roomData.roomavatar;
+        }
+
+        throw new Error('Room not found');
+    };
+
+// Function to update room avatar
     const updateRoomAvatar = async () => {
         try {
             const room = userList.find(user => user.type === 1 && user.name === roomNames);
             if (room && roomAvatar.file) {
                 const avatarURL = await uploadAvatar(roomAvatar.file);
-                await updateRoomAvatarURLInFirestore(room.name, avatarURL);
+                const roomId = await updateRoomAvatarURLInFirestore(room.name, avatarURL);
+
+                // Fetch the latest room avatar URL from Firestore
+                const latestAvatarURL = await getLatestRoomAvatarURLFromFirestore(room.name);
 
                 // Update sessionStorage with the new room avatar URL
                 const sessionData = JSON.parse(sessionStorage.getItem('userList'));
                 if (sessionData) {
                     const updatedSessionData = sessionData.map((userItem) =>
-                        userItem.name === room.name
-                            ? { ...userItem, roomavatar: avatarURL }
+                        userItem.name === room.name && userItem.type === 1
+                            ? { ...userItem, avatar: latestAvatarURL }
                             : userItem
                     );
                     sessionStorage.setItem('userList', JSON.stringify(updatedSessionData));
                 }
-
+                setUserAvatar(latestAvatarURL);
                 // Update the state with the new room avatar URL
                 setUserList((prevUserList) =>
                     prevUserList.map((userItem) =>
-                        userItem.name === room.name
-                            ? { ...userItem, roomavatar: avatarURL }
+                        userItem.name === room.name && userItem.type === 1
+                            ? { ...userItem, avatar: latestAvatarURL }
                             : userItem
                     )
                 );
@@ -1091,7 +1328,7 @@ export default function ChatRoom() {
         setChangeAvatarModal(false);
     };
 
-// Component useEffect to load user list from sessionStorage
+    // Component useEffect to load user list from sessionStorage
     useEffect(() => {
         const storedUserList = sessionStorage.getItem('userList');
         if (storedUserList) {
@@ -1185,6 +1422,9 @@ export default function ChatRoom() {
                                                             }
                                                         }
                                                     }
+
+
+
                                                     return (
                                                         <li key={index}
                                                             className={user.name === displayName ? 'active' : ''}
@@ -1196,18 +1436,20 @@ export default function ChatRoom() {
                                                                         alt="avatar"
                                                                         className="rounded-circle user_img"
                                                                     />
-                                                                    <span className="online_icon"></span>
+                                                                    {/*<span className="online_icon"></span>*/}
+                                                                    <span
+                                                                        className={`online_icon ${userStatuses[user.name] ? 'online' : 'offline'}`}></span>
                                                                 </div>
                                                                 <div className="user_info">
                                                                     <span>{user.name}</span>
                                                                     <p className="typechat">Type: {user.type}</p>
-                                                                    <p>Last
-                                                                        Action: {renderDateTime(user.actionTime)}</p>
+                                                                    <p>Last Action: {renderDateTime(user.actionTime)}</p>
                                                                 </div>
                                                             </div>
                                                         </li>
                                                     );
                                                 })
+
                                         ) : (
                                             <li>No users found.</li>
                                         )}
@@ -1225,7 +1467,11 @@ export default function ChatRoom() {
                                                 src={userAvatar}
                                                 className="rounded-circle user_img"
                                             />
-                                             <span className="online_icon"></span>
+
+                                            {/*<span className="online_icon"></span>*/}
+                                            <span
+                                                className={`online_icon ${userStatuses[displayName] ? 'online' : 'offline'}`}></span>
+
                                         </div>
                                         <div className="user_info">
                                             <span>{displayName}</span>
