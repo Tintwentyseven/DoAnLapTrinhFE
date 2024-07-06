@@ -116,14 +116,19 @@
     position: absolute;
     height: 15px;
     width:15px;
-    background-color: #4cd137;
+    /*background-color: #4cd137;*/
     border-radius: 50%;
     bottom: 0.2em;
     right: 0.4em;
     border:1.5px solid white;
 }
+
+.online {
+    background-color: #28a745; /* Màu xanh cho trạng thái online */
+}
+
 .offline{
-    background-color: #c23616 !important;
+    background-color: #c23616 ;
 }
 .user_info{
     margin-top: auto;
