@@ -24,7 +24,7 @@ import { useWebSocket } from "../WebSocket/WebSocketContext";
 import {fromByteArray, toByteArray } from 'base64-js';
 
 import { getFirestore, collection, getDocs, doc, setDoc, query, where, addDoc} from "firebase/firestore";
-import { getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { getDoc, updateDoc, arrayUnion,arrayRemove  } from 'firebase/firestore';
 
 
 import ava from "../../img/addAvatar.png";
@@ -51,6 +51,7 @@ export default function ChatRoom() {
 // >>>>>>> main
 
     const toggleOpen = () => setBasicModal(!basicModal);
+    const specificMessageRef = useRef({});
     const toggleMenu = () => setIsOpen(!isOpen);
     const [activeTab, setActiveTab] = useState('user');
 
@@ -606,6 +607,12 @@ export default function ChatRoom() {
         });
         return reactionsMap;
     };
+    const scrollToMessage = (messageId) => {
+        if (specificMessageRef.current[messageId]) {
+            specificMessageRef.current[messageId].scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
 
     const handleLiClick = (name, type, roomOwner) => {
         console.log("toi da vao hien thi");
@@ -963,7 +970,7 @@ export default function ChatRoom() {
     // };
     const [showEmojiPicker, setShowEmojiPicker] = useState(false); // State để điều khiển hiển thị Emoji Picker
     const [emojiPickerMessageId, setEmojiPickerMessageId] = useState(null); // Trạng thái để lưu trữ ID tin nhắn hiện tại
-
+    const emojiPickerRef = useRef(null);
 
     // Thêm hàm xử lý click vào biểu tượng cảm xúc
     const handleEmojiClick = (messageId) => { // Thay đổi
@@ -973,68 +980,43 @@ export default function ChatRoom() {
     };
 
     // Thêm hàm xử lý chọn biểu tượng cảm xúc
-    // const handleEmojiSelect = (emojiData, event) => {
-    //     console.log("emojiData: "+emojiData.emoji);
-    //     if (emojiPickerMessageId !== null) {
-    //         const updatedMessages = messages.map(message => {
-    //             if (message.id === emojiPickerMessageId) {
-    //                 // Kiểm tra và khởi tạo mảng reactions nếu chưa tồn tại
-    //                 message.reactions = message.reactions || [];
-    //
-    //                 // Thêm emoji vào mảng reactions
-    //                 message.reactions.push(emojiData.native || emojiData.emoji || emojiData.unicode);
-    //             }
-    //             return message;
-    //         });
-    //         setMessages(updatedMessages);
-    //     }
-    //     setShowEmojiPicker(false);
-    // };
 
-    // //sua
-    // const handleEmojiSelect = (emojiData, event) => {
-    //     if (emojiPickerMessageId !== null) {
-    //         const updatedMessages = messages.map(message => {
-    //             if (message.id === emojiPickerMessageId) {
-    //                 message.reactions = message.reactions || [];
-    //                 message.reactions.push(emojiData.native || emojiData.emoji || emojiData.unicode);
-    //
-    //                 // Lưu reactions vào localStorage
-    //                 const storedReactions = JSON.parse(localStorage.getItem('reactions')) || {};
-    //                 storedReactions[message.id] = message.reactions;
-    //                 localStorage.setItem('reactions', JSON.stringify(storedReactions));
-    //             }
-    //             return message;
-    //         });
-    //         setMessages(updatedMessages);
-    //     }
-    //     setShowEmojiPicker(false);
-    // };
-// Thêm phản ứng vào tin nhắn và lưu trữ vào Firestore
     const handleEmojiSelect = async (emojiData, event) => {
         if (emojiPickerMessageId !== null) {
             const reaction = emojiData.native || emojiData.emoji || emojiData.unicode;
 
-            // Tìm tin nhắn cần cập nhật
             const updatedMessages = messages.map(message => {
                 if (message.id === emojiPickerMessageId) {
-                    // Khởi tạo mảng phản ứng nếu chưa có
                     message.reactions = message.reactions || [];
-                    // Thêm phản ứng vào tin nhắn
-                    message.reactions.push(reaction);
+
+                    const reactionIndex = message.reactions.indexOf(reaction);
+                    if (reactionIndex > -1) {
+                        message.reactions.splice(reactionIndex, 1); // Remove reaction if it already exists
+                    } else {
+                        message.reactions = [reaction]; // Replace with new reaction if it doesn't exist
+                    }
                 }
                 return message;
             });
+
             setMessages(updatedMessages);
 
-            // Lưu phản ứng vào Firestore
             const messageRef = doc(db, "messages", String(emojiPickerMessageId));
             const messageDoc = await getDoc(messageRef);
 
             if (messageDoc.exists()) {
-                await updateDoc(messageRef, {
-                    reactions: arrayUnion(reaction)
-                });
+                const currentReactions = messageDoc.data().reactions || [];
+                const reactionIndex = currentReactions.indexOf(reaction);
+
+                if (reactionIndex > -1) {
+                    await updateDoc(messageRef, {
+                        reactions: arrayRemove(reaction) // Remove reaction if it already exists in Firestore
+                    });
+                } else {
+                    await updateDoc(messageRef, {
+                        reactions: [reaction] // Replace with new reaction if it doesn't exist in Firestore
+                    });
+                }
             } else {
                 await setDoc(messageRef, {
                     id: emojiPickerMessageId,
@@ -1043,10 +1025,22 @@ export default function ChatRoom() {
             }
 
             setShowEmojiPicker(false);
+            scrollToMessage(emojiPickerMessageId); // Cuộn đến tin nhắn có biểu tượng cảm xúc
         }
     };
 
+    const handleClickOutside = (event) => {
+        if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+            setShowEmojiPicker(false);
+        }
+    };
 
+    useEffect(() => {
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
 
 
 
@@ -1250,6 +1244,7 @@ export default function ChatRoom() {
                                         return (
                                             <div key={index}
                                                  className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`}
+                                                 ref={el => (specificMessageRef.current[message.id] = el)}
                                                  onMouseEnter={() => setHoveredMessage(index)}
                                                  onMouseLeave={() => setHoveredMessage(null)}>
 
@@ -1296,14 +1291,9 @@ export default function ChatRoom() {
                                                         )}
 
                                                     </div>
-                                                    {/*>>>>>>> main*/}
+
                                                 </div>
-                                                {/*<div className={`message-icons ${message.name === username  ? 'right' : 'left'}`}>*/}
-                                                {/*    <i className="fas fa-trash"*/}
-                                                {/*       onClick={() => handleDeleteMessage(index)}></i>*/}
-                                                {/*    <i className="fas fa-reply"*/}
-                                                {/*       onClick={() => handleReplyMessage(message)}></i>*/}
-                                                {/*</div>*/}
+
                                             </div>
                                         );
                                     })}
