@@ -1019,6 +1019,13 @@ export default function ChatRoom() {
             }
         };
     }, [socket, userList, joinRoomCode]);
+    const checkIncludes = (text, smallText) => {
+        return text.includes(smallText);
+    };
+
+    const replaceText = (text, text1, text2) => {
+        return text.replace(text1, text2);
+    };
     //Regex kiểm tra đường dẫn//
     const urlRegex = /https?:\/\/[^\s]+/g;
     //Tải lên và kiểm tra tin nhắn là dạng text hay u//
@@ -1033,18 +1040,30 @@ export default function ChatRoom() {
                         <React.Fragment key={index}>
                             {part}
                             {urls[index] && (
-                                <a href={urls[index]} target="_blank" rel="noopener noreferrer">
-                                    {urls[index]}
-                                </a>
+                                checkIncludes(urls[index], "https://www.youtube.com/watch?v=") ? (
+                                    <iframe
+                                        width="100%"
+                                        height="315"
+                                        src={replaceText(urls[index], "watch?v=", "embed/")}
+                                        title="YouTube video player"
+                                        frameBorder="0"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                        allowFullScreen
+                                    ></iframe>
+                                ) : (
+                                    <a href={urls[index]} target="_blank" rel="noopener noreferrer">
+                                        {urls[index]}
+                                    </a>
+                                )
                             )}
                         </React.Fragment>
                     ))}
                 </div>
             );
         }
+
         return <div className="message-content">{message.mes}</div>;
     };
-
 
 
 // >>>>>>> main
