@@ -598,33 +598,9 @@ input[type="radio"]:checked + .tab-label + .tab-slider {
     height: 684px;
 }
 
-/*.message {*/
-/*    position: relative;*/
-/*}*/
-
-/*.message-icons {*/
-/*    position: absolute;*/
-/*    top: 50%;*/
-/*    transform: translateY(-50%);*/
-/*    display: flex;*/
-/*    gap: 5px;*/
-/*    opacity: 0;*/
-/*    transition: opacity 0.2s;*/
-/*}*/
-
-/*.message:hover .message-icons {*/
-/*    opacity: 1;*/
-/*}*/
-
-/*.message-icons.left {*/
-/*    left: -40px;*/
-/*}*/
-
-/*.message-icons.right {*/
-/*    right: -40px;*/
-/*}*/
-
-/*.message-icons i {*/
-/*    cursor: pointer;*/
-/*    font-size: 16px;*/
-/*}*/
+.message-reactions {
+    position: absolute;
+    top: 34px;
+    left: 70%;
+    z-index: 1000;
+}
