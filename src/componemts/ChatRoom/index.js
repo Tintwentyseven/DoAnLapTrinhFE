@@ -906,6 +906,7 @@ export default function ChatRoom() {
     // };
 
 
+    // hàm send chat
     const sendChat = () => {
         if (messageContentChat.trim() === '') return;
 
@@ -945,12 +946,23 @@ export default function ChatRoom() {
             };
         }
 
+        // Create a new message object for immediate display
+        const newMessage = {
+            name: username,
+            createAt: new Date().toISOString(),
+            mes: messageContentChat.trim(), // Use the plain message content
+            type: isRoom ? "room" : "people",
+            to: displayName
+        };
+
         if (socket && socket.readyState === WebSocket.OPEN) {
             setMessageContentChat(''); // Clear message content after sending
             setScrollToBottom(true); // Scroll to bottom
             console.log('Message object:', chatMessage);
             socket.send(JSON.stringify(chatMessage));
-            setShouldFetchMessages(true); // Trigger fetching messages
+
+            // Update messages state immediately
+            setMessages(prevMessages => [...prevMessages, newMessage]);
         } else {
             console.error('WebSocket is not open. Unable to send message.');
         }
