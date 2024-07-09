@@ -21,6 +21,7 @@
     padding:  0.75rem 0 !important;
     overflow-y: auto;
     white-space: nowrap;
+    margin-top:-10px;
 }
 .msg_card_body{
     overflow-y: auto;
@@ -115,14 +116,19 @@
     position: absolute;
     height: 15px;
     width:15px;
-    background-color: #4cd137;
+    /*background-color: #4cd137;*/
     border-radius: 50%;
     bottom: 0.2em;
     right: 0.4em;
     border:1.5px solid white;
 }
+
+.online {
+    background-color: #28a745; /* Màu xanh cho trạng thái online */
+}
+
 .offline{
-    background-color: #c23616 !important;
+    background-color: #c23616 ;
 }
 .user_info{
     margin-top: auto;
@@ -155,6 +161,9 @@
     background-color: #82ccdd;
     padding: 10px;
     position: relative;
+    max-width: fit-content;
+
+    width: 370px;
 }
 .msg_cotainer_send{
     margin-top: auto;
@@ -164,6 +173,11 @@
     background-color: #78e08f;
     padding: 10px;
     position: relative;
+    max-width: fit-content;
+    width: 370px;
+
+
+
 }
 .msg_time{
     position: absolute;
@@ -470,6 +484,63 @@ input.form-control.search:focus {
 }
 .nav.nav-tabs.mb-3{
     margin-bottom: 0px !important;
+    margin-left:30px;
+}
+.tabs-wrapper {
+    position: relative;
+    width: 75%;
+    height: 50px;
+    display: flex;
+    justify-content: space-between;
+    background: #fff;
+    border-radius: 10px;
+    margin-left:30px;
+    margin-top:10px;
+    box-shadow: 0px 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+.tab-label {
+    flex: 1;
+    text-align: center;
+    line-height: 50px;
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+    font-size: 17px;
+    transition: all 0.3s ease;
+    color: #17a2b8;
+}
+
+.tab-label:hover {
+    background: rgba(23, 162, 184, 0.3);
+}
+
+input[type="radio"] {
+    display: none;
+}
+
+input[type="radio"]:checked + .tab-label {
+    color: #fff;
+}
+
+input[type="radio"]:checked + .tab-label + .tab-slider {
+    background: #17a2b8;
+}
+
+.tab-slider {
+    position: absolute;
+    height: 100%;
+    width: 50%;
+    left: 0;
+    bottom: 0;
+    z-index: 0;
+    border-radius: 10px;
+    background: #17a2b8;
+    transition: all 0.3s ease;
+}
+
+#roomTab:checked ~ .tab-slider {
+    left: 50%;
 }
 /* Modal Overlay */
 
@@ -510,7 +581,22 @@ input.form-control.search:focus {
 .message-icons.right {
     right: -70px; /* Điều chỉnh khoảng cách từ phải */
 }
+.col-md-4.col-xl-3.chat{
+    margin-left: -220px;
+    /*height: 684px;*/
+    /*max-height: 684px;*/
+}
+#chatleft{
+}
 
+#chatcenter{
+    margin-left: -12px;
+    height: 684px;
+    width:850px;
+}
+.card.mb-sm-3.mb-md-0.contacts_card{
+    height: 684px;
+}
 
 .message-reactions {
     position: absolute;
