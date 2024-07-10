@@ -22,6 +22,8 @@ import Swal from "sweetalert2";
 import { useWebSocket } from "../WebSocket/WebSocketContext";
 
 import {fromByteArray, toByteArray } from 'base64-js';
+import axios from 'axios';
+
 
 
 import { getFirestore, collection, getDocs,getDoc, doc, setDoc, query, where, addDoc,updateDoc} from "firebase/firestore";
@@ -32,6 +34,7 @@ import upload from "../../componemts/ChatRoom/upload";
 import { auth, db } from "../../firebase";
 
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
 
 
 export default function ChatRoom() {
@@ -77,9 +80,22 @@ export default function ChatRoom() {
     const [data, setData] = useState([]);
     const [rooms, setRooms] = useState([])
     const [roomAvatar, setRoomAvatar] = useState('');
-
-
-
+    const [isGifPickerVisible, setGifPickerVisible] = useState(false);
+    const [gifs,setGifs] = useState(false);
+    // const gifList = [
+    //     "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExanNqMHpxcHo2cDFmbDlqNHk5Y3BhNHpzYTZqdjk2dTU4NWg0NndlZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/7vDoUoDZHoUQxMPkd7/giphy.webp",
+    //     "https://media0.giphy.com/media/oKQGM5S2mwx5C/giphy.webp?cid=82a1493bo0nvjpdk35jsd5n6qte8jj8sruymuqpbsglhm5y0&ep=v1_gifs_trending&rid=giphy.webp&ct=g",
+    //     "https://media0.giphy.com/media/e6BTJ8bAak7V5Kv2FB/200.webp?cid=82a1493bzu5igskf5yvdc25le0xzjfd0ue30lgvdc0cyxh6y&ep=v1_gifs_trending&rid=200.webp&ct=g",
+    //     "https://media3.giphy.com/media/C5oD3WouufnWORp7wP/giphy.webp?cid=82a1493bhnnzmesl9xiapoa4638em1rrncm6up7ed6074xt6&ep=v1_gifs_trending&rid=giphy.webp&ct=g",
+    //     "https://media2.giphy.com/media/J2WQhnfK2WuUE/200.webp?cid=82a1493bhnnzmesl9xiapoa4638em1rrncm6up7ed6074xt6&ep=v1_gifs_trending&rid=200.webp&ct=g",
+    //     "https://media4.giphy.com/media/8H80IVPjAdKY8/200w.webp?cid=82a1493bhgilpwzgp6jfkr8lwq49yj294ind9yamxjudvii3&ep=v1_gifs_trending&rid=200w.webp&ct=g",
+    //     "https://media0.giphy.com/media/xD6m65jnkgkwTSOnDp/giphy.webp?cid=790b7611cb8xqe66nq90srrbhyquz14gy2uqj5d1vua9r0ry&ep=v1_gifs_trending&rid=giphy.webp&ct=g",
+    //     "https://media1.giphy.com/media/YTbZzCkRQCEJa/200.webp?cid=790b7611cb8xqe66nq90srrbhyquz14gy2uqj5d1vua9r0ry&ep=v1_gifs_trending&rid=200.webp&ct=g",
+    //     "https://media1.giphy.com/media/tHIRLHtNwxpjIFqPdV/giphy.webp?cid=790b7611cb8xqe66nq90srrbhyquz14gy2uqj5d1vua9r0ry&ep=v1_gifs_trending&rid=giphy.webp&ct=g"
+    // ];
+    const GIPHY_API_KEY = '5LcV29T4yVNSvuCZ3vu2S2BQpUdfWHIy'; // Thay bằng API key của bạn
+    const [searchTerm, setSearchTerm] = useState('');
+    const [gifList, setGifList] = useState([]);
 
     const [avatarUrls, setAvatarUrls] = useState({});
 
@@ -111,6 +127,68 @@ export default function ChatRoom() {
         }
 
     };
+    const fetchGifs = (term) => {
+        axios.get(`https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${term}&limit=10`)
+            .then(response => {
+                const gifs = response.data.data;
+                setGifList(gifs.map(gif => gif.images.fixed_height.url));
+
+                // Hiển thị tên file gif trong console
+                console.log('GIFs:', gifs.map(gif => gif.title || gif.slug || 'Unknown'));
+
+                if (!isGifPickerVisible) {
+                    setGifPickerVisible(true);
+                }
+            })
+            .catch(error => console.error('Error fetching GIFs:', error));
+    };
+    const handleGifClick = async (gifUrl) => {
+        const sessionData = JSON.parse(sessionStorage.getItem('sessionData'));
+        const sessionUsername = sessionData ? sessionData.username : '';
+
+
+
+        // Send the message via WebSocket
+        const isRoom = userList.some(user => user.name === displayName && user.type === 1);
+
+        const chatMessage = {
+            action: "onchat",
+            data: {
+                event: "SEND_CHAT",
+                data: {
+                    type: isRoom ? "room" : "people",
+                    to: displayName,
+                    mes: gifUrl
+                }
+            }
+        };
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(chatMessage));
+
+            // Update messages state immediately
+            const date = new Date();
+            date.setHours(date.getHours() - 7);
+            const adjustedCreateAt = date.toISOString();
+
+            // Create a new message object for immediate display
+
+            const newMessage = {
+                name: sessionUsername,
+                createAt: adjustedCreateAt, //
+                mes: gifUrl, // Use the GIF URL as the message content
+                type: isRoom ? "room" : "people",
+                to: displayName
+            };
+            setMessages(prevMessages => [...prevMessages, newMessage]);
+        } else {
+            console.error('WebSocket is not open. Unable to send message.');
+        }
+
+        setGifPickerVisible(false);
+    };
+
+
 
     // Hàm kiểm tra trạng thái user
     const checkUserStatus = (usernameToCheck) => {
@@ -847,11 +925,6 @@ export default function ChatRoom() {
     useEffect(() => {
         setScrollToBottom(true);
     }, [messages]);
-
-    useEffect(() => {
-        setScrollToBottom(true);
-    }, [messages]);
-
     const add7Hours = (dateString) => {
         const date = new Date(dateString);
         date.setHours(date.getHours() + 7);
@@ -876,34 +949,126 @@ export default function ChatRoom() {
     const [shouldFetchMessages, setShouldFetchMessages] = useState(false);
 
 
+    // const sendChat = () => {
+    //     if (messageContentChat.trim() === '') return;
+    //     console.log('Message content:', messageContentChat);
+    //
+    //     // Encode message content
+    //     const messageBytes = new TextEncoder().encode(messageContentChat.trim());
+    //     const encodedMessage = fromByteArray(messageBytes);
+    //     const chatMessage = {
+    //
+    //         "action": "onchat",
+    //         "data": {
+    //             "event": "SEND_CHAT",
+    //             "data": {
+    //                 "type": "people",
+    //                 "to": displayName,
+    //                 "mes": encodedMessage
+    //             }
+    //
+    //         }
+    //     };
+    //
+    //     if (socket && socket.readyState === WebSocket.OPEN) {
+    //         setMessageContentChat(''); // Xóa nội dung tin nhắn sau khi gửi
+    //         setScrollToBottom(true); // Kích hoạt cuộn xuống dưới
+    //         console.log('Message object:', chatMessage);
+    //         socket.send(JSON.stringify(chatMessage));
+    //         setShouldFetchMessages(true); // Kích hoạt việc tải lại tin nhắn
+    //
+    //     } else {
+    //         console.error('WebSocket is not open. Unable to send message.');
+    //     }
+    // };
+    //
+    // useEffect(() => {
+    //     if (shouldFetchMessages) {
+    //         handleLiClick(displayName, 0, roomOwner);
+    //         setShouldFetchMessages(false); // Đặt lại để ngăn không gọi lại khi messages thay đổi
+    //     }
+    // }, [shouldFetchMessages]);
+    //
+    //
+    //
+    // const handleInputChange = (event) => {
+    //     setMessageContentChat(event.target.value);
+    // };
+    //
+    // const handleSendClick = () => {
+    //     sendChat();
+    // };
+    //
+    // const handleKeyDown = (event) => {
+    //     if (event.key === 'Enter') {
+    //         event.preventDefault();
+    //         sendChat();
+    //     }
+    // };
+
+
+    // hàm send chat
     const sendChat = () => {
         if (messageContentChat.trim() === '') return;
-        console.log('Message content:', messageContentChat);
 
         // Encode message content
         const messageBytes = new TextEncoder().encode(messageContentChat.trim());
         const encodedMessage = fromByteArray(messageBytes);
-        const chatMessage = {
 
-            "action": "onchat",
-            "data": {
-                "event": "SEND_CHAT",
-                "data": {
-                    "type": "people",
-                    "to": displayName,
-                    "mes": encodedMessage
+        // Determine if displayName is a room
+        const isRoom = userList.some(user => user.name === displayName && user.type === 1);
+
+        let chatMessage;
+        if (isRoom) {
+            console.log("Sending message to room:", displayName);
+            chatMessage = {
+                action: "onchat",
+                data: {
+                    event: "SEND_CHAT",
+                    data: {
+                        type: "room",
+                        to: displayName,
+                        mes: encodedMessage
+                    }
                 }
+            };
+        } else {
+            console.log("Sending message to user:", displayName);
+            chatMessage = {
+                action: "onchat",
+                data: {
+                    event: "SEND_CHAT",
+                    data: {
+                        type: "people",
+                        to: displayName,
+                        mes: encodedMessage
+                    }
+                }
+            };
+        }
+        const date = new Date();
+        date.setHours(date.getHours() - 7);
+        const adjustedCreateAt = date.toISOString();
 
-            }
+        // Create a new message object for immediate display
+
+        // Create a new message object for immediate display
+        const newMessage = {
+            name: username,
+            createAt: adjustedCreateAt, //
+            mes: messageContentChat.trim(), // Use the plain message content
+            type: isRoom ? "room" : "people",
+            to: displayName
         };
 
         if (socket && socket.readyState === WebSocket.OPEN) {
-            setMessageContentChat(''); // Xóa nội dung tin nhắn sau khi gửi
-            setScrollToBottom(true); // Kích hoạt cuộn xuống dưới
+            setMessageContentChat(''); // Clear message content after sending
+            setScrollToBottom(true); // Scroll to bottom
             console.log('Message object:', chatMessage);
             socket.send(JSON.stringify(chatMessage));
-            setShouldFetchMessages(true); // Kích hoạt việc tải lại tin nhắn
 
+            // Update messages state immediately
+            setMessages(prevMessages => [...prevMessages, newMessage]);
         } else {
             console.error('WebSocket is not open. Unable to send message.');
         }
@@ -912,15 +1077,14 @@ export default function ChatRoom() {
     useEffect(() => {
         if (shouldFetchMessages) {
             handleLiClick(displayName, 0, roomOwner);
-            setShouldFetchMessages(false); // Đặt lại để ngăn không gọi lại khi messages thay đổi
+            setShouldFetchMessages(false); // Reset to prevent re-calling when messages change
         }
     }, [shouldFetchMessages]);
-
-
 
     const handleInputChange = (event) => {
         setMessageContentChat(event.target.value);
     };
+
 
     const handleSendClick = () => {
         sendChat();
@@ -932,6 +1096,7 @@ export default function ChatRoom() {
             sendChat();
         }
     };
+
 
 
     // End of sendChat function
@@ -1040,20 +1205,34 @@ export default function ChatRoom() {
                         <React.Fragment key={index}>
                             {part}
                             {urls[index] && (
-                                checkIncludes(urls[index], "https://www.youtube.com/watch?v=") ? (
+                                // Check if the URL is a Giphy URL and extract the GIF ID
+                                /https:\/\/media[0-9]*\.giphy\.com\/media\/[a-zA-Z0-9]+\/[0-9]+\.gif/.test(urls[index]) ? (
                                     <iframe
-                                        width="100%"
-                                        height="315"
-                                        src={replaceText(urls[index], "watch?v=", "embed/")}
-                                        title="YouTube video player"
+                                        src={`https://giphy.com/embed/${urls[index].split('media/')[1].split('/')[0]}`}
+                                        width="300"
+                                        height="271"
                                         frameBorder="0"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                        className="giphy-embed"
                                         allowFullScreen
                                     ></iframe>
                                 ) : (
-                                    <a href={urls[index]} target="_blank" rel="noopener noreferrer">
-                                        {urls[index]}
-                                    </a>
+                                    // Check if the URL is a YouTube URL and embed the video
+                                    /https:\/\/www.youtube.com\/watch\?v=/.test(urls[index]) ? (
+                                        <iframe
+                                            width="100%"
+                                            height="315"
+                                            src={replaceText(urls[index], "watch?v=", "embed/")}
+                                            title="YouTube video player"
+                                            frameBorder="0"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                            allowFullScreen
+                                        ></iframe>
+                                    ) : (
+                                        // Otherwise, render the URL as a link
+                                        <a href={urls[index]} target="_blank" rel="noopener noreferrer">
+                                            {urls[index]}
+                                        </a>
+                                    )
                                 )
                             )}
                         </React.Fragment>
@@ -1372,6 +1551,7 @@ export default function ChatRoom() {
 
 
 
+
                                                     return (
                                                         <li key={index}
                                                             className={user.name === displayName ? 'active' : ''}
@@ -1392,6 +1572,7 @@ export default function ChatRoom() {
                                                                     <p className="typechat">Type: {user.type}</p>
                                                                     <p>Last Action: {renderDateTime(user.actionTime)}</p>
                                                                 </div>
+
                                                             </div>
                                                         </li>
                                                     );
@@ -1489,7 +1670,6 @@ export default function ChatRoom() {
                                                 <div className="img_cont_msg">
                                                     <img src={avatarSrc} alt="avatar"
                                                          className="rounded-circle user_img_msg"/>
-                                                    <span className="online_icon"></span>
                                                 </div>
                                                 <div className={`msg_cotainer${message.name === username ? '_send' : ''}`}>
                                                     <div className="message-content">
@@ -1516,10 +1696,14 @@ export default function ChatRoom() {
                                 </div>
 
                                 <div className="card-footer">
-                                    <div className="input-group">
-                                        <div className="input-group-append">
-                                            <span className="input-group-text attach_btn"><i
+                                    <div className="input-group" style={{marginBottom:"10px"}}>
+                                        <div className="input-group-append" id="sendfile">
+                                            <span className="input-group-text attach_btn" style={{height:"30px"}}><i
                                                 className="fas fa-paperclip"></i></span>
+                                            <span className="input-group-text attach_btn" style={{height:"30px"}} onClick={() => setGifPickerVisible(!isGifPickerVisible)}>
+                                                <MDBIcon fas icon="gift" />
+
+                                            </span>
                                         </div>
                                         <textarea name="" className="form-control type_msg"
                                                   placeholder="Type your message..."
@@ -1533,6 +1717,32 @@ export default function ChatRoom() {
                                                 className="fas fa-location-arrow"></i></span>
                                         </div>
                                     </div>
+                                    {isGifPickerVisible && (
+                                        <div className="gif-picker" style={{ position: 'absolute', bottom: '80px', zIndex: 1000, backgroundColor: 'white', padding: '10px', borderRadius: '8px' }}>
+                                            <div className="d-flex">
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    placeholder="Search GIFs..."
+                                                    value={searchTerm}
+                                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                                    onKeyDown={(e) => { if (e.key === 'Enter') fetchGifs(searchTerm); }}
+                                                />
+                                                <button className="btn btn-primary ml-2" onClick={() => fetchGifs(searchTerm)}>Search</button>
+                                            </div>
+                                            <div className="d-flex flex-wrap mt-2">
+                                                {gifList.map((gifUrl, index) => (
+                                                    <img
+                                                        key={index}
+                                                        src={gifUrl}
+                                                        alt={`gif-${index}`}
+                                                        style={{ width: '100px', height: '100px', margin: '5px', cursor: 'pointer' }}
+                                                        onClick={() => handleGifClick(gifUrl)}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
