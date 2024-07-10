@@ -21,10 +21,8 @@ import {useNavigate} from 'react-router-dom';
 import Swal from "sweetalert2";
 import {useWebSocket} from "../WebSocket/WebSocketContext";
 
-import {fromByteArray, toByteArray} from 'base64-js';
-
-// import { getFirestore, collection, getDocs, doc, setDoc, query, where, addDoc} from "firebase/firestore";
-// import { getDoc, updateDoc, arrayUnion,arrayRemove  } from 'firebase/firestore';
+import {fromByteArray, toByteArray } from 'base64-js';
+import axios from 'axios';
 
 
 import {
@@ -38,7 +36,8 @@ import {
     query,
     where,
     addDoc,
-    arrayRemove
+    arrayRemove,
+    arrayUnion
 } from "firebase/firestore";
 import ava from "../../img/addAvatar.png";
 
@@ -48,6 +47,7 @@ import {auth, db} from "../../firebase";
 import EmojiPicker from 'emoji-picker-react';
 
 import {getStorage, ref, uploadBytes, getDownloadURL} from "firebase/storage";
+
 
 
 export default function ChatRoom() {
@@ -84,6 +84,7 @@ export default function ChatRoom() {
     const [messageContentChat, setMessageContentChat] = useState('');
     const [displayName, setDisplayName] = useState(username);
     const [lastMessage, setLastMessage] = useState(null);
+    const [lastIndex, setlastIndex] = useState(-1);
     const [searchType, setSearchType] = useState('');
     const [messages, setMessages] = useState([]);
     const [darkMode, setDarkMode] = useState(false);
@@ -94,6 +95,11 @@ export default function ChatRoom() {
     const [data, setData] = useState([]);
     const [rooms, setRooms] = useState([])
     const [roomAvatar, setRoomAvatar] = useState('');
+    const [isGifPickerVisible, setGifPickerVisible] = useState(false);
+    const [gifs,setGifs] = useState(false);
+    const GIPHY_API_KEY = '5LcV29T4yVNSvuCZ3vu2S2BQpUdfWHIy'; // Thay bằng API key của bạn
+    const [searchTerm, setSearchTerm] = useState('');
+    const [gifList, setGifList] = useState([]);
 
 
     const [avatarUrls, setAvatarUrls] = useState({});
@@ -125,7 +131,66 @@ export default function ChatRoom() {
         }
 
     };
+    const fetchGifs = (term) => {
+        axios.get(`https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${term}&limit=10`)
+            .then(response => {
+                const gifs = response.data.data;
+                setGifList(gifs.map(gif => gif.images.fixed_height.url));
 
+                // Hiển thị tên file gif trong console
+                console.log('GIFs:', gifs.map(gif => gif.title || gif.slug || 'Unknown'));
+
+                if (!isGifPickerVisible) {
+                    setGifPickerVisible(true);
+                }
+            })
+            .catch(error => console.error('Error fetching GIFs:', error));
+    };
+    const handleGifClick = async (gifUrl) => {
+        const sessionData = JSON.parse(sessionStorage.getItem('sessionData'));
+        const sessionUsername = sessionData ? sessionData.username : '';
+
+
+
+        // Send the message via WebSocket
+        const isRoom = userList.some(user => user.name === displayName && user.type === 1);
+
+        const chatMessage = {
+            action: "onchat",
+            data: {
+                event: "SEND_CHAT",
+                data: {
+                    type: isRoom ? "room" : "people",
+                    to: displayName,
+                    mes: gifUrl
+                }
+            }
+        };
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(chatMessage));
+
+            // Update messages state immediately
+            const date = new Date();
+            date.setHours(date.getHours() - 7);
+            const adjustedCreateAt = date.toISOString();
+
+            // Create a new message object for immediate display
+
+            const newMessage = {
+                name: sessionUsername,
+                createAt: adjustedCreateAt, //
+                mes: gifUrl, // Use the GIF URL as the message content
+                type: isRoom ? "room" : "people",
+                to: displayName
+            };
+            setMessages(prevMessages => [...prevMessages, newMessage]);
+        } else {
+            console.error('WebSocket is not open. Unable to send message.');
+        }
+
+        setGifPickerVisible(false);
+    };
     // Hàm kiểm tra trạng thái user
     const checkUserStatus = (usernameToCheck) => {
         if (!socket || socket.readyState !== WebSocket.OPEN) {
@@ -255,9 +320,9 @@ export default function ChatRoom() {
 
     useEffect(() => {
         const handleBeforeUnload = () => {
-
-            localStorage.clear();
-            sessionStorage.clear();
+            //
+            // localStorage.clear();
+            // sessionStorage.clear();
 
         };
 
@@ -761,446 +826,480 @@ export default function ChatRoom() {
         }
     };
 
+    const handleLiClick = async (name, type, roomOwner) => {
+        setDisplayName(name);
+        setMessageContent(type === 0 ? 'Người dùng' : 'Phòng');
+        setSearchType(type === 0 ? 'user' : 'room');
+        let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
 
-    // const handleLiClick = (name, type, roomOwner) => {
-    //     console.log("toi da vao hien thi");
+        const sessionData = JSON.parse(sessionStorage.getItem('userList'));
 
-        const handleLiClick = async (name, type, roomOwner) => {
-            setDisplayName(name);
-            setMessageContent(type === 0 ? 'Người dùng' : 'Phòng');
-            setSearchType(type === 0 ? 'user' : 'room');
-            let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
+        if (type === 0) {
+            const sessionUser = sessionData ? sessionData.find(user => user.name === name) : null;
 
-            const sessionData = JSON.parse(sessionStorage.getItem('userList'));
+            if (sessionUser && sessionUser.avatar) {
+                avatarSrc = sessionUser.avatar;
+            } else {
+                const matchedUser = data.find(dbUser => dbUser.username === name);
 
-            if (type === 0) {
-                const sessionUser = sessionData ? sessionData.find(user => user.name === name) : null;
-
-                if (sessionUser && sessionUser.avatar) {
-                    avatarSrc = sessionUser.avatar;
-                } else {
-                    const matchedUser = data.find(dbUser => dbUser.username === name);
-
-                    if (matchedUser) {
-                        if (matchedUser.avatar && matchedUser.avatar.length > 0) {
-                            avatarSrc = matchedUser.avatar;
-                        } else if (matchedUser.gender === 'male') {
-                            avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
-                        } else if (matchedUser.gender === 'female') {
-                            avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
-                        }
-                    }
-                }
-            } else if (type === 1) {
-                const sessionRoom = sessionData ? sessionData.find(room => room.name === name && room.type === 1) : null;
-                if (sessionRoom && sessionRoom.avatar) {
-                    avatarSrc = sessionRoom.avatar;
-                } else {
-                    const matchedRoom = rooms.find(room => room.roomname === name);
-                    if (matchedRoom && matchedRoom.roomavatar) {
-                        avatarSrc = matchedRoom.roomavatar;
+                if (matchedUser) {
+                    if (matchedUser.avatar && matchedUser.avatar.length > 0) {
+                        avatarSrc = matchedUser.avatar;
+                    } else if (matchedUser.gender === 'male') {
+                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
+                    } else if (matchedUser.gender === 'female') {
+                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
                     }
                 }
             }
-
-            setUserAvatar(avatarSrc);
-            setAvatarUrls(prevState => ({...prevState, [name]: avatarSrc}));
-
-            // Update sessionStorage
-            const updatedSessionData = sessionData.map(user => {
-                if (user.name === name) {
-                    return {...user, avatar: avatarSrc};
+        } else if (type === 1) {
+            const sessionRoom = sessionData ? sessionData.find(room => room.name === name && room.type === 1) : null;
+            if (sessionRoom && sessionRoom.avatar) {
+                avatarSrc = sessionRoom.avatar;
+            } else {
+                const matchedRoom = rooms.find(room => room.roomname === name);
+                if (matchedRoom && matchedRoom.roomavatar) {
+                    avatarSrc = matchedRoom.roomavatar;
                 }
-                return user;
+            }
+        }
+
+        setUserAvatar(avatarSrc);
+        setAvatarUrls(prevState => ({...prevState, [name]: avatarSrc}));
+
+        // Update sessionStorage
+        const updatedSessionData = sessionData.map(user => {
+            if (user.name === name) {
+                return {...user, avatar: avatarSrc};
+            }
+            return user;
+        });
+        sessionStorage.setItem('userList', JSON.stringify(updatedSessionData));
+
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            console.error('WebSocket connection is not open');
+            Swal.fire({
+                icon: 'error',
+                title: 'WebSocket Error',
+                text: 'Unable to establish WebSocket connection',
             });
-            sessionStorage.setItem('userList', JSON.stringify(updatedSessionData));
+            return;
+        }
 
-            if (!socket || socket.readyState !== WebSocket.OPEN) {
-                console.error('WebSocket connection is not open');
-                Swal.fire({
-                    icon: 'error',
-                    title: 'WebSocket Error',
-                    text: 'Unable to establish WebSocket connection',
-                });
-                return;
-            }
-
-            const requestData = {
-                action: "onchat",
+        const requestData = {
+            action: "onchat",
+            data: {
+                event: type === 0 ? "GET_PEOPLE_CHAT_MES" : "GET_ROOM_CHAT_MES",
                 data: {
-                    event: type === 0 ? "GET_PEOPLE_CHAT_MES" : "GET_ROOM_CHAT_MES",
-                    data: {
-                        name: name,
-                        page: 1
-                    }
+                    name: name,
+                    page: 1
                 }
-            };
+            }
+        };
 
-            socket.send(JSON.stringify(requestData));
-
-
-            socket.onmessage = async (event) => {
-                const response = JSON.parse(event.data);
-                if (response.status === "success") {
-                    let fetchedMessages = [];
-                    if (type === 0 && Array.isArray(response.data)) {
-                        fetchedMessages = response.data.reverse();
-                    } else if (type === 1 && response.data && Array.isArray(response.data.chatData)) {
-                        fetchedMessages = response.data.chatData.reverse();
-                    }
-
-                    // Lấy dữ liệu reactions từ localStorage
-                    // const storedReactions = JSON.parse(localStorage.getItem('reactions')) || {};
-                    //
-                    // // Cập nhật messages với reactions từ localStorage
-                    // const updatedMessages = fetchedMessages.map(message => {
-                    //     if (storedReactions[message.id]) {
-                    //         message.reactions = storedReactions[message.id];
-                    //     } else {
-                    //         message.reactions = [];
-                    //     }
-                    //     return message;
-                    // });
-                    // setMessages(updatedMessages);
-                    // console.log("danh sach: "+fetchedMessages);
-
-                    // Lấy phản ứng từ Firestore
-                    const reactions = await fetchReactions();
-
-                    // Kết hợp phản ứng vào tin nhắn
-                    const updatedMessages = fetchedMessages.map(message => {
-                        message.reactions = reactions[message.id] || [];
-                        return message;
-                    });
-
-                    setMessages(updatedMessages);
+        socket.send(JSON.stringify(requestData));
 
 
-                    // Decode messages
+        socket.onmessage = async (event) => {
+            const response = JSON.parse(event.data);
+            if (response.status === "success") {
+                let fetchedMessages = [];
+                if (type === 0 && Array.isArray(response.data)) {
+                    fetchedMessages = response.data.reverse();
+                } else if (type === 1 && response.data && Array.isArray(response.data.chatData)) {
+                    fetchedMessages = response.data.chatData.reverse();
+                }
+                let lastIndex = fetchedMessages.length - 1;
+                setLastMessage(lastIndex);
+                const lastmessage = fetchedMessages[lastIndex];
+                // console.log("lastmessage "+lastmessage);
+                // console.log(lastmessage.id);
+                // console.log(lastmessage.mes);
+                setLastMessage(lastmessage);
 
-                    let lastIndex = fetchedMessages.length - 1;
-                    const lastmessage = fetchedMessages[lastIndex];
-                    setLastMessage(lastmessage);
-
-                    fetchedMessages.forEach(message => {
-                        if (message.mes) {
-                            try {
-                                const decodedBytes = toByteArray(message.mes);
-                                const decodedMessages = new TextDecoder().decode(decodedBytes);
-                                message.mes = decodedMessages;
-                            } catch (error) {
-                                // console.error('Error decoding message:', error);
-                            }
+                fetchedMessages.forEach(message => {
+                    if (message.mes) {
+                        try {
+                            const decodedBytes = toByteArray(message.mes);
+                            const decodedMessages = new TextDecoder().decode(decodedBytes);
+                            message.mes = decodedMessages;
+                        } catch (error) {
+                            // console.error('Error decoding message:', error);
                         }
-                    });
+                    }
+                });
 
 
-                    // // Cập nhật lại danh sách tin nhắn
-                    // setMessages([...fetchedMessages]);
+                // Lấy dữ liệu reactions từ localStorage
+                // const storedReactions = JSON.parse(localStorage.getItem('reactions')) || {};
+                //
+                // // Cập nhật messages với reactions từ localStorage
+                // const updatedMessages = fetchedMessages.map(message => {
+                //     if (storedReactions[message.id]) {
+                //         message.reactions = storedReactions[message.id];
+                //     } else {
+                //         message.reactions = [];
+                //     }
+                //     return message;
+                // });
+                // setMessages(updatedMessages);
+                // console.log("danh sach: "+fetchedMessages);
+
+                // Lấy phản ứng từ Firestore
+                const reactions = await fetchReactions();
+
+                // // Kết hợp phản ứng vào tin nhắn
+                //                 // const updatedMessages = fetchedMessages.map(message => {
+                //                 //     message.reactions = reactions[message.id] || [];
+                //                 //     return message;
+                //                 // });
+                // Lấy dữ liệu từ Firestore
+                const firestoreData = await Promise.all(fetchedMessages.map(async message => {
+                    // Lấy dữ liệu từ Firestore cho tin nhắn hiện tại
+                    const messageRef = doc(db, "messages", String(message.id));
+                    const messageDoc = await getDoc(messageRef);
+
+                    if (messageDoc.exists()) {
+                        const firebaseMessage = messageDoc.data();
+                        message.isRecalled = firebaseMessage.isRecalled || false;
+                        message.reactions = firebaseMessage.reactions || [];
+                    } else {
+                        // Nếu tin nhắn không tồn tại trên Firestore, khởi tạo giá trị mặc định
+                        message.isRecalled = false;
+                        message.reactions = [];
+                    }
+
+                    return message;
+                }));
+
+                setMessages(firestoreData);
 
 
-                    // setMessages(fetchedMessages);
-                    setScrollToBottom(true); // Cuộn xuống dưới cùng khi có tin nhắn mới
-// =======
-//                 setMessages(fetchedMessages);
-//                 setScrollToBottom(true); // Scroll to bottom when new messages are received
-// >>>>>>> main
+                // Decode messages
 
-                    // Update message list
-                    setMessages([...fetchedMessages]);
-                    setScrollToBottom(true);
 
-                } else {
-                    Swal.fire({
-                        text: `Failed to fetch messages for ${name}.`,
-                        icon: 'error',
-                    });
-                }
-            };
-            setScrollToBottom(true);
+                // Update message list
+                // setMessages([...fetchedMessages]);
+                setScrollToBottom(false);
+
+            } else {
+                Swal.fire({
+                    text: `Failed to fetch messages for ${name}.`,
+                    icon: 'error',
+                });
+            }
         };
-        useEffect(() => {
-            setScrollToBottom(true);
-        }, [messages]);
+        setScrollToBottom(true);
+    };
+    useEffect(() => {
+        setScrollToBottom(true);
+    }, [messages]);
 
-        useEffect(() => {
-            setScrollToBottom(true);
-        }, [messages]);
+    useEffect(() => {
+        setScrollToBottom(true);
+    }, [messages]);
 
-        const add7Hours = (dateString) => {
-            const date = new Date(dateString);
-            date.setHours(date.getHours() + 7);
-            return date;
-        };
+    const add7Hours = (dateString) => {
+        const date = new Date(dateString);
+        date.setHours(date.getHours() + 7);
+        return date;
+    };
 
-        const renderDateTime = (dateString) => {
-            const date = add7Hours(dateString);
-            const day = date.getDate().toString().padStart(2, '0');
-            const month = (date.getMonth() + 1).toString().padStart(2, '0');
-            const year = date.getFullYear();
-            const hours = date.getHours().toString().padStart(2, '0');
-            const minutes = date.getMinutes().toString().padStart(2, '0');
-            const seconds = date.getSeconds().toString().padStart(2, '0');
-            return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+    const renderDateTime = (dateString) => {
+        const date = add7Hours(dateString);
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const year = date.getFullYear();
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const seconds = date.getSeconds().toString().padStart(2, '0');
+        return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
 
-        };
+    };
 
 // <<<<<<< HEAD
 
-        // Start of sendChat function
-        const [shouldFetchMessages, setShouldFetchMessages] = useState(false);
+    // Start of sendChat function
+    const [shouldFetchMessages, setShouldFetchMessages] = useState(false);
 
 
-        // const sendChat = () => {
-        //     if (messageContentChat.trim() === '') return;
-        //     console.log('Message content:', messageContentChat);
-        //
-        //     // Encode message content
-        //     const messageBytes = new TextEncoder().encode(messageContentChat.trim());
-        //     const encodedMessage = fromByteArray(messageBytes);
-        //     const chatMessage = {
-        //
-        //         "action": "onchat",
-        //         "data": {
-        //             "event": "SEND_CHAT",
-        //             "data": {
-        //                 "type": "people",
-        //                 "to": displayName,
-        //                 "mes": encodedMessage
-        //             }
-        //
-        //         }
-        //     };
-        //
-        //     if (socket && socket.readyState === WebSocket.OPEN) {
-        //         setMessageContentChat(''); // Xóa nội dung tin nhắn sau khi gửi
-        //         setScrollToBottom(true); // Kích hoạt cuộn xuống dưới
-        //         console.log('Message object:', chatMessage);
-        //         socket.send(JSON.stringify(chatMessage));
-        //         setShouldFetchMessages(true); // Kích hoạt việc tải lại tin nhắn
-        //
-        //     } else {
-        //         console.error('WebSocket is not open. Unable to send message.');
-        //     }
-        // };
-        //
-        // useEffect(() => {
-        //     if (shouldFetchMessages) {
-        //         handleLiClick(displayName, 0, roomOwner);
-        //         setShouldFetchMessages(false); // Đặt lại để ngăn không gọi lại khi messages thay đổi
-        //     }
-        // }, [shouldFetchMessages]);
-        //
-        //
-        //
-        // const handleInputChange = (event) => {
-        //     setMessageContentChat(event.target.value);
-        // };
-        //
-        // const handleSendClick = () => {
-        //     sendChat();
-        // };
-        //
-        // const handleKeyDown = (event) => {
-        //     if (event.key === 'Enter') {
-        //         event.preventDefault();
-        //         sendChat();
-        //     }
-        // };
+    // const sendChat = () => {
+    //     if (messageContentChat.trim() === '') return;
+    //     console.log('Message content:', messageContentChat);
+    //
+    //     // Encode message content
+    //     const messageBytes = new TextEncoder().encode(messageContentChat.trim());
+    //     const encodedMessage = fromByteArray(messageBytes);
+    //     const chatMessage = {
+    //
+    //         "action": "onchat",
+    //         "data": {
+    //             "event": "SEND_CHAT",
+    //             "data": {
+    //                 "type": "people",
+    //                 "to": displayName,
+    //                 "mes": encodedMessage
+    //             }
+    //
+    //         }
+    //     };
+    //
+    //     if (socket && socket.readyState === WebSocket.OPEN) {
+    //         setMessageContentChat(''); // Xóa nội dung tin nhắn sau khi gửi
+    //         setScrollToBottom(true); // Kích hoạt cuộn xuống dưới
+    //         console.log('Message object:', chatMessage);
+    //         socket.send(JSON.stringify(chatMessage));
+    //         setShouldFetchMessages(true); // Kích hoạt việc tải lại tin nhắn
+    //
+    //     } else {
+    //         console.error('WebSocket is not open. Unable to send message.');
+    //     }
+    // };
+    //
+    // useEffect(() => {
+    //     if (shouldFetchMessages) {
+    //         handleLiClick(displayName, 0, roomOwner);
+    //         setShouldFetchMessages(false); // Đặt lại để ngăn không gọi lại khi messages thay đổi
+    //     }
+    // }, [shouldFetchMessages]);
+    //
+    //
+    //
+    // const handleInputChange = (event) => {
+    //     setMessageContentChat(event.target.value);
+    // };
+    //
+    // const handleSendClick = () => {
+    //     sendChat();
+    // };
+    //
+    // const handleKeyDown = (event) => {
+    //     if (event.key === 'Enter') {
+    //         event.preventDefault();
+    //         sendChat();
+    //     }
+    // };
 
 
-        // hàm send chat
-        const sendChat = () => {
-            if (messageContentChat.trim() === '') return;
+    // hàm send chat
+    const sendChat = () => {
+        if (messageContentChat.trim() === '') return;
 
-            // Encode message content
-            const messageBytes = new TextEncoder().encode(messageContentChat.trim());
-            const encodedMessage = fromByteArray(messageBytes);
+        // Encode message content
+        const messageBytes = new TextEncoder().encode(messageContentChat.trim());
+        const encodedMessage = fromByteArray(messageBytes);
 
-            // Determine if displayName is a room
-            const isRoom = userList.some(user => user.name === displayName && user.type === 1);
+        // Determine if displayName is a room
+        const isRoom = userList.some(user => user.name === displayName && user.type === 1);
 
-            let chatMessage;
-            if (isRoom) {
-                console.log("Sending message to room:", displayName);
-                chatMessage = {
-                    action: "onchat",
-                    data: {
-                        event: "SEND_CHAT",
-                        data: {
-                            type: "room",
-                            to: displayName,
-                            mes: encodedMessage
-                        }
-                    }
-                };
-            } else {
-                console.log("Sending message to user:", displayName);
-                chatMessage = {
-                    action: "onchat",
-                    data: {
-                        event: "SEND_CHAT",
-                        data: {
-                            type: "people",
-                            to: displayName,
-                            mes: encodedMessage
-                        }
-                    }
-                };
-            }
-
-            // Create a new message object for immediate display
-            const newMessage = {
-                name: username,
-                createAt: new Date().toISOString(),
-                mes: messageContentChat.trim(), // Use the plain message content
-                type: isRoom ? "room" : "people",
-                to: displayName
-            };
-
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                setMessageContentChat(''); // Clear message content after sending
-                setScrollToBottom(true); // Scroll to bottom
-                console.log('Message object:', chatMessage);
-                socket.send(JSON.stringify(chatMessage));
-
-                // Update messages state immediately
-                setMessages(prevMessages => [...prevMessages, newMessage]);
-            } else {
-                console.error('WebSocket is not open. Unable to send message.');
-            }
-        };
-
-        useEffect(() => {
-            if (shouldFetchMessages) {
-                handleLiClick(displayName, 0, roomOwner);
-                setShouldFetchMessages(false); // Reset to prevent re-calling when messages change
-            }
-        }, [shouldFetchMessages]);
-
-        const handleInputChange = (event) => {
-            setMessageContentChat(event.target.value);
-        };
-
-        const handleSendClick = () => {
-            sendChat();
-        };
-
-        const handleKeyDown = (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                sendChat();
-            }
-        };
-
-
-        // End of sendChat function
-// =======
-        // join room
-        const handleJoinRoom = () => {
-            const isAlreadyMember = userList.some((room) => room.name === joinRoomCode && room.type === 1);
-            if (isAlreadyMember) {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Already a member',
-                    text: 'Bạn đã là thành viên của phòng.',
-                });
-                return;
-            }
-
-            const joinRoomRequest = {
+        let chatMessage;
+        if (isRoom) {
+            console.log("Sending message to room:", displayName);
+            chatMessage = {
                 action: "onchat",
                 data: {
-                    event: "JOIN_ROOM",
+                    event: "SEND_CHAT",
                     data: {
-                        name: joinRoomCode // Thay đổi từ code thành name
+                        type: "room",
+                        to: displayName,
+                        mes: encodedMessage
                     }
                 }
             };
+        } else {
+            console.log("Sending message to user:", displayName);
+            chatMessage = {
+                action: "onchat",
+                data: {
+                    event: "SEND_CHAT",
+                    data: {
+                        type: "people",
+                        to: displayName,
+                        mes: encodedMessage
+                    }
+                }
+            };
+        }
 
-            console.log('Sending join room request:', JSON.stringify(joinRoomRequest)); // Log toàn bộ request
+        // Create a new message object for immediate display
+        const date = new Date();
 
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify(joinRoomRequest));
-            } else {
-                console.error('WebSocket is not open. Unable to send message.');
+        date.setHours(date.getHours() - 7);
+
+        const adjustedCreateAt = date.toISOString();
+
+
+
+        // Create a new message object for immediate display
+
+
+
+        // Create a new message object for immediate display
+
+        const newMessage = {
+
+            name: username,
+            createAt: adjustedCreateAt, //
+            mes: messageContentChat.trim(), // Use the plain message content
+            type: isRoom ? "room" : "people",
+            to: displayName
+        }
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            setMessageContentChat(''); // Clear message content after sending
+            setScrollToBottom(true); // Scroll to bottom
+            console.log('Message object:', chatMessage);
+            socket.send(JSON.stringify(chatMessage));
+
+            // Update messages state immediately
+            setMessages(prevMessages => [...prevMessages, newMessage]);
+        } else {
+            console.error('WebSocket is not open. Unable to send message.');
+        }
+    };
+
+    useEffect(() => {
+        if (shouldFetchMessages) {
+            handleLiClick(displayName, 0, roomOwner);
+            setShouldFetchMessages(false); // Reset to prevent re-calling when messages change
+        }
+    }, [shouldFetchMessages]);
+
+    const handleInputChange = (event) => {
+        setMessageContentChat(event.target.value);
+    };
+
+    const handleSendClick = () => {
+        sendChat();
+    };
+
+    const handleKeyDown = (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            sendChat();
+        }
+    };
+
+
+    // End of sendChat function
+// =======
+    // join room
+    const handleJoinRoom = () => {
+        const isAlreadyMember = userList.some((room) => room.name === joinRoomCode && room.type === 1);
+        if (isAlreadyMember) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Already a member',
+                text: 'Bạn đã là thành viên của phòng.',
+            });
+            return;
+        }
+
+        const joinRoomRequest = {
+            action: "onchat",
+            data: {
+                event: "JOIN_ROOM",
+                data: {
+                    name: joinRoomCode // Thay đổi từ code thành name
+                }
             }
-
-            setJoinRoomModal(false); // Đóng modal sau khi gửi yêu cầu tham gia phòng
         };
 
-        useEffect(() => {
-            const handleJoinRoomResponse = (event) => {
-                const response = JSON.parse(event.data);
-                console.log('Received response:', response); // Debug phản hồi nhận được
-                if (response.event === "JOIN_ROOM") {
-                    if (response.status === "success") {
-                        Swal.fire({
-                            position: 'center',
-                            icon: 'success',
-                            title: response.status,
-                            text: 'Joined room successfully',
-                            showConfirmButton: false,
-                            timer: 1500
-                        });
+        console.log('Sending join room request:', JSON.stringify(joinRoomRequest)); // Log toàn bộ request
 
-                        // Cập nhật danh sách userList và lưu vào sessionStorage
-                        const currentDate = new Date();
-                        currentDate.setHours(currentDate.getHours() - 7);
-                        const formattedDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')} ${String(currentDate.getHours()).padStart(2, '0')}:${String(currentDate.getMinutes()).padStart(2, '0')}:${String(currentDate.getSeconds()).padStart(2, '0')}`;
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(joinRoomRequest));
+        } else {
+            console.error('WebSocket is not open. Unable to send message.');
+        }
 
-                        const newUserList = [{
-                            name: joinRoomCode,
-                            type: 1,
-                            actionTime: formattedDate,
-                            roomOwner: response.data.roomOwner || 'Unknown'
-                        }, ...userList];
-                        setUserList(newUserList);
-                        sessionStorage.setItem('userList', JSON.stringify(newUserList));
+        setJoinRoomModal(false); // Đóng modal sau khi gửi yêu cầu tham gia phòng
+    };
 
-                        // Xử lý các hành động khác nếu cần
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Join Room Error',
-                            text: response.message || 'Failed to join the room',
-                        });
-                    }
+    useEffect(() => {
+        const handleJoinRoomResponse = (event) => {
+            const response = JSON.parse(event.data);
+            console.log('Received response:', response); // Debug phản hồi nhận được
+            if (response.event === "JOIN_ROOM") {
+                if (response.status === "success") {
+                    Swal.fire({
+                        position: 'center',
+                        icon: 'success',
+                        title: response.status,
+                        text: 'Joined room successfully',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+
+                    // Cập nhật danh sách userList và lưu vào sessionStorage
+                    const currentDate = new Date();
+                    currentDate.setHours(currentDate.getHours() - 7);
+                    const formattedDate = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')} ${String(currentDate.getHours()).padStart(2, '0')}:${String(currentDate.getMinutes()).padStart(2, '0')}:${String(currentDate.getSeconds()).padStart(2, '0')}`;
+
+                    const newUserList = [{
+                        name: joinRoomCode,
+                        type: 1,
+                        actionTime: formattedDate,
+                        roomOwner: response.data.roomOwner || 'Unknown'
+                    }, ...userList];
+                    setUserList(newUserList);
+                    sessionStorage.setItem('userList', JSON.stringify(newUserList));
+
+                    // Xử lý các hành động khác nếu cần
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Join Room Error',
+                        text: response.message || 'Failed to join the room',
+                    });
                 }
-            };
+            }
+        };
 
+        if (socket) {
+            socket.addEventListener('message', handleJoinRoomResponse);
+        }
+
+        return () => {
             if (socket) {
-                socket.addEventListener('message', handleJoinRoomResponse);
+                socket.removeEventListener('message', handleJoinRoomResponse);
             }
-
-            return () => {
-                if (socket) {
-                    socket.removeEventListener('message', handleJoinRoomResponse);
-                }
-            };
-        }, [socket, userList, joinRoomCode]);
-        const checkIncludes = (text, smallText) => {
-            return text.includes(smallText);
         };
+    }, [socket, userList, joinRoomCode]);
+    const checkIncludes = (text, smallText) => {
+        return text.includes(smallText);
+    };
 
-        const replaceText = (text, text1, text2) => {
-            return text.replace(text1, text2);
-        };
-        //Regex kiểm tra đường dẫn//
-        const urlRegex = /https?:\/\/[^\s]+/g;
-        //Tải lên và kiểm tra tin nhắn là dạng text hay u//
-        const renderMessageContent = (message) => {
-            const parts = message.mes.split(urlRegex);
-            const urls = message.mes.match(urlRegex);
+    const replaceText = (text, text1, text2) => {
+        return text.replace(text1, text2);
+    };
+    //Regex kiểm tra đường dẫn//
+    const urlRegex = /https?:\/\/[^\s]+/g;
+    //Tải lên và kiểm tra tin nhắn là dạng text hay u//
+    const renderMessageContent = (message) => {
+        const parts = message.mes.split(urlRegex);
+        const urls = message.mes.match(urlRegex);
 
-            if (urls) {
-                return (
-                    <div className="message-content">
-                        {parts.map((part, index) => (
-                            <React.Fragment key={index}>
-                                {part}
-                                {urls[index] && (
-                                    checkIncludes(urls[index], "https://www.youtube.com/watch?v=") ? (
+        if (urls) {
+            return (
+                <div className="message-content">
+                    {parts.map((part, index) => (
+                        <React.Fragment key={index}>
+                            {part}
+                            {urls[index] && (
+                                // Check if the URL is a Giphy URL and extract the GIF ID
+                                /https:\/\/media[0-9]*\.giphy\.com\/media\/[a-zA-Z0-9]+\/[0-9]+\.gif/.test(urls[index]) ? (
+                                    <iframe
+                                        src={`https://giphy.com/embed/${urls[index].split('media/')[1].split('/')[0]}`}
+                                        width="300"
+                                        height="271"
+                                        frameBorder="0"
+                                        className="giphy-embed"
+                                        allowFullScreen
+                                    ></iframe>
+                                ) : (
+                                    // Check if the URL is a YouTube URL and embed the video
+                                    /https:\/\/www.youtube.com\/watch\?v=/.test(urls[index]) ? (
                                         <iframe
                                             width="100%"
                                             height="315"
@@ -1211,462 +1310,493 @@ export default function ChatRoom() {
                                             allowFullScreen
                                         ></iframe>
                                     ) : (
+                                        // Otherwise, render the URL as a link
                                         <a href={urls[index]} target="_blank" rel="noopener noreferrer">
                                             {urls[index]}
                                         </a>
                                     )
-                                )}
-                            </React.Fragment>
-                        ))}
-                    </div>
-                );
-            }
+                                )
+                            )}
+                        </React.Fragment>
+                    ))}
+                </div>
+            );
+        }
 
-            return <div className="message-content">{message.mes}</div>;
-        };
+        return <div className="message-content">{message.mes}</div>;
+    };
+
 
 
 // >>>>>>> main
-        //chuc nang xoa, thu hoi chat
-        const [hoveredMessage, setHoveredMessage] = useState(null); // Thêm trạng thái để theo dõi tin nhắn được chọn
-        // Thêm các hàm xử lý
-        const handleDeleteMessage = (messageId) => {
-            // Xử lý xóa tin nhắn
-            console.log('Delete message:', messageId);
-        };
+    //chuc nang xoa, thu hoi chat
+    const [hoveredMessage, setHoveredMessage] = useState(null); // Thêm trạng thái để theo dõi tin nhắn được chọn
 
-        const handleReplyMessage = (message) => {
-            // Xử lý trả lời tin nhắn
-            console.log('Reply to message:', message);
-        };
-        // const handleEmojiClick = (messageId) => {
-        //     // Mở một danh sách các biểu tượng cảm xúc cho người dùng chọn
-        //     // Sau khi người dùng chọn, gửi biểu tượng cảm xúc kèm theo tin nhắn
-        //     console.log(`Thả biểu tượng cảm xúc cho tin nhắn có ID: ${messageId}`);
-        //     // Thực hiện logic thêm biểu tượng cảm xúc vào tin nhắn
-        // };
-        // const [showEmojiPicker, setShowEmojiPicker] = useState(false); // State để điều khiển hiển thị Emoji Picker
-        //
-        // const toggleEmojiPicker = () => {
-        //     setShowEmojiPicker(!showEmojiPicker);
-        // };
-        const [showEmojiPicker, setShowEmojiPicker] = useState(false); // State để điều khiển hiển thị Emoji Picker
-        const [emojiPickerMessageId, setEmojiPickerMessageId] = useState(null); // Trạng thái để lưu trữ ID tin nhắn hiện tại
-        const emojiPickerRef = useRef(null);
-
-        // Thêm hàm xử lý click vào biểu tượng cảm xúc
-        const handleEmojiClick = (messageId) => { // Thay đổi
-            setEmojiPickerMessageId(messageId);
-            setShowEmojiPicker(!showEmojiPicker);
-            console.log(`Thả biểu tượng cảm xúc cho tin nhắn có ID: ${messageId}`);
-        };
-        const handleAvatarChange = (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (upload) => {
-                    setAvatar({url: upload.target.result, file: file});
-                };
-                reader.readAsDataURL(file);
+    const handleDeleteMessage = async (messageId) => {
+        console.log("messageId: "+messageId)
+        const updatedMessages = messages.map(message => {
+            if (message.id === messageId) {
+                if (!message.hasOwnProperty('isRecalled')) {
+                    return {...message, isRecalled: true};
+                }
+                return {...message, isRecalled: true};
             }
-        };
+            return message;
+        });
+
+        setMessages(updatedMessages);
+        // Lấy tham chiếu của tin nhắn bị thu hồi
+        const messageElement = specificMessageRef.current[messageId];
+
+        const messageRef = doc(db, "messages", String(messageId));
+        const messageDoc = await getDoc(messageRef);
+
+        if (messageDoc.exists()) {
+            await updateDoc(messageRef, {
+                isRecalled: true
+            });
+        }else{
+            await setDoc(messageRef, {
+                id: messageId,
+                isRecalled: true
+            });
+        }
+
+        console.log('Message recalled:', messageId);
+
+        // Cuộn tới tin nhắn bị thu hồi
+        if (messageElement) {
+            messageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // Ngăn việc cuộn tự động xuống cuối
+        setScrollToBottom(false);
+    };
+
+
+    const handleReplyMessage = (message) => {
+        // Xử lý trả lời tin nhắn
+        console.log('Reply to message:', message);
+    };
+
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false); // State để điều khiển hiển thị Emoji Picker
+    const [emojiPickerMessageId, setEmojiPickerMessageId] = useState(null); // Trạng thái để lưu trữ ID tin nhắn hiện tại
+    const emojiPickerRef = useRef(null);
+
+    // Thêm hàm xử lý click vào biểu tượng cảm xúc
+    const handleEmojiClick = (messageId) => { // Thay đổi
+        setEmojiPickerMessageId(messageId);
+        setShowEmojiPicker(!showEmojiPicker);
+        console.log(`Thả biểu tượng cảm xúc cho tin nhắn có ID: ${messageId}`);
+    };
+    const handleAvatarChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (upload) => {
+                setAvatar({url: upload.target.result, file: file});
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
 // Function to handle room avatar change
 
 
 // Function to update avatar URL in Firestore
-        const updateAvatarURLInFirestore = async (uid, avatarURL) => {
-            const userDocRef = doc(db, 'users', uid);
-            await updateDoc(userDocRef, {avatar: avatarURL});
-        };
+    const updateAvatarURLInFirestore = async (uid, avatarURL) => {
+        const userDocRef = doc(db, 'users', uid);
+        await updateDoc(userDocRef, {avatar: avatarURL});
+    };
 
 // Function to update room avatar URL in Firestore
 
 // Function to fetch username from Firebase
-        const getUsernameFromFirebase = async (uid) => {
-            const userDocRef = doc(db, 'users', uid);
-            const userDoc = await getDoc(userDocRef);
-            if (userDoc.exists()) {
-                return userDoc.data().username;
-            }
-            return null;
-        };
+    const getUsernameFromFirebase = async (uid) => {
+        const userDocRef = doc(db, 'users', uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+            return userDoc.data().username;
+        }
+        return null;
+    };
 
 // Function to update user avatar
-        const updateUserAvatar = async () => {
-            try {
-                const user = auth.currentUser;
-                if (user && avatar.file) {
-                    const avatarURL = await uploadAvatar(avatar.file);
-                    await updateAvatarURLInFirestore(user.uid, avatarURL);
+    const updateUserAvatar = async () => {
+        try {
+            const user = auth.currentUser;
+            if (user && avatar.file) {
+                const avatarURL = await uploadAvatar(avatar.file);
+                await updateAvatarURLInFirestore(user.uid, avatarURL);
 
-                    const username = await getUsernameFromFirebase(user.uid);
+                const username = await getUsernameFromFirebase(user.uid);
 
-                    if (username) {
-                        // Update sessionStorage with the new avatar URL
-                        const sessionData = JSON.parse(sessionStorage.getItem('userList'));
-                        if (sessionData) {
-                            const updatedSessionData = sessionData.map((userItem) =>
-                                userItem.name === username
-                                    ? {...userItem, avatar: avatarURL}
-                                    : userItem
-                            );
-                            sessionStorage.setItem('userList', JSON.stringify(updatedSessionData));
-                        }
-
-                        // Update the state with the new avatar URL
-                        setUserAvatar(avatarURL);
-                        setUserList((prevUserList) =>
-                            prevUserList.map((userItem) =>
-                                userItem.name === username
-                                    ? {...userItem, avatar: avatarURL}
-                                    : userItem
-                            )
-                        );
-
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Avatar updated successfully',
-                            showConfirmButton: false,
-                            timer: 1500
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error('Error updating avatar: ', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Failed to update avatar',
-                    text: error.message,
-                });
-            }
-            setChangeAvatarModal(false);
-        };
-
-// Function to update room avatar
-
-
-// Function to upload avatar to Firebase storage
-
-// Function to update room avatar URL in Firestore
-        // Function to handle room avatar change
-        const handleRoomAvatarChange = (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (upload) => {
-                    setRoomAvatar({url: upload.target.result, file: file});
-                };
-                reader.readAsDataURL(file);
-            }
-        };
-
-// Function to upload avatar to Firebase storage
-        const uploadAvatar = async (file) => {
-            const storage = getStorage();
-            const storageRef = ref(storage, `avatars/${file.name}`);
-            await uploadBytes(storageRef, file);
-            return getDownloadURL(storageRef);
-        };
-
-// Function to update room avatar URL in Firestore
-        const updateRoomAvatarURLInFirestore = async (roomName, avatarURL) => {
-            const roomQuery = query(collection(db, 'rooms'), where('roomname', '==', roomName));
-            const querySnapshot = await getDocs(roomQuery);
-
-            if (!querySnapshot.empty) {
-                const roomDocRef = querySnapshot.docs[0].ref;
-                await updateDoc(roomDocRef, {roomavatar: avatarURL});
-                return roomDocRef.id;
-            }
-
-            throw new Error('Room not found');
-        };
-
-// Function to get the latest room avatar URL from Firestore
-        const getLatestRoomAvatarURLFromFirestore = async (roomName) => {
-            const roomQuery = query(collection(db, 'rooms'), where('roomname', '==', roomName));
-            const querySnapshot = await getDocs(roomQuery);
-
-            if (!querySnapshot.empty) {
-                const roomData = querySnapshot.docs[0].data();
-                return roomData.roomavatar;
-            }
-
-            throw new Error('Room not found');
-        };
-
-// Function to update room avatar
-        const updateRoomAvatar = async () => {
-            try {
-                const room = userList.find(user => user.type === 1 && user.name === roomNames);
-                if (room && roomAvatar.file) {
-                    const avatarURL = await uploadAvatar(roomAvatar.file);
-                    const roomId = await updateRoomAvatarURLInFirestore(room.name, avatarURL);
-
-                    // Fetch the latest room avatar URL from Firestore
-                    const latestAvatarURL = await getLatestRoomAvatarURLFromFirestore(room.name);
-
-                    // Update sessionStorage with the new room avatar URL
+                if (username) {
+                    // Update sessionStorage with the new avatar URL
                     const sessionData = JSON.parse(sessionStorage.getItem('userList'));
                     if (sessionData) {
                         const updatedSessionData = sessionData.map((userItem) =>
-                            userItem.name === room.name && userItem.type === 1
-                                ? {...userItem, avatar: latestAvatarURL}
+                            userItem.name === username
+                                ? {...userItem, avatar: avatarURL}
                                 : userItem
                         );
                         sessionStorage.setItem('userList', JSON.stringify(updatedSessionData));
                     }
-                    setUserAvatar(latestAvatarURL);
-                    // Update the state with the new room avatar URL
+
+                    // Update the state with the new avatar URL
+                    setUserAvatar(avatarURL);
                     setUserList((prevUserList) =>
                         prevUserList.map((userItem) =>
-                            userItem.name === room.name && userItem.type === 1
-                                ? {...userItem, avatar: latestAvatarURL}
+                            userItem.name === username
+                                ? {...userItem, avatar: avatarURL}
                                 : userItem
                         )
                     );
 
                     Swal.fire({
                         icon: 'success',
-                        title: 'Room avatar updated successfully',
+                        title: 'Avatar updated successfully',
                         showConfirmButton: false,
                         timer: 1500
                     });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Failed to update room avatar',
-                        text: 'Invalid room name',
-                    });
                 }
-            } catch (error) {
-                console.error('Error updating room avatar: ', error);
+            }
+        } catch (error) {
+            console.error('Error updating avatar: ', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Failed to update avatar',
+                text: error.message,
+            });
+        }
+        setChangeAvatarModal(false);
+    };
+
+// Function to update room avatar
+
+
+// Function to upload avatar to Firebase storage
+
+// Function to update room avatar URL in Firestore
+    // Function to handle room avatar change
+    const handleRoomAvatarChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (upload) => {
+                setRoomAvatar({url: upload.target.result, file: file});
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+// Function to upload avatar to Firebase storage
+    const uploadAvatar = async (file) => {
+        const storage = getStorage();
+        const storageRef = ref(storage, `avatars/${file.name}`);
+        await uploadBytes(storageRef, file);
+        return getDownloadURL(storageRef);
+    };
+
+// Function to update room avatar URL in Firestore
+    const updateRoomAvatarURLInFirestore = async (roomName, avatarURL) => {
+        const roomQuery = query(collection(db, 'rooms'), where('roomname', '==', roomName));
+        const querySnapshot = await getDocs(roomQuery);
+
+        if (!querySnapshot.empty) {
+            const roomDocRef = querySnapshot.docs[0].ref;
+            await updateDoc(roomDocRef, {roomavatar: avatarURL});
+            return roomDocRef.id;
+        }
+
+        throw new Error('Room not found');
+    };
+
+// Function to get the latest room avatar URL from Firestore
+    const getLatestRoomAvatarURLFromFirestore = async (roomName) => {
+        const roomQuery = query(collection(db, 'rooms'), where('roomname', '==', roomName));
+        const querySnapshot = await getDocs(roomQuery);
+
+        if (!querySnapshot.empty) {
+            const roomData = querySnapshot.docs[0].data();
+            return roomData.roomavatar;
+        }
+
+        throw new Error('Room not found');
+    };
+
+// Function to update room avatar
+    const updateRoomAvatar = async () => {
+        try {
+            const room = userList.find(user => user.type === 1 && user.name === roomNames);
+            if (room && roomAvatar.file) {
+                const avatarURL = await uploadAvatar(roomAvatar.file);
+                const roomId = await updateRoomAvatarURLInFirestore(room.name, avatarURL);
+
+                // Fetch the latest room avatar URL from Firestore
+                const latestAvatarURL = await getLatestRoomAvatarURLFromFirestore(room.name);
+
+                // Update sessionStorage with the new room avatar URL
+                const sessionData = JSON.parse(sessionStorage.getItem('userList'));
+                if (sessionData) {
+                    const updatedSessionData = sessionData.map((userItem) =>
+                        userItem.name === room.name && userItem.type === 1
+                            ? {...userItem, avatar: latestAvatarURL}
+                            : userItem
+                    );
+                    sessionStorage.setItem('userList', JSON.stringify(updatedSessionData));
+                }
+                setUserAvatar(latestAvatarURL);
+                // Update the state with the new room avatar URL
+                setUserList((prevUserList) =>
+                    prevUserList.map((userItem) =>
+                        userItem.name === room.name && userItem.type === 1
+                            ? {...userItem, avatar: latestAvatarURL}
+                            : userItem
+                    )
+                );
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Room avatar updated successfully',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+            } else {
                 Swal.fire({
                     icon: 'error',
                     title: 'Failed to update room avatar',
-                    text: error.message,
+                    text: 'Invalid room name',
                 });
             }
-            setChangeAvatarModal(false);
-        };
+        } catch (error) {
+            console.error('Error updating room avatar: ', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Failed to update room avatar',
+                text: error.message,
+            });
+        }
+        setChangeAvatarModal(false);
+    };
 // Component useEffect to load user list from sessionStorage
-        useEffect(() => {
-            const storedUserList = sessionStorage.getItem('userList');
-            if (storedUserList) {
-                setUserList(JSON.parse(storedUserList));
-            } else {
-                // Fetch the user list from Firestore or other sources if not in sessionStorage
-            }
-        }, []);
+    useEffect(() => {
+        const storedUserList = sessionStorage.getItem('userList');
+        if (storedUserList) {
+            setUserList(JSON.parse(storedUserList));
+        } else {
+            // Fetch the user list from Firestore or other sources if not in sessionStorage
+        }
+    }, []);
 
-        // Thêm hàm xử lý chọn biểu tượng cảm xúc
+    // Thêm hàm xử lý chọn biểu tượng cảm xúc
 
-        const handleEmojiSelect = async (emojiData, event) => {
-            if (emojiPickerMessageId !== null) {
-                const reaction = emojiData.native || emojiData.emoji || emojiData.unicode;
+    const handleEmojiSelect = async (emojiData, event) => {
+        if (emojiPickerMessageId !== null) {
+            const reaction = emojiData.native || emojiData.emoji || emojiData.unicode;
 
-                const updatedMessages = messages.map(message => {
-                    if (message.id === emojiPickerMessageId) {
-                        message.reactions = message.reactions || [];
+            const updatedMessages = messages.map(message => {
+                if (message.id === emojiPickerMessageId) {
+                    message.reactions = message.reactions || [];
 
-                        const reactionIndex = message.reactions.indexOf(reaction);
-                        if (reactionIndex > -1) {
-                            message.reactions.splice(reactionIndex, 1); // Remove reaction if it already exists
-                        } else {
-                            message.reactions = [reaction]; // Replace with new reaction if it doesn't exist
-                        }
-                    }
-                    return message;
-                });
-
-                setMessages(updatedMessages);
-
-                const messageRef = doc(db, "messages", String(emojiPickerMessageId));
-                const messageDoc = await getDoc(messageRef);
-
-                if (messageDoc.exists()) {
-                    const currentReactions = messageDoc.data().reactions || [];
-                    const reactionIndex = currentReactions.indexOf(reaction);
-
+                    const reactionIndex = message.reactions.indexOf(reaction);
                     if (reactionIndex > -1) {
-                        await updateDoc(messageRef, {
-                            reactions: arrayRemove(reaction) // Remove reaction if it already exists in Firestore
-                        });
+                        message.reactions.splice(reactionIndex, 1); // Remove reaction if it already exists
                     } else {
-                        await updateDoc(messageRef, {
-                            reactions: [reaction] // Replace with new reaction if it doesn't exist in Firestore
-                        });
+                        message.reactions = [reaction]; // Replace with new reaction if it doesn't exist
                     }
+                }
+                return message;
+            });
+
+            setMessages(updatedMessages);
+
+            const messageRef = doc(db, "messages", String(emojiPickerMessageId));
+            const messageDoc = await getDoc(messageRef);
+
+            if (messageDoc.exists()) {
+                const currentReactions = messageDoc.data().reactions || [];
+                const reactionIndex = currentReactions.indexOf(reaction);
+
+                if (reactionIndex > -1) {
+                    await updateDoc(messageRef, {
+                        reactions: arrayRemove(reaction) // Remove reaction if it already exists in Firestore
+                    });
                 } else {
-                    await setDoc(messageRef, {
-                        id: emojiPickerMessageId,
-                        reactions: [reaction]
+                    await updateDoc(messageRef, {
+                        reactions: [reaction] // Replace with new reaction if it doesn't exist in Firestore
                     });
                 }
-
-                setShowEmojiPicker(false);
-                scrollToMessage(emojiPickerMessageId); // Cuộn đến tin nhắn có biểu tượng cảm xúc
+            } else {
+                await setDoc(messageRef, {
+                    id: emojiPickerMessageId,
+                    reactions: [reaction]
+                });
             }
+
+            setShowEmojiPicker(false);
+            scrollToMessage(emojiPickerMessageId); // Cuộn đến tin nhắn có biểu tượng cảm xúc
+        }
+    };
+
+    const handleClickOutside = (event) => {
+        if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+            setShowEmojiPicker(false);
+        }
+    };
+
+    useEffect(() => {
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
         };
-
-        const handleClickOutside = (event) => {
-            if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
-                setShowEmojiPicker(false);
-            }
-        };
-
-        useEffect(() => {
-            document.addEventListener("mousedown", handleClickOutside);
-            return () => {
-                document.removeEventListener("mousedown", handleClickOutside);
-            };
-        }, []);
+    }, []);
 
 
-        return (
-            <>
-                <div className="maincontainer">
-                    <div className="container-fluid h-50">
-                        <div className="row justify-content-center h-100">
-                            <div className="col-md-4 col-xl-3 chat" id="chatleft">
-                                <div className="card mb-sm-3 mb-md-0 contacts_card">
-                                    <div className="card-header">
-                                        <div className="input-group">
-                                            <div className="input-group-prepend"></div>
-                                            <input
-                                                type="checkbox"
-                                                className="cbox"
-                                                aria-label="Checkbox for search"
-                                                checked={isCheckboxChecked}
-                                                onChange={handleCheckboxChange}
-                                            />
-                                            <MDBInput
-                                                type="text"
-                                                placeholder="Search..."
-                                                name="searchInput"
-                                                className="form-control search"
-                                                value={searchInput}
-                                                onChange={handleSearchInputChange}
-                                                list="datalistOptions"
-                                            />
-                                            <datalist id="datalistOptions">
-                                                {userList
-                                                    .filter(user => !isCheckboxChecked ? user.type === 0 : user.type === 1)
-                                                    .map((user, index) => (
-                                                        <option key={index} value={user.name}/>
-                                                    ))}
-                                            </datalist>
-                                            <div className="input-group-prepend">
+            return (
+                <>
+                    <div className="maincontainer">
+                        <div className="container-fluid h-50">
+                            <div className="row justify-content-center h-100">
+                                <div className="col-md-4 col-xl-3 chat" id="chatleft">
+                                    <div className="card mb-sm-3 mb-md-0 contacts_card">
+                                        <div className="card-header">
+                                            <div className="input-group">
+                                                <div className="input-group-prepend"></div>
+                                                <input
+                                                    type="checkbox"
+                                                    className="cbox"
+                                                    aria-label="Checkbox for search"
+                                                    checked={isCheckboxChecked}
+                                                    onChange={handleCheckboxChange}
+                                                />
+                                                <MDBInput
+                                                    type="text"
+                                                    placeholder="Search..."
+                                                    name="searchInput"
+                                                    className="form-control search"
+                                                    value={searchInput}
+                                                    onChange={handleSearchInputChange}
+                                                    list="datalistOptions"
+                                                />
+                                                <datalist id="datalistOptions">
+                                                    {userList
+                                                        .filter(user => !isCheckboxChecked ? user.type === 0 : user.type === 1)
+                                                        .map((user, index) => (
+                                                            <option key={index} value={user.name}/>
+                                                        ))}
+                                                </datalist>
+                                                <div className="input-group-prepend">
                     <span className="input-group-text search_btn" onClick={handleSearch}>
                         <i className="fas fa-search"></i>
                     </span>
+                                                </div>
+                                            </div>
+                                            <div className="tabs-wrapper">
+                                                <input type="radio" name="tab" id="userTab"
+                                                       checked={activeContactsTab === 'user'}
+                                                       onChange={() => setActiveContactsTab('user')}/>
+                                                <label htmlFor="userTab" className="tab-label">User</label>
+                                                <input type="radio" name="tab" id="roomTab"
+                                                       checked={activeContactsTab === 'room'}
+                                                       onChange={() => setActiveContactsTab('room')}/>
+                                                <label htmlFor="roomTab" className="tab-label">Room</label>
+                                                <div className="tab-slider"></div>
                                             </div>
                                         </div>
-                                        <div className="tabs-wrapper">
-                                            <input type="radio" name="tab" id="userTab"
-                                                   checked={activeContactsTab === 'user'}
-                                                   onChange={() => setActiveContactsTab('user')}/>
-                                            <label htmlFor="userTab" className="tab-label">User</label>
-                                            <input type="radio" name="tab" id="roomTab"
-                                                   checked={activeContactsTab === 'room'}
-                                                   onChange={() => setActiveContactsTab('room')}/>
-                                            <label htmlFor="roomTab" className="tab-label">Room</label>
-                                            <div className="tab-slider"></div>
-                                        </div>
-                                    </div>
-                                    <div className="card-body contacts_body"
-                                         style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '550px'}}>
-                                        <ul className="contacts">
-                                            {userList.length > 0 ? (
-                                                userList
-                                                    .filter(user => activeContactsTab === 'user' ? user.type === 0 : user.type === 1)
-                                                    .map((user, index) => {
-                                                        const matchedUser = data.find(dbUser => dbUser.username === user.name);
-                                                        const sessionUser = Array.isArray(sessionData) ? sessionData.find(sessionUser => sessionUser.name === user.name) : null;
-                                                        let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
+                                        <div className="card-body contacts_body"
+                                             style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '550px'}}>
+                                            <ul className="contacts">
+                                                {userList.length > 0 ? (
+                                                    userList
+                                                        .filter(user => activeContactsTab === 'user' ? user.type === 0 : user.type === 1)
+                                                        .map((user, index) => {
+                                                            const matchedUser = data.find(dbUser => dbUser.username === user.name);
+                                                            const sessionUser = Array.isArray(sessionData) ? sessionData.find(sessionUser => sessionUser.name === user.name) : null;
+                                                            let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
 
-                                                        if (user.avatar) {
-                                                            avatarSrc = user.avatar;
-                                                        } else if (user.type === 1) {
-                                                            const matchedRoom = rooms.find(room => room.roomname === user.name);
-                                                            if (matchedRoom && matchedRoom.roomavatar) {
-                                                                avatarSrc = matchedRoom.roomavatar;
-                                                            }
-                                                        } else {
-                                                            if (sessionUser && sessionUser.avatar) {
-                                                                avatarSrc = sessionUser.avatar;
-                                                            } else if (matchedUser) {
-                                                                if (matchedUser.avatar && matchedUser.avatar.length > 0) {
-                                                                    avatarSrc = matchedUser.avatar;
-                                                                } else if (matchedUser.gender === 'male') {
-                                                                    avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
-                                                                } else if (matchedUser.gender === 'female') {
-                                                                    avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                                                            if (user.avatar) {
+                                                                avatarSrc = user.avatar;
+                                                            } else if (user.type === 1) {
+                                                                const matchedRoom = rooms.find(room => room.roomname === user.name);
+                                                                if (matchedRoom && matchedRoom.roomavatar) {
+                                                                    avatarSrc = matchedRoom.roomavatar;
+                                                                }
+                                                            } else {
+                                                                if (sessionUser && sessionUser.avatar) {
+                                                                    avatarSrc = sessionUser.avatar;
+                                                                } else if (matchedUser) {
+                                                                    if (matchedUser.avatar && matchedUser.avatar.length > 0) {
+                                                                        avatarSrc = matchedUser.avatar;
+                                                                    } else if (matchedUser.gender === 'male') {
+                                                                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
+                                                                    } else if (matchedUser.gender === 'female') {
+                                                                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                                                                    }
                                                                 }
                                                             }
-                                                        }
 
 
-                                                        return (
-                                                            <li key={index}
-                                                                className={user.name === displayName ? 'active' : ''}
-                                                                onClick={() => handleLiClick(user.name, user.type, user.roomOwner)}>
-                                                                <div className="d-flex bd-highlight">
-                                                                    <div className="img_cont">
-                                                                        <img
-                                                                            src={avatarSrc}
-                                                                            alt="avatar"
-                                                                            className="rounded-circle user_img"
-                                                                        />
-                                                                        {/*<span className="online_icon"></span>*/}
-                                                                        <span
-                                                                            className={`online_icon ${userStatuses[user.name] ? 'online' : 'offline'}`}></span>
+                                                            return (
+                                                                <li key={index}
+                                                                    className={user.name === displayName ? 'active' : ''}
+                                                                    onClick={() => handleLiClick(user.name, user.type, user.roomOwner)}>
+                                                                    <div className="d-flex bd-highlight">
+                                                                        <div className="img_cont">
+                                                                            <img
+                                                                                src={avatarSrc}
+                                                                                alt="avatar"
+                                                                                className="rounded-circle user_img"
+                                                                            />
+                                                                            {/*<span className="online_icon"></span>*/}
+                                                                            <span
+                                                                                className={`online_icon ${userStatuses[user.name] ? 'online' : 'offline'}`}></span>
+                                                                        </div>
+                                                                        <div className="user_info">
+                                                                            <span>{user.name}</span>
+                                                                            <p className="typechat">Type: {user.type}</p>
+                                                                            <p>Last
+                                                                                Action: {renderDateTime(user.actionTime)}</p>
+                                                                        </div>
+
                                                                     </div>
-                                                                    <div className="user_info">
-                                                                        <span>{user.name}</span>
-                                                                        <p className="typechat">Type: {user.type}</p>
-                                                                        <p>Last
-                                                                            Action: {renderDateTime(user.actionTime)}</p>
-                                                                    </div>
+                                                                </li>
+                                                            );
+                                                        })
 
-                                                                </div>
-                                                            </li>
-                                                        );
-                                                    })
-
-                                            ) : (
-                                                <li>No users found.</li>
-                                            )}
-                                        </ul>
+                                                ) : (
+                                                    <li>No users found.</li>
+                                                )}
+                                            </ul>
+                                        </div>
+                                        <div className="card-footer"></div>
                                     </div>
-                                    <div className="card-footer"></div>
                                 </div>
-                            </div>
-                            <div className="col-md-8 col-xl-6 chat" id="chatcenter">
-                                <div className="card" id="chatcenter">
-                                    <div className="card-header msg_head cor">
-                                        <div className="d-flex bd-highlight">
-                                            <div className="img_cont">
-                                                <img
-                                                    src={userAvatar}
-                                                    className="rounded-circle user_img"
-                                                />
 
-                                                {/*<span className="online_icon"></span>*/}
-                                                <span
-                                                    className={`online_icon ${userStatuses[displayName] ? 'online' : 'offline'}`}></span>
+                                <div className="col-md-8 col-xl-6 chat" id="chatcenter">
+                                    <div className="card" id="chatcenter">
+                                        <div className="card-header msg_head cor">
+                                            <div className="d-flex bd-highlight">
+                                                <div className="img_cont">
+                                                    <img
+                                                        src={userAvatar}
+                                                        className="rounded-circle user_img"
+                                                    />
 
-                                            </div>
-                                            <div className="user_info">
-                                                <span>{displayName}</span>
-                                                {searchType === 'room' && messageContent && <p>{messageContent}</p>}
-                                            </div>
+                                                    {/*<span className="online_icon"></span>*/}
+                                                    <span
+                                                        className={`online_icon ${userStatuses[displayName] ? 'online' : 'offline'}`}></span>
 
-                                            <div className="video_cam">
-                                                <span><i className="fas fa-video"></i></span>
-                                                <span><i className="fas fa-phone"></i></span>
-                                                <span>
+                                                </div>
+                                                <div className="user_info">
+                                                    <span>{displayName}</span>
+                                                    {searchType === 'room' && messageContent && <p>{messageContent}</p>}
+                                                </div>
+
+                                                <div className="video_cam">
+                                                    <span><i className="fas fa-video"></i></span>
+                                                    <span><i className="fas fa-phone"></i></span>
+                                                    <span>
                                                 <MDBBtn
                                                     rounded
                                                     size="sm"
@@ -1677,317 +1807,447 @@ export default function ChatRoom() {
                                                     <MDBIcon fas icon="plus-circle"/>
                                                 </MDBBtn>
                                             </span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <span id="action_menu_btn" onClick={toggleMenu}>
+                                            <span id="action_menu_btn" onClick={toggleMenu}>
                                         <i className="fas fa-ellipsis-v"></i>
                                     </span>
-                                        <div className={`action_menu ${isOpen ? 'open' : ''}`}>
-                                            <ul>
-                                                <li id="toggle-dark-mode" onClick={handleToggleDarkMode}>
-                                                    <i className={`fa-regular ${darkMode ? 'fa-sun' : 'fa-moon'}`}
-                                                       id="icontype"></i>
-                                                    <span
-                                                        className={`${darkMode ? 'light' : 'dark'}`}>{darkMode ? 'Light mode' : 'Dark mode'}</span>
-                                                </li>
-                                                <li onClick={() => setChangeAvatarModal(true)}>
-                                                    <i className="fas fa-user-circle"></i> Change Avatar
-                                                </li>
+                                            <div className={`action_menu ${isOpen ? 'open' : ''}`}>
+                                                <ul>
+                                                    <li id="toggle-dark-mode" onClick={handleToggleDarkMode}>
+                                                        <i className={`fa-regular ${darkMode ? 'fa-sun' : 'fa-moon'}`}
+                                                           id="icontype"></i>
+                                                        <span
+                                                            className={`${darkMode ? 'light' : 'dark'}`}>{darkMode ? 'Light mode' : 'Dark mode'}</span>
+                                                    </li>
+                                                    <li onClick={() => setChangeAvatarModal(true)}>
+                                                        <i className="fas fa-user-circle"></i> Change Avatar
+                                                    </li>
 
-                                                <li id="logout-button" onClick={handleLogout}><i
-                                                    className="fas fa-ban"></i> Logout
-                                                </li>
-                                            </ul>
+                                                    <li id="logout-button" onClick={handleLogout}><i
+                                                        className="fas fa-ban"></i> Logout
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </div>
-                                    </div>
-                                    {/*<<<<<<< HEAD*/}
-                                    <div className="card-body msg_card_body"
-                                         ref={messagesEndRef}
-                                         style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
+                                        <div className="card-body msg_card_body" ref={messagesEndRef}
+                                             style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
+                                            {messages.map((message, index) => {
+                                                const sessionData = JSON.parse(sessionStorage.getItem('userList'));
+                                                const matchedUser = data.find(dbUser => dbUser.username === message.name);
+                                                const sessionUser = Array.isArray(sessionData) ? sessionData.find(sessionUser => sessionUser.name === message.name) : null;
+                                                let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
 
-                                        {/*=======*/}
-                                        {/*                                <div className="card-body msg_card_body" ref={messagesEndRef} style={{ overflowY: 'auto', overflowX: 'auto', maxHeight: '600px' }}>*/}
-                                        {/*>>>>>>> main*/}
-                                        {messages.map((message, index) => {
-                                            const sessionData = JSON.parse(sessionStorage.getItem('userList'));
-                                            const matchedUser = data.find(dbUser => dbUser.username === message.name);
-                                            const sessionUser = Array.isArray(sessionData) ? sessionData.find(sessionUser => sessionUser.name === message.name) : null;
-                                            let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
-
-                                            if (sessionUser && sessionUser.avatar) {
-                                                avatarSrc = sessionUser.avatar;
-                                            } else if (matchedUser) {
-                                                if (matchedUser.avatar && matchedUser.avatar.length > 0) {
-                                                    avatarSrc = matchedUser.avatar;
-                                                } else if (matchedUser.gender === 'male') {
-                                                    avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
-                                                } else if (matchedUser.gender === 'female') {
-                                                    avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                                                if (sessionUser && sessionUser.avatar) {
+                                                    avatarSrc = sessionUser.avatar;
+                                                } else if (matchedUser) {
+                                                    if (matchedUser.avatar && matchedUser.avatar.length > 0) {
+                                                        avatarSrc = matchedUser.avatar;
+                                                    } else if (matchedUser.gender === 'male') {
+                                                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
+                                                    } else if (matchedUser.gender === 'female') {
+                                                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                                                    }
                                                 }
-                                            }
 
-                                            return (
+                                                return (
+
 // <<<<<<< HEAD
-                                                <div key={index}
-                                                     className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`}
-                                                     ref={el => (specificMessageRef.current[message.id] = el)}
-                                                     onMouseEnter={() => setHoveredMessage(index)}
-                                                     onMouseLeave={() => setHoveredMessage(null)}>
+
+                                                    <div key={index}
+
+                                                         className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`}
+
+                                                         ref={el => (specificMessageRef.current[message.id] = el)}
+
+                                                         onMouseEnter={() => setHoveredMessage(index)}
+
+                                                         onMouseLeave={() => setHoveredMessage(null)}>
 
 
-                                                    {/*=======*/}
-                                                    {/*                                            <div key={index} className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`} onMouseEnter={() => setHoveredMessage(index)} onMouseLeave={() => setHoveredMessage(null)}>*/}
-                                                    {/*>>>>>>> main*/}
-                                                    {searchType === 'room' && message.name !== username && (
-                                                        <span className="sender">{message.name} </span>
-                                                    )}
-                                                    <div className="img_cont_msg">
-                                                        <img src={avatarSrc} alt="avatar"
-                                                             className="rounded-circle user_img_msg"/>
-                                                        <span className="online_icon"></span>
-                                                    </div>
-                                                    <div
-                                                        className={`msg_cotainer${message.name === username ? '_send' : ''}`}>
-                                                        <div className="message-content">
-                                                            {renderMessageContent(message)}
-                                                            {/*<<<<<<< HEAD*/}
 
-                                                            <span
-                                                                className={`msg_time${message.name === username ? '_send' : ''}`}>
-                                                                 {renderDateTime(message.createAt)}
-                                                        </span>
-                                                            {/* Hiển thị các biểu tượng cảm xúc */}
-                                                            {message.reactions && (
-                                                                <div className="message-reactions">
-                                                                    {message.reactions.map((reaction, reactionIndex) => (
-                                                                        <span key={reactionIndex}>{reaction}</span>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                            {hoveredMessage === index && (
-                                                                <div
-                                                                    className={`message-icons ${message.name === username ? 'left' : 'right'}`}>
-                                                                    <i className="fas fa-trash"
-                                                                       onClick={() => handleDeleteMessage(message.id)}></i>
-                                                                    <i className="fas fa-reply"
-                                                                       onClick={() => handleReplyMessage(message)}></i>
-                                                                    {/*=======*/}
-                                                                    {/*                                                        <span className={`msg_time${message.name === username ? '_send' : ''}`}>*/}
-                                                                    {/*                            {renderDateTime(message.createAt)}*/}
-                                                                    {/*                        </span>*/}
-                                                                    {/*                                                        {hoveredMessage === index && (*/}
-                                                                    {/*                                                            <div className={`message-icons ${message.name === username ? 'left' : 'right'}`}>*/}
-                                                                    {/*                                                                <i className="fas fa-trash"*/}
-                                                                    {/*                                                                   onClick={() => handleDeleteMessage(message.id)}></i>*/}
-                                                                    {/*                                                                <i className="fas fa-reply"*/}
-                                                                    {/*                                                                   onClick={() => handleReplyMessage(message)}></i>*/}
-                                                                    {/*>>>>>>> main*/}
-                                                                    <i className="fas fa-smile"
-                                                                       onClick={() => handleEmojiClick(message.id)}></i>
-                                                                </div>
-                                                            )}
-                                                            {showEmojiPicker && emojiPickerMessageId === message.id && (
-                                                                <div className="emoji-picker-container">
-                                                                    <EmojiPicker
-                                                                        onEmojiClick={(emojiData, event) => handleEmojiSelect(emojiData, event)}/>
-                                                                </div>
-                                                            )}
+
+
+                                                        {/*=======*/}
+
+                                                        {/*                                            <div
+                                                         key={index} className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`} onMouseEnter={() => setHoveredMessage(index)} onMouseLeave={() => setHoveredMessage(null)}>*/}
+
+                                                        {/*>>>>>>> main*/}
+
+                                                        {searchType === 'room' && message.name !== username && (
+
+                                                            <span className="sender">{message.name} </span>
+
+                                                        )}
+
+                                                        <div className="img_cont_msg">
+
+                                                            <img src={avatarSrc} alt="avatar"
+
+                                                                 className="rounded-circle user_img_msg"/>
+
 
                                                         </div>
-                                                        {/*<<<<<<< HEAD*/}
+
+                                                        <div
+
+                                                            className={`msg_cotainer${message.name === username ? '_send' : ''}`}>
+
+                                                            <div className="message-content">
+
+                                                        {/*        {renderMessageContent(message)}*/}
+
+                                                        {/*        /!*<<<<<<< HEAD*!/*/}
+
+
+
+                                                        {/*        <span*/}
+
+                                                        {/*            className={`msg_time${message.name === username ? '_send' : ''}`}>*/}
+
+                                                        {/*         {renderDateTime(message.createAt)}*/}
+
+                                                        {/*</span>*/}
+
+                                                        {/*        /!* Hiển thị các biểu tượng cảm xúc *!/*/}
+
+                                                        {/*        {message.reactions && (*/}
+
+                                                        {/*            <div className="message-reactions">*/}
+
+                                                        {/*                {message.reactions.map((reaction, reactionIndex) => (*/}
+
+                                                        {/*                    <span key={reactionIndex}>{reaction}</span>*/}
+
+                                                        {/*                ))}*/}
+
+                                                        {/*            </div>*/}
+
+                                                        {/*        )}*/}
+
+                                                                {message.isRecalled ? (
+                                                                    <span>Tin nhắn đã bị thu hồi</span>
+                                                                ) : (
+                                                                    <>
+                                                                        {renderMessageContent(message)}
+                                                                        <span className={`msg_time${message.name === username ? '_send' : ''}`}>
+                                                                            {renderDateTime(message.createAt)}
+                                                                        </span>
+                                                                        {message.reactions && (
+                                                                            <div className="message-reactions">
+                                                                                {message.reactions.map((reaction, reactionIndex) => (
+                                                                                    <span key={reactionIndex}>{reaction}</span>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </>
+                                                                )}
+
+                                                                {hoveredMessage === index && (
+
+                                                                    <div
+
+                                                                        className={`message-icons ${message.name === username ? 'left' : 'right'}`}>
+
+                                                                        <i className="fas fa-trash"
+
+                                                                           onClick={() => handleDeleteMessage( message.id)}></i>
+
+                                                                        <i className="fas fa-reply"
+
+                                                                           onClick={() => handleReplyMessage(message)}></i>
+
+                                                                        {/*=======*/}
+
+                                                                        {/*                                                        <span className={`msg_time${message.name === username ? '_send' : ''}`}>*/}
+
+                                                                        {/*                            {renderDateTime(message.createAt)}*/}
+
+                                                                        {/*                        </span>*/}
+
+                                                                        {/*                                                        {hoveredMessage === index && (*/}
+
+                                                                        {/*                                                            <div className={`message-icons ${message.name === username ? 'left' : 'right'}`}>*/}
+
+                                                                        {/*                                                                <i className="fas fa-trash"*/}
+
+                                                                        {/*                                                                   onClick={() => handleDeleteMessage(message.id)}></i>*/}
+
+                                                                        {/*                                                                <i className="fas fa-reply"*/}
+
+                                                                        {/*                                                                   onClick={() => handleReplyMessage(message)}></i>*/}
+
+                                                                        {/*>>>>>>> main*/}
+
+                                                                        <i className="fas fa-smile"
+
+                                                                           onClick={() => handleEmojiClick(message.id)}></i>
+
+                                                                    </div>
+
+                                                                )}
+
+                                                                {showEmojiPicker && emojiPickerMessageId === message.id && (
+
+                                                                    <div className="emoji-picker-container">
+
+                                                                        <EmojiPicker
+
+                                                                            onEmojiClick={(emojiData, event) => handleEmojiSelect(emojiData, event)}/>
+
+                                                                    </div>
+
+                                                                )}
+
+
+
+                                                            </div>
+
+                                                        </div>
 
                                                     </div>
 
-                                                    {/*=======*/}
-                                                    {/*                                                </div>*/}
-                                                    {/*>>>>>>> main*/}
-                                                </div>
-                                            );
-                                        })}
-                                        <div ref={messagesEndRef}></div>
-                                    </div>
+                                                );
 
-                                    <div className="card-footer">
-                                        <div className="input-group">
-                                            <div className="input-group-append">
-                                            <span className="input-group-text attach_btn"><i
+                                            })}
+                                            <div ref={messagesEndRef}></div>
+                                        </div>
+
+                                        <div className="card-footer">
+                                            <div className="input-group" style={{marginBottom: "10px"}}>
+                                                <div className="input-group-append" id="sendfile">
+                                            <span className="input-group-text attach_btn" style={{height: "30px"}}><i
                                                 className="fas fa-paperclip"></i></span>
-                                            </div>
-                                            <textarea name="" className="form-control type_msg"
-                                                      placeholder="Type your message..."
-                                                      value={messageContentChat}
-                                                      onChange={handleInputChange}
-                                                      onKeyDown={handleKeyDown}// Listen for Enter key press>
-                                            ></textarea>
-                                            <div className="input-group-append">
+                                                    <span className="input-group-text attach_btn"
+                                                          style={{height: "30px"}}
+                                                          onClick={() => setGifPickerVisible(!isGifPickerVisible)}>
+                                                <MDBIcon fas icon="gift"/>
+
+                                            </span>
+                                                </div>
+                                                <textarea name="" className="form-control type_msg"
+                                                          placeholder="Type your message..."
+                                                          value={messageContentChat}
+                                                          onChange={handleInputChange}
+                                                          onKeyDown={handleKeyDown}// Listen for Enter key press>
+                                                ></textarea>
+                                                <div className="input-group-append">
                                             <span className="input-group-text send_btn"
                                                   onClick={handleSendClick}><i
                                                 className="fas fa-location-arrow"></i></span>
+                                                </div>
                                             </div>
+                                            {isGifPickerVisible && (
+                                                <div className="gif-picker" style={{
+                                                    position: 'absolute',
+                                                    bottom: '80px',
+                                                    zIndex: 1000,
+                                                    backgroundColor: 'white',
+                                                    padding: '10px',
+                                                    borderRadius: '8px'
+                                                }}>
+                                                    <div className="d-flex">
+                                                        <input
+                                                            type="text"
+                                                            className="form-control"
+                                                            placeholder="Search GIFs..."
+                                                            value={searchTerm}
+                                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') fetchGifs(searchTerm);
+                                                            }}
+                                                        />
+                                                        <button className="btn btn-primary ml-2"
+                                                                onClick={() => fetchGifs(searchTerm)}>Search
+                                                        </button>
+                                                    </div>
+                                                    <div className="d-flex flex-wrap mt-2">
+                                                        {gifList.map((gifUrl, index) => (
+                                                            <img
+                                                                key={index}
+                                                                src={gifUrl}
+                                                                alt={`gif-${index}`}
+                                                                style={{
+                                                                    width: '100px',
+                                                                    height: '100px',
+                                                                    margin: '5px',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                                onClick={() => handleGifClick(gifUrl)}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+
                     </div>
 
-                </div>
 
+                    <MDBModal show={roomModal} onHide={() => setRoomModal(false)}>
+                        <MDBModalDialog>
+                            <MDBModalContent>
+                                <MDBModalHeader>
+                                    <MDBModalTitle>Room</MDBModalTitle>
+                                    <MDBBtn className="btn-close" color="none" onClick={() => setRoomModal(false)}/>
+                                </MDBModalHeader>
+                                <MDBTabs className="mb-3" id="tabchangeava" style={{marginBottom: 0, marginLeft: 0}}>
+                                    <MDBTabsItem>
+                                        <MDBTabsLink onClick={() => setActiveRoomTab('create')}
+                                                     active={activeRoomTab === 'create'}>
+                                            Create
+                                        </MDBTabsLink>
+                                    </MDBTabsItem>
+                                    <MDBTabsItem>
+                                        <MDBTabsLink onClick={() => setActiveRoomTab('join')}
+                                                     active={activeTab === 'join'}>
+                                            Join
+                                        </MDBTabsLink>
+                                    </MDBTabsItem>
+                                </MDBTabs>
+                                <MDBTabsContent>
+                                    <MDBTabsPane show={activeRoomTab === 'create'}>
+                                        <MDBInput
+                                            type="text"
+                                            value={roomNames}
+                                            onChange={(e) => setRoomNames(e.target.value)}
+                                            label="Room Name"
+                                        />
+                                        <br/>
+                                        <input
+                                            type="file"
+                                            id="file"
+                                            style={{display: "none"}}
+                                            onChange={handleAvatar}
+                                        />
+                                        <label htmlFor="file" className="LabelUpload"
+                                               style={{backgroundColor: "white"}}>
+                                            <div className="img_cont_msg">
+                                                <img src={avatar.url || ava} alt=""
+                                                     className="rounded-circle user_img_msg"/>
+                                            </div>
+                                            <span id="UploadImg">Upload an image</span>
+                                        </label>
+                                    </MDBTabsPane>
+                                    <MDBTabsPane show={activeRoomTab === 'join'}>
+                                        <MDBInput
+                                            type="text"
+                                            value={joinRoomCode}
+                                            onChange={(e) => setJoinRoomCode(e.target.value)}
+                                            label="Room Code"
+                                        />
+                                        <br/>
 
-                <MDBModal show={roomModal} onHide={() => setRoomModal(false)}>
-                    <MDBModalDialog>
-                        <MDBModalContent>
-                            <MDBModalHeader>
-                                <MDBModalTitle>Room</MDBModalTitle>
-                                <MDBBtn className="btn-close" color="none" onClick={() => setRoomModal(false)}/>
-                            </MDBModalHeader>
-                            <MDBTabs className="mb-3" id="tabchangeava" style={{marginBottom: 0, marginLeft: 0}}>
-                                <MDBTabsItem>
-                                    <MDBTabsLink onClick={() => setActiveRoomTab('create')}
-                                                 active={activeRoomTab === 'create'}>
-                                        Create
-                                    </MDBTabsLink>
-                                </MDBTabsItem>
-                                <MDBTabsItem>
-                                    <MDBTabsLink onClick={() => setActiveRoomTab('join')} active={activeTab === 'join'}>
-                                        Join
-                                    </MDBTabsLink>
-                                </MDBTabsItem>
-                            </MDBTabs>
-                            <MDBTabsContent>
-                                <MDBTabsPane show={activeRoomTab === 'create'}>
-                                    <MDBInput
-                                        type="text"
-                                        value={roomNames}
-                                        onChange={(e) => setRoomNames(e.target.value)}
-                                        label="Room Name"
-                                    />
-                                    <br/>
-                                    <input
-                                        type="file"
-                                        id="file"
-                                        style={{display: "none"}}
-                                        onChange={handleAvatar}
-                                    />
-                                    <label htmlFor="file" className="LabelUpload" style={{backgroundColor: "white"}}>
-                                        <div className="img_cont_msg">
-                                            <img src={avatar.url || ava} alt=""
-                                                 className="rounded-circle user_img_msg"/>
-                                        </div>
-                                        <span id="UploadImg">Upload an image</span>
-                                    </label>
-                                </MDBTabsPane>
-                                <MDBTabsPane show={activeRoomTab === 'join'}>
-                                    <MDBInput
-                                        type="text"
-                                        value={joinRoomCode}
-                                        onChange={(e) => setJoinRoomCode(e.target.value)}
-                                        label="Room Code"
-                                    />
-                                    <br/>
+                                    </MDBTabsPane>
+                                </MDBTabsContent>
+                                <MDBModalFooter>
+                                    <MDBBtn color="secondary" onClick={() => setRoomModal(false)}>
+                                        Close
+                                    </MDBBtn>
+                                    <MDBBtn onClick={activeRoomTab === 'join' ? handleJoinRoom : handleCreateRoom}>
+                                        {activeRoomTab === 'join' ? 'Join' : 'Create'}
+                                    </MDBBtn>
+                                </MDBModalFooter>
+                            </MDBModalContent>
+                        </MDBModalDialog>
+                    </MDBModal>
 
-                                </MDBTabsPane>
-                            </MDBTabsContent>
-                            <MDBModalFooter>
-                                <MDBBtn color="secondary" onClick={() => setRoomModal(false)}>
-                                    Close
-                                </MDBBtn>
-                                <MDBBtn onClick={activeRoomTab === 'join' ? handleJoinRoom : handleCreateRoom}>
-                                    {activeRoomTab === 'join' ? 'Join' : 'Create'}
-                                </MDBBtn>
-                            </MDBModalFooter>
-                        </MDBModalContent>
-                    </MDBModalDialog>
-                </MDBModal>
+                    {/* Modal Change Avatar */}
+                    <MDBModal show={changeAvatarModal} onHide={() => setChangeAvatarModal(false)}>
+                        <MDBModalDialog>
+                            <MDBModalContent>
+                                <MDBModalHeader>
+                                    <MDBModalTitle>Change Avatar</MDBModalTitle>
+                                    <MDBBtn className="btn-close" color="none"
+                                            onClick={() => setChangeAvatarModal(false)}/>
+                                </MDBModalHeader>
+                                <MDBTabs className="mb-3" style={{marginBottom: 0}}>
+                                    <MDBTabsItem>
+                                        <MDBTabsLink onClick={() => setActiveTab('user')} active={activeTab === 'user'}>
+                                            User
+                                        </MDBTabsLink>
+                                    </MDBTabsItem>
+                                    <MDBTabsItem>
+                                        <MDBTabsLink onClick={() => setActiveTab('room')} active={activeTab === 'room'}>
+                                            Room
+                                        </MDBTabsLink>
+                                    </MDBTabsItem>
+                                </MDBTabs>
+                                <MDBTabsContent>
+                                    <MDBTabsPane show={activeTab === 'user'}>
+                                        <MDBInput style={{backgroundColor: "white"}}
+                                                  type="text"
+                                                  value={displayName}
+                                                  label="Default Input"
+                                                  disabled
+                                        />
+                                        <br/>
+                                        <input
+                                            type="file"
+                                            id="file"
+                                            style={{display: "none"}}
+                                            onChange={handleAvatarChange}
+                                        />
+                                        <label htmlFor="file" className="LabelUpload"
+                                               style={{backgroundColor: "white"}}>
+                                            <div className="img_cont_msg">
+                                                <img
+                                                    src={avatar.url || 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png'}
+                                                    alt="" className="rounded-circle user_img_msg"/>
+                                            </div>
+                                            <span id="UploadImg">Upload an image</span>
+                                        </label>
+                                    </MDBTabsPane>
+                                    <MDBTabsPane show={activeTab === 'room'}>
+                                        <MDBInput
+                                            type="text"
+                                            value={roomNames}
+                                            onChange={(e) => setRoomNames(e.target.value)}
+                                            label="Room Name"
+                                            list="datalistOption"
+                                        />
+                                        <datalist id="datalistOption">
+                                            {userList
+                                                .filter(user => user.type === 1)
+                                                .map((user, index) => (
+                                                    <option key={index} value={user.name}/>
+                                                ))}
+                                        </datalist>
+                                        <br/>
+                                        <input
+                                            type="file"
+                                            id="fileRoom"
+                                            style={{display: "none"}}
+                                            onChange={handleRoomAvatarChange}
+                                        />
+                                        <label htmlFor="fileRoom" className="LabelUpload"
+                                               style={{backgroundColor: "white"}}>
+                                            <div className="img_cont_msg">
+                                                <img
+                                                    src={roomAvatar.url || 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png'}
+                                                    alt="" className="rounded-circle user_img_msg"/>
+                                            </div>
+                                            <span id="UploadImg">Upload an image</span>
+                                        </label>
+                                    </MDBTabsPane>
+                                </MDBTabsContent>
+                                <MDBModalFooter>
+                                    <MDBBtn color="secondary" onClick={() => setChangeAvatarModal(false)}>
+                                        Close
+                                    </MDBBtn>
+                                    <MDBBtn onClick={activeTab === 'user' ? updateUserAvatar : updateRoomAvatar}>
+                                        Update Avatar
+                                    </MDBBtn>
+                                </MDBModalFooter>
+                            </MDBModalContent>
+                        </MDBModalDialog>
+                    </MDBModal>
+                </>
+            );
+}
 
-                {/* Modal Change Avatar */}
-                <MDBModal show={changeAvatarModal} onHide={() => setChangeAvatarModal(false)}>
-                    <MDBModalDialog>
-                        <MDBModalContent>
-                            <MDBModalHeader>
-                                <MDBModalTitle>Change Avatar</MDBModalTitle>
-                                <MDBBtn className="btn-close" color="none" onClick={() => setChangeAvatarModal(false)}/>
-                            </MDBModalHeader>
-                            <MDBTabs className="mb-3" style={{marginBottom: 0}}>
-                                <MDBTabsItem>
-                                    <MDBTabsLink onClick={() => setActiveTab('user')} active={activeTab === 'user'}>
-                                        User
-                                    </MDBTabsLink>
-                                </MDBTabsItem>
-                                <MDBTabsItem>
-                                    <MDBTabsLink onClick={() => setActiveTab('room')} active={activeTab === 'room'}>
-                                        Room
-                                    </MDBTabsLink>
-                                </MDBTabsItem>
-                            </MDBTabs>
-                            <MDBTabsContent>
-                                <MDBTabsPane show={activeTab === 'user'}>
-                                    <MDBInput style={{backgroundColor: "white"}}
-                                              type="text"
-                                              value={displayName}
-                                              label="Default Input"
-                                              disabled
-                                    />
-                                    <br/>
-                                    <input
-                                        type="file"
-                                        id="file"
-                                        style={{display: "none"}}
-                                        onChange={handleAvatarChange}
-                                    />
-                                    <label htmlFor="file" className="LabelUpload" style={{backgroundColor: "white"}}>
-                                        <div className="img_cont_msg">
-                                            <img
-                                                src={avatar.url || 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png'}
-                                                alt="" className="rounded-circle user_img_msg"/>
-                                        </div>
-                                        <span id="UploadImg">Upload an image</span>
-                                    </label>
-                                </MDBTabsPane>
-                                <MDBTabsPane show={activeTab === 'room'}>
-                                    <MDBInput
-                                        type="text"
-                                        value={roomNames}
-                                        onChange={(e) => setRoomNames(e.target.value)}
-                                        label="Room Name"
-                                        list="datalistOption"
-                                    />
-                                    <datalist id="datalistOption">
-                                        {userList
-                                            .filter(user => user.type === 1)
-                                            .map((user, index) => (
-                                                <option key={index} value={user.name}/>
-                                            ))}
-                                    </datalist>
-                                    <br/>
-                                    <input
-                                        type="file"
-                                        id="fileRoom"
-                                        style={{display: "none"}}
-                                        onChange={handleRoomAvatarChange}
-                                    />
-                                    <label htmlFor="fileRoom" className="LabelUpload"
-                                           style={{backgroundColor: "white"}}>
-                                        <div className="img_cont_msg">
-                                            <img
-                                                src={roomAvatar.url || 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png'}
-                                                alt="" className="rounded-circle user_img_msg"/>
-                                        </div>
-                                        <span id="UploadImg">Upload an image</span>
-                                    </label>
-                                </MDBTabsPane>
-                            </MDBTabsContent>
-                            <MDBModalFooter>
-                                <MDBBtn color="secondary" onClick={() => setChangeAvatarModal(false)}>
-                                    Close
-                                </MDBBtn>
-                                <MDBBtn onClick={activeTab === 'user' ? updateUserAvatar : updateRoomAvatar}>
-                                    Update Avatar
-                                </MDBBtn>
-                            </MDBModalFooter>
-                        </MDBModalContent>
-                    </MDBModalDialog>
-                </MDBModal>
-            </>
-        );
-    }

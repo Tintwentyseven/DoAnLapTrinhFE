@@ -63,7 +63,6 @@
     outline:0px !important;
 }
 .attach_btn{
-    border-radius: 15px 0 0 15px !important;
     background-color: rgba(0,0,0,0.3) !important;
     border:0 !important;
     color: white !important;
@@ -601,6 +600,39 @@ input[type="radio"]:checked + .tab-label + .tab-slider {
 .card.mb-sm-3.mb-md-0.contacts_card{
     height: 684px;
 }
+
+
+/*.message {*/
+/*    position: relative;*/
+/*}*/
+
+/*.message-icons {*/
+/*    position: absolute;*/
+/*    top: 50%;*/
+/*    transform: translateY(-50%);*/
+/*    display: flex;*/
+/*    gap: 5px;*/
+/*    opacity: 0;*/
+/*    transition: opacity 0.2s;*/
+/*}*/
+
+/*.message:hover .message-icons {*/
+/*    opacity: 1;*/
+/*}*/
+
+/*.message-icons.left {*/
+/*    left: -40px;*/
+/*}*/
+
+/*.message-icons.right {*/
+/*    right: -40px;*/
+/*}*/
+
+/*.message-icons i {*/
+/*    cursor: pointer;*/
+/*    font-size: 16px;*/
+/*}*/
+
 
 .message-reactions {
     position: absolute;
