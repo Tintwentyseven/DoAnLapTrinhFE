@@ -597,6 +597,7 @@ input[type="radio"]:checked + .tab-label + .tab-slider {
     height: 684px;
 }
 
+
 /*.message {*/
 /*    position: relative;*/
 /*}*/
@@ -628,3 +629,10 @@ input[type="radio"]:checked + .tab-label + .tab-slider {
 /*    font-size: 16px;*/
 /*}*/
 
+
+.message-reactions {
+    position: absolute;
+    top: 34px;
+    left: 70%;
+    z-index: 1000;
+}

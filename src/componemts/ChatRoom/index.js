@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, {useState, useEffect, useRef} from "react";
 import {
     MDBBtn,
     MDBModal,
@@ -17,23 +17,36 @@ import {
     MDBTabsPane
 } from 'mdb-react-ui-kit';
 import './style.css';
-import { useNavigate } from 'react-router-dom';
+import {useNavigate} from 'react-router-dom';
 import Swal from "sweetalert2";
-import { useWebSocket } from "../WebSocket/WebSocketContext";
+import {useWebSocket} from "../WebSocket/WebSocketContext";
 
 import {fromByteArray, toByteArray } from 'base64-js';
 import axios from 'axios';
 
 
-
-import { getFirestore, collection, getDocs,getDoc, doc, setDoc, query, where, addDoc,updateDoc} from "firebase/firestore";
+import {
+    getFirestore,
+    collection,
+    getDocs,
+    getDoc,
+    updateDoc,
+    doc,
+    setDoc,
+    query,
+    where,
+    addDoc,
+    arrayRemove,
+    arrayUnion
+} from "firebase/firestore";
 import ava from "../../img/addAvatar.png";
 
 import upload from "../../componemts/ChatRoom/upload";
 
-import { auth, db } from "../../firebase";
+import {auth, db} from "../../firebase";
+import EmojiPicker from 'emoji-picker-react';
 
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import {getStorage, ref, uploadBytes, getDownloadURL} from "firebase/storage";
 
 
 
@@ -44,7 +57,7 @@ export default function ChatRoom() {
     const socket = useWebSocket();
 
     const sessionData = JSON.parse(sessionStorage.getItem('sessionData')) || {};
-    const { username, code } = sessionData;
+    const {username, code} = sessionData;
 
     const usernameRef = useRef(username);
     const initialUserList = JSON.parse(localStorage.getItem('userList')) || [];
@@ -53,6 +66,7 @@ export default function ChatRoom() {
 // >>>>>>> main
 
     const toggleOpen = () => setBasicModal(!basicModal);
+    const specificMessageRef = useRef({});
     const toggleMenu = () => setIsOpen(!isOpen);
     //Tab của change avatar//
     const [activeTab, setActiveTab] = useState('user');
@@ -82,23 +96,12 @@ export default function ChatRoom() {
     const [roomAvatar, setRoomAvatar] = useState('');
     const [isGifPickerVisible, setGifPickerVisible] = useState(false);
     const [gifs,setGifs] = useState(false);
-    // const gifList = [
-    //     "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExanNqMHpxcHo2cDFmbDlqNHk5Y3BhNHpzYTZqdjk2dTU4NWg0NndlZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/7vDoUoDZHoUQxMPkd7/giphy.webp",
-    //     "https://media0.giphy.com/media/oKQGM5S2mwx5C/giphy.webp?cid=82a1493bo0nvjpdk35jsd5n6qte8jj8sruymuqpbsglhm5y0&ep=v1_gifs_trending&rid=giphy.webp&ct=g",
-    //     "https://media0.giphy.com/media/e6BTJ8bAak7V5Kv2FB/200.webp?cid=82a1493bzu5igskf5yvdc25le0xzjfd0ue30lgvdc0cyxh6y&ep=v1_gifs_trending&rid=200.webp&ct=g",
-    //     "https://media3.giphy.com/media/C5oD3WouufnWORp7wP/giphy.webp?cid=82a1493bhnnzmesl9xiapoa4638em1rrncm6up7ed6074xt6&ep=v1_gifs_trending&rid=giphy.webp&ct=g",
-    //     "https://media2.giphy.com/media/J2WQhnfK2WuUE/200.webp?cid=82a1493bhnnzmesl9xiapoa4638em1rrncm6up7ed6074xt6&ep=v1_gifs_trending&rid=200.webp&ct=g",
-    //     "https://media4.giphy.com/media/8H80IVPjAdKY8/200w.webp?cid=82a1493bhgilpwzgp6jfkr8lwq49yj294ind9yamxjudvii3&ep=v1_gifs_trending&rid=200w.webp&ct=g",
-    //     "https://media0.giphy.com/media/xD6m65jnkgkwTSOnDp/giphy.webp?cid=790b7611cb8xqe66nq90srrbhyquz14gy2uqj5d1vua9r0ry&ep=v1_gifs_trending&rid=giphy.webp&ct=g",
-    //     "https://media1.giphy.com/media/YTbZzCkRQCEJa/200.webp?cid=790b7611cb8xqe66nq90srrbhyquz14gy2uqj5d1vua9r0ry&ep=v1_gifs_trending&rid=200.webp&ct=g",
-    //     "https://media1.giphy.com/media/tHIRLHtNwxpjIFqPdV/giphy.webp?cid=790b7611cb8xqe66nq90srrbhyquz14gy2uqj5d1vua9r0ry&ep=v1_gifs_trending&rid=giphy.webp&ct=g"
-    // ];
     const GIPHY_API_KEY = '5LcV29T4yVNSvuCZ3vu2S2BQpUdfWHIy'; // Thay bằng API key của bạn
     const [searchTerm, setSearchTerm] = useState('');
     const [gifList, setGifList] = useState([]);
 
-    const [avatarUrls, setAvatarUrls] = useState({});
 
+    const [avatarUrls, setAvatarUrls] = useState({});
 
 
     const [avatar, setAvatar] = useState({
@@ -187,9 +190,6 @@ export default function ChatRoom() {
 
         setGifPickerVisible(false);
     };
-
-
-
     // Hàm kiểm tra trạng thái user
     const checkUserStatus = (usernameToCheck) => {
         if (!socket || socket.readyState !== WebSocket.OPEN) {
@@ -305,7 +305,7 @@ export default function ChatRoom() {
 
     const [joinRoomCode, setJoinRoomCode] = useState('');
     const [joinRoomModal, setJoinRoomModal] = useState(false);
-    const [changeAvatarModal,setChangeAvatarModal ] = useState(false);
+    const [changeAvatarModal, setChangeAvatarModal] = useState(false);
     const [roomModal, setRoomModal] = useState(false);
 
 
@@ -341,7 +341,7 @@ export default function ChatRoom() {
             const db = getFirestore();
             const userRef = collection(db, 'users');
             const snapshot = await getDocs(userRef);
-            const allData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            const allData = snapshot.docs.map(doc => ({...doc.data(), id: doc.id}));
             setData(allData);
             console.log(allData);
 
@@ -375,7 +375,7 @@ export default function ChatRoom() {
 
             const snapshot = await getDocs(roomRef);
 
-            const roomData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            const roomData = snapshot.docs.map(doc => ({...doc.data(), id: doc.id}));
 
             setRooms(roomData);
 
@@ -420,7 +420,7 @@ export default function ChatRoom() {
                 } else {
                     socket.addEventListener('open', () => {
                         socket.send(JSON.stringify(requestData));
-                    }, { once: true });
+                    }, {once: true});
                 }
             }
         };
@@ -639,7 +639,6 @@ export default function ChatRoom() {
     }, [socket, userList, roomNames, username, roomAvatar]);
 
 
-
     const handleSearchInputChange = (event) => {
         setSearchInput(event.target.value);
     };
@@ -749,7 +748,7 @@ export default function ChatRoom() {
                     }
 
                     setUserAvatar(avatarSrc);
-                    setAvatarUrls(prevState => ({ ...prevState, [roomName]: avatarSrc }));
+                    setAvatarUrls(prevState => ({...prevState, [roomName]: avatarSrc}));
 
                     Swal.fire({
                         text: `Room ${roomName} exists.`,
@@ -810,6 +809,26 @@ export default function ChatRoom() {
         };
     };
 
+
+    // Hàm để lấy tất cả phản ứng từ Firestore
+    const fetchReactions = async () => {
+        const querySnapshot = await getDocs(collection(db, "messages"));
+        const reactionsMap = {};
+        querySnapshot.forEach((doc) => {
+            reactionsMap[doc.id] = doc.data().reactions;
+        });
+        return reactionsMap;
+    };
+    const scrollToMessage = (messageId) => {
+        if (specificMessageRef.current[messageId]) {
+            specificMessageRef.current[messageId].scrollIntoView({behavior: 'smooth'});
+        }
+    };
+
+
+    // const handleLiClick = (name, type, roomOwner) => {
+    //     console.log("toi da vao hien thi");
+
     const handleLiClick = async (name, type, roomOwner) => {
         setDisplayName(name);
         setMessageContent(type === 0 ? 'Người dùng' : 'Phòng');
@@ -849,12 +868,12 @@ export default function ChatRoom() {
         }
 
         setUserAvatar(avatarSrc);
-        setAvatarUrls(prevState => ({ ...prevState, [name]: avatarSrc }));
+        setAvatarUrls(prevState => ({...prevState, [name]: avatarSrc}));
 
         // Update sessionStorage
         const updatedSessionData = sessionData.map(user => {
             if (user.name === name) {
-                return { ...user, avatar: avatarSrc };
+                return {...user, avatar: avatarSrc};
             }
             return user;
         });
@@ -883,7 +902,8 @@ export default function ChatRoom() {
 
         socket.send(JSON.stringify(requestData));
 
-        socket.onmessage = (event) => {
+
+        socket.onmessage = async (event) => {
             const response = JSON.parse(event.data);
             if (response.status === "success") {
                 let fetchedMessages = [];
@@ -893,7 +913,35 @@ export default function ChatRoom() {
                     fetchedMessages = response.data.chatData.reverse();
                 }
 
+                // Lấy dữ liệu reactions từ localStorage
+                // const storedReactions = JSON.parse(localStorage.getItem('reactions')) || {};
+                //
+                // // Cập nhật messages với reactions từ localStorage
+                // const updatedMessages = fetchedMessages.map(message => {
+                //     if (storedReactions[message.id]) {
+                //         message.reactions = storedReactions[message.id];
+                //     } else {
+                //         message.reactions = [];
+                //     }
+                //     return message;
+                // });
+                // setMessages(updatedMessages);
+                // console.log("danh sach: "+fetchedMessages);
+
+                // Lấy phản ứng từ Firestore
+                const reactions = await fetchReactions();
+
+                // Kết hợp phản ứng vào tin nhắn
+                const updatedMessages = fetchedMessages.map(message => {
+                    message.reactions = reactions[message.id] || [];
+                    return message;
+                });
+
+                setMessages(updatedMessages);
+
+
                 // Decode messages
+
                 let lastIndex = fetchedMessages.length - 1;
                 const lastmessage = fetchedMessages[lastIndex];
                 setLastMessage(lastmessage);
@@ -910,9 +958,22 @@ export default function ChatRoom() {
                     }
                 });
 
+
+                // // Cập nhật lại danh sách tin nhắn
+                // setMessages([...fetchedMessages]);
+
+
+                // setMessages(fetchedMessages);
+                setScrollToBottom(true); // Cuộn xuống dưới cùng khi có tin nhắn mới
+// =======
+//                 setMessages(fetchedMessages);
+//                 setScrollToBottom(true); // Scroll to bottom when new messages are received
+// >>>>>>> main
+
                 // Update message list
                 setMessages([...fetchedMessages]);
                 setScrollToBottom(true);
+
             } else {
                 Swal.fire({
                     text: `Failed to fetch messages for ${name}.`,
@@ -925,6 +986,11 @@ export default function ChatRoom() {
     useEffect(() => {
         setScrollToBottom(true);
     }, [messages]);
+
+    useEffect(() => {
+        setScrollToBottom(true);
+    }, [messages]);
+
     const add7Hours = (dateString) => {
         const date = new Date(dateString);
         date.setHours(date.getHours() + 7);
@@ -1046,20 +1112,30 @@ export default function ChatRoom() {
                 }
             };
         }
+
+        // Create a new message object for immediate display
         const date = new Date();
+
         date.setHours(date.getHours() - 7);
+
         const adjustedCreateAt = date.toISOString();
 
-        // Create a new message object for immediate display
+
 
         // Create a new message object for immediate display
+
+
+
+        // Create a new message object for immediate display
+
         const newMessage = {
+
             name: username,
             createAt: adjustedCreateAt, //
             mes: messageContentChat.trim(), // Use the plain message content
             type: isRoom ? "room" : "people",
             to: displayName
-        };
+        }
 
         if (socket && socket.readyState === WebSocket.OPEN) {
             setMessageContentChat(''); // Clear message content after sending
@@ -1085,7 +1161,6 @@ export default function ChatRoom() {
         setMessageContentChat(event.target.value);
     };
 
-
     const handleSendClick = () => {
         sendChat();
     };
@@ -1096,7 +1171,6 @@ export default function ChatRoom() {
             sendChat();
         }
     };
-
 
 
     // End of sendChat function
@@ -1245,6 +1319,7 @@ export default function ChatRoom() {
     };
 
 
+
 // >>>>>>> main
     //chuc nang xoa, thu hoi chat
     const [hoveredMessage, setHoveredMessage] = useState(null); // Thêm trạng thái để theo dõi tin nhắn được chọn
@@ -1258,18 +1333,33 @@ export default function ChatRoom() {
         // Xử lý trả lời tin nhắn
         console.log('Reply to message:', message);
     };
-    const handleEmojiClick = (messageId) => {
-        // Mở một danh sách các biểu tượng cảm xúc cho người dùng chọn
-        // Sau khi người dùng chọn, gửi biểu tượng cảm xúc kèm theo tin nhắn
+    // const handleEmojiClick = (messageId) => {
+    //     // Mở một danh sách các biểu tượng cảm xúc cho người dùng chọn
+    //     // Sau khi người dùng chọn, gửi biểu tượng cảm xúc kèm theo tin nhắn
+    //     console.log(`Thả biểu tượng cảm xúc cho tin nhắn có ID: ${messageId}`);
+    //     // Thực hiện logic thêm biểu tượng cảm xúc vào tin nhắn
+    // };
+    // const [showEmojiPicker, setShowEmojiPicker] = useState(false); // State để điều khiển hiển thị Emoji Picker
+    //
+    // const toggleEmojiPicker = () => {
+    //     setShowEmojiPicker(!showEmojiPicker);
+    // };
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false); // State để điều khiển hiển thị Emoji Picker
+    const [emojiPickerMessageId, setEmojiPickerMessageId] = useState(null); // Trạng thái để lưu trữ ID tin nhắn hiện tại
+    const emojiPickerRef = useRef(null);
+
+    // Thêm hàm xử lý click vào biểu tượng cảm xúc
+    const handleEmojiClick = (messageId) => { // Thay đổi
+        setEmojiPickerMessageId(messageId);
+        setShowEmojiPicker(!showEmojiPicker);
         console.log(`Thả biểu tượng cảm xúc cho tin nhắn có ID: ${messageId}`);
-        // Thực hiện logic thêm biểu tượng cảm xúc vào tin nhắn
     };
     const handleAvatarChange = (e) => {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = (upload) => {
-                setAvatar({ url: upload.target.result, file: file });
+                setAvatar({url: upload.target.result, file: file});
             };
             reader.readAsDataURL(file);
         }
@@ -1281,7 +1371,7 @@ export default function ChatRoom() {
 // Function to update avatar URL in Firestore
     const updateAvatarURLInFirestore = async (uid, avatarURL) => {
         const userDocRef = doc(db, 'users', uid);
-        await updateDoc(userDocRef, { avatar: avatarURL });
+        await updateDoc(userDocRef, {avatar: avatarURL});
     };
 
 // Function to update room avatar URL in Firestore
@@ -1312,7 +1402,7 @@ export default function ChatRoom() {
                     if (sessionData) {
                         const updatedSessionData = sessionData.map((userItem) =>
                             userItem.name === username
-                                ? { ...userItem, avatar: avatarURL }
+                                ? {...userItem, avatar: avatarURL}
                                 : userItem
                         );
                         sessionStorage.setItem('userList', JSON.stringify(updatedSessionData));
@@ -1323,7 +1413,7 @@ export default function ChatRoom() {
                     setUserList((prevUserList) =>
                         prevUserList.map((userItem) =>
                             userItem.name === username
-                                ? { ...userItem, avatar: avatarURL }
+                                ? {...userItem, avatar: avatarURL}
                                 : userItem
                         )
                     );
@@ -1359,7 +1449,7 @@ export default function ChatRoom() {
         if (file) {
             const reader = new FileReader();
             reader.onload = (upload) => {
-                setRoomAvatar({ url: upload.target.result, file: file });
+                setRoomAvatar({url: upload.target.result, file: file});
             };
             reader.readAsDataURL(file);
         }
@@ -1380,7 +1470,7 @@ export default function ChatRoom() {
 
         if (!querySnapshot.empty) {
             const roomDocRef = querySnapshot.docs[0].ref;
-            await updateDoc(roomDocRef, { roomavatar: avatarURL });
+            await updateDoc(roomDocRef, {roomavatar: avatarURL});
             return roomDocRef.id;
         }
 
@@ -1416,7 +1506,7 @@ export default function ChatRoom() {
                 if (sessionData) {
                     const updatedSessionData = sessionData.map((userItem) =>
                         userItem.name === room.name && userItem.type === 1
-                            ? { ...userItem, avatar: latestAvatarURL }
+                            ? {...userItem, avatar: latestAvatarURL}
                             : userItem
                     );
                     sessionStorage.setItem('userList', JSON.stringify(updatedSessionData));
@@ -1426,7 +1516,7 @@ export default function ChatRoom() {
                 setUserList((prevUserList) =>
                     prevUserList.map((userItem) =>
                         userItem.name === room.name && userItem.type === 1
-                            ? { ...userItem, avatar: latestAvatarURL }
+                            ? {...userItem, avatar: latestAvatarURL}
                             : userItem
                     )
                 );
@@ -1464,152 +1554,213 @@ export default function ChatRoom() {
         }
     }, []);
 
+    // Thêm hàm xử lý chọn biểu tượng cảm xúc
+
+    const handleEmojiSelect = async (emojiData, event) => {
+        if (emojiPickerMessageId !== null) {
+            const reaction = emojiData.native || emojiData.emoji || emojiData.unicode;
+
+            const updatedMessages = messages.map(message => {
+                if (message.id === emojiPickerMessageId) {
+                    message.reactions = message.reactions || [];
+
+                    const reactionIndex = message.reactions.indexOf(reaction);
+                    if (reactionIndex > -1) {
+                        message.reactions.splice(reactionIndex, 1); // Remove reaction if it already exists
+                    } else {
+                        message.reactions = [reaction]; // Replace with new reaction if it doesn't exist
+                    }
+                }
+                return message;
+            });
+
+            setMessages(updatedMessages);
+
+            const messageRef = doc(db, "messages", String(emojiPickerMessageId));
+            const messageDoc = await getDoc(messageRef);
+
+            if (messageDoc.exists()) {
+                const currentReactions = messageDoc.data().reactions || [];
+                const reactionIndex = currentReactions.indexOf(reaction);
+
+                if (reactionIndex > -1) {
+                    await updateDoc(messageRef, {
+                        reactions: arrayRemove(reaction) // Remove reaction if it already exists in Firestore
+                    });
+                } else {
+                    await updateDoc(messageRef, {
+                        reactions: [reaction] // Replace with new reaction if it doesn't exist in Firestore
+                    });
+                }
+            } else {
+                await setDoc(messageRef, {
+                    id: emojiPickerMessageId,
+                    reactions: [reaction]
+                });
+            }
+
+            setShowEmojiPicker(false);
+            scrollToMessage(emojiPickerMessageId); // Cuộn đến tin nhắn có biểu tượng cảm xúc
+        }
+    };
+
+    const handleClickOutside = (event) => {
+        if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+            setShowEmojiPicker(false);
+        }
+    };
+
+    useEffect(() => {
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
 
 
-    return (
-        <>
-            <div className="maincontainer">
-                <div className="container-fluid h-50">
-                    <div className="row justify-content-center h-100">
-                        <div className="col-md-4 col-xl-3 chat"  id="chatleft">
-                            <div className="card mb-sm-3 mb-md-0 contacts_card">
-                                <div className="card-header">
-                                    <div className="input-group">
-                                        <div className="input-group-prepend"></div>
-                                        <input
-                                            type="checkbox"
-                                            className="cbox"
-                                            aria-label="Checkbox for search"
-                                            checked={isCheckboxChecked}
-                                            onChange={handleCheckboxChange}
-                                        />
-                                        <MDBInput
-                                            type="text"
-                                            placeholder="Search..."
-                                            name="searchInput"
-                                            className="form-control search"
-                                            value={searchInput}
-                                            onChange={handleSearchInputChange}
-                                            list="datalistOptions"
-                                        />
-                                        <datalist id="datalistOptions">
-                                            {userList
-                                                .filter(user => !isCheckboxChecked ? user.type === 0 : user.type === 1)
-                                                .map((user, index) => (
-                                                    <option key={index} value={user.name}/>
-                                                ))}
-                                        </datalist>
-                                        <div className="input-group-prepend">
+            return (
+                <>
+                    <div className="maincontainer">
+                        <div className="container-fluid h-50">
+                            <div className="row justify-content-center h-100">
+                                <div className="col-md-4 col-xl-3 chat" id="chatleft">
+                                    <div className="card mb-sm-3 mb-md-0 contacts_card">
+                                        <div className="card-header">
+                                            <div className="input-group">
+                                                <div className="input-group-prepend"></div>
+                                                <input
+                                                    type="checkbox"
+                                                    className="cbox"
+                                                    aria-label="Checkbox for search"
+                                                    checked={isCheckboxChecked}
+                                                    onChange={handleCheckboxChange}
+                                                />
+                                                <MDBInput
+                                                    type="text"
+                                                    placeholder="Search..."
+                                                    name="searchInput"
+                                                    className="form-control search"
+                                                    value={searchInput}
+                                                    onChange={handleSearchInputChange}
+                                                    list="datalistOptions"
+                                                />
+                                                <datalist id="datalistOptions">
+                                                    {userList
+                                                        .filter(user => !isCheckboxChecked ? user.type === 0 : user.type === 1)
+                                                        .map((user, index) => (
+                                                            <option key={index} value={user.name}/>
+                                                        ))}
+                                                </datalist>
+                                                <div className="input-group-prepend">
                     <span className="input-group-text search_btn" onClick={handleSearch}>
                         <i className="fas fa-search"></i>
                     </span>
+                                                </div>
+                                            </div>
+                                            <div className="tabs-wrapper">
+                                                <input type="radio" name="tab" id="userTab"
+                                                       checked={activeContactsTab === 'user'}
+                                                       onChange={() => setActiveContactsTab('user')}/>
+                                                <label htmlFor="userTab" className="tab-label">User</label>
+                                                <input type="radio" name="tab" id="roomTab"
+                                                       checked={activeContactsTab === 'room'}
+                                                       onChange={() => setActiveContactsTab('room')}/>
+                                                <label htmlFor="roomTab" className="tab-label">Room</label>
+                                                <div className="tab-slider"></div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="tabs-wrapper">
-                                        <input type="radio" name="tab" id="userTab"
-                                               checked={activeContactsTab === 'user'}
-                                               onChange={() => setActiveContactsTab('user')}/>
-                                        <label htmlFor="userTab" className="tab-label">User</label>
-                                        <input type="radio" name="tab" id="roomTab"
-                                               checked={activeContactsTab === 'room'}
-                                               onChange={() => setActiveContactsTab('room')}/>
-                                        <label htmlFor="roomTab" className="tab-label">Room</label>
-                                        <div className="tab-slider"></div>
-                                    </div>
-                                </div>
-                                <div className="card-body contacts_body"
-                                     style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '550px'}}>
-                                    <ul className="contacts">
-                                        {userList.length > 0 ? (
-                                            userList
-                                                .filter(user => activeContactsTab === 'user' ? user.type === 0 : user.type === 1)
-                                                .map((user, index) => {
-                                                    const matchedUser = data.find(dbUser => dbUser.username === user.name);
-                                                    const sessionUser = Array.isArray(sessionData) ? sessionData.find(sessionUser => sessionUser.name === user.name) : null;
-                                                    let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
+                                        <div className="card-body contacts_body"
+                                             style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '550px'}}>
+                                            <ul className="contacts">
+                                                {userList.length > 0 ? (
+                                                    userList
+                                                        .filter(user => activeContactsTab === 'user' ? user.type === 0 : user.type === 1)
+                                                        .map((user, index) => {
+                                                            const matchedUser = data.find(dbUser => dbUser.username === user.name);
+                                                            const sessionUser = Array.isArray(sessionData) ? sessionData.find(sessionUser => sessionUser.name === user.name) : null;
+                                                            let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
 
-                                                    if (user.avatar) {
-                                                        avatarSrc = user.avatar;
-                                                    } else if (user.type === 1) {
-                                                        const matchedRoom = rooms.find(room => room.roomname === user.name);
-                                                        if (matchedRoom && matchedRoom.roomavatar) {
-                                                            avatarSrc = matchedRoom.roomavatar;
-                                                        }
-                                                    } else {
-                                                        if (sessionUser && sessionUser.avatar) {
-                                                            avatarSrc = sessionUser.avatar;
-                                                        } else if (matchedUser) {
-                                                            if (matchedUser.avatar && matchedUser.avatar.length > 0) {
-                                                                avatarSrc = matchedUser.avatar;
-                                                            } else if (matchedUser.gender === 'male') {
-                                                                avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
-                                                            } else if (matchedUser.gender === 'female') {
-                                                                avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                                                            if (user.avatar) {
+                                                                avatarSrc = user.avatar;
+                                                            } else if (user.type === 1) {
+                                                                const matchedRoom = rooms.find(room => room.roomname === user.name);
+                                                                if (matchedRoom && matchedRoom.roomavatar) {
+                                                                    avatarSrc = matchedRoom.roomavatar;
+                                                                }
+                                                            } else {
+                                                                if (sessionUser && sessionUser.avatar) {
+                                                                    avatarSrc = sessionUser.avatar;
+                                                                } else if (matchedUser) {
+                                                                    if (matchedUser.avatar && matchedUser.avatar.length > 0) {
+                                                                        avatarSrc = matchedUser.avatar;
+                                                                    } else if (matchedUser.gender === 'male') {
+                                                                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
+                                                                    } else if (matchedUser.gender === 'female') {
+                                                                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                                                                    }
+                                                                }
                                                             }
-                                                        }
-                                                    }
 
 
+                                                            return (
+                                                                <li key={index}
+                                                                    className={user.name === displayName ? 'active' : ''}
+                                                                    onClick={() => handleLiClick(user.name, user.type, user.roomOwner)}>
+                                                                    <div className="d-flex bd-highlight">
+                                                                        <div className="img_cont">
+                                                                            <img
+                                                                                src={avatarSrc}
+                                                                                alt="avatar"
+                                                                                className="rounded-circle user_img"
+                                                                            />
+                                                                            {/*<span className="online_icon"></span>*/}
+                                                                            <span
+                                                                                className={`online_icon ${userStatuses[user.name] ? 'online' : 'offline'}`}></span>
+                                                                        </div>
+                                                                        <div className="user_info">
+                                                                            <span>{user.name}</span>
+                                                                            <p className="typechat">Type: {user.type}</p>
+                                                                            <p>Last
+                                                                                Action: {renderDateTime(user.actionTime)}</p>
+                                                                        </div>
 
+                                                                    </div>
+                                                                </li>
+                                                            );
+                                                        })
 
-                                                    return (
-                                                        <li key={index}
-                                                            className={user.name === displayName ? 'active' : ''}
-                                                            onClick={() => handleLiClick(user.name, user.type, user.roomOwner)}>
-                                                            <div className="d-flex bd-highlight">
-                                                                <div className="img_cont">
-                                                                    <img
-                                                                        src={avatarSrc}
-                                                                        alt="avatar"
-                                                                        className="rounded-circle user_img"
-                                                                    />
-                                                                    {/*<span className="online_icon"></span>*/}
-                                                                    <span
-                                                                        className={`online_icon ${userStatuses[user.name] ? 'online' : 'offline'}`}></span>
-                                                                </div>
-                                                                <div className="user_info">
-                                                                    <span>{user.name}</span>
-                                                                    <p className="typechat">Type: {user.type}</p>
-                                                                    <p>Last Action: {renderDateTime(user.actionTime)}</p>
-                                                                </div>
-
-                                                            </div>
-                                                        </li>
-                                                    );
-                                                })
-
-                                        ) : (
-                                            <li>No users found.</li>
-                                        )}
-                                    </ul>
+                                                ) : (
+                                                    <li>No users found.</li>
+                                                )}
+                                            </ul>
+                                        </div>
+                                        <div className="card-footer"></div>
+                                    </div>
                                 </div>
-                                <div className="card-footer"></div>
-                            </div>
-                        </div>
-                        <div className="col-md-8 col-xl-6 chat" id="chatcenter">
-                            <div className="card" id="chatcenter">
-                                <div className="card-header msg_head">
-                                    <div className="d-flex bd-highlight">
-                                        <div className="img_cont">
-                                            <img
-                                                src={userAvatar}
-                                                className="rounded-circle user_img"
-                                            />
+                                <div className="col-md-8 col-xl-6 chat" id="chatcenter">
+                                    <div className="card" id="chatcenter">
+                                        <div className="card-header msg_head">
+                                            <div className="d-flex bd-highlight">
+                                                <div className="img_cont">
+                                                    <img
+                                                        src={userAvatar}
+                                                        className="rounded-circle user_img"
+                                                    />
 
-                                            {/*<span className="online_icon"></span>*/}
-                                            <span
-                                                className={`online_icon ${userStatuses[displayName] ? 'online' : 'offline'}`}></span>
+                                                    {/*<span className="online_icon"></span>*/}
+                                                    <span
+                                                        className={`online_icon ${userStatuses[displayName] ? 'online' : 'offline'}`}></span>
 
-                                        </div>
-                                        <div className="user_info">
-                                            <span>{displayName}</span>
-                                            {searchType === 'room' && messageContent && <p>{messageContent}</p>}
-                                        </div>
+                                                </div>
+                                                <div className="user_info">
+                                                    <span>{displayName}</span>
+                                                    {searchType === 'room' && messageContent && <p>{messageContent}</p>}
+                                                </div>
 
-                                        <div className="video_cam">
-                                            <span><i className="fas fa-video"></i></span>
-                                            <span><i className="fas fa-phone"></i></span>
-                                            <span>
+                                                <div className="video_cam">
+                                                    <span><i className="fas fa-video"></i></span>
+                                                    <span><i className="fas fa-phone"></i></span>
+                                                    <span>
                                                 <MDBBtn
                                                     rounded
                                                     size="sm"
@@ -1620,285 +1771,441 @@ export default function ChatRoom() {
                                                     <MDBIcon fas icon="plus-circle"/>
                                                 </MDBBtn>
                                             </span>
-                                        </div>
-                                    </div>
-                                    <span id="action_menu_btn" onClick={toggleMenu}>
-                                        <i className="fas fa-ellipsis-v"></i>
-                                    </span>
-                                    <div className={`action_menu ${isOpen ? 'open' : ''}`}>
-                                        <ul>
-                                            <li id="toggle-dark-mode" onClick={handleToggleDarkMode}>
-                                                <i className={`fa-regular ${darkMode ? 'fa-sun' : 'fa-moon'}`}
-                                                   id="icontype"></i>
-                                                <span
-                                                    className={`${darkMode ? 'light' : 'dark'}`}>{darkMode ? 'Light mode' : 'Dark mode'}</span>
-                                            </li>
-                                            <li onClick={() => setChangeAvatarModal(true)}>
-                                                <i className="fas fa-user-circle"></i> Change Avatar
-                                            </li>
-
-                                            <li id="logout-button" onClick={handleLogout}><i
-                                                className="fas fa-ban"></i> Logout
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                                <div className="card-body msg_card_body" ref={messagesEndRef} style={{ overflowY: 'auto', overflowX: 'auto', maxHeight: '600px' }}>
-                                    {messages.map((message, index) => {
-                                        const sessionData = JSON.parse(sessionStorage.getItem('userList'));
-                                        const matchedUser = data.find(dbUser => dbUser.username === message.name);
-                                        const sessionUser = Array.isArray(sessionData) ? sessionData.find(sessionUser => sessionUser.name === message.name) : null;
-                                        let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
-
-                                        if (sessionUser && sessionUser.avatar) {
-                                            avatarSrc = sessionUser.avatar;
-                                        } else if (matchedUser) {
-                                            if (matchedUser.avatar && matchedUser.avatar.length > 0) {
-                                                avatarSrc = matchedUser.avatar;
-                                            } else if (matchedUser.gender === 'male') {
-                                                avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
-                                            } else if (matchedUser.gender === 'female') {
-                                                avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
-                                            }
-                                        }
-
-                                        return (
-                                            <div key={index} className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`} onMouseEnter={() => setHoveredMessage(index)} onMouseLeave={() => setHoveredMessage(null)}>
-                                                {searchType === 'room' && message.name !== username && (
-                                                    <span className="sender">{message.name} </span>
-                                                )}
-                                                <div className="img_cont_msg">
-                                                    <img src={avatarSrc} alt="avatar"
-                                                         className="rounded-circle user_img_msg"/>
-                                                </div>
-                                                <div className={`msg_cotainer${message.name === username ? '_send' : ''}`}>
-                                                    <div className="message-content">
-                                                        {renderMessageContent(message)}
-                                                        <span className={`msg_time${message.name === username ? '_send' : ''}`}>
-                            {renderDateTime(message.createAt)}
-                        </span>
-                                                        {hoveredMessage === index && (
-                                                            <div className={`message-icons ${message.name === username ? 'left' : 'right'}`}>
-                                                                <i className="fas fa-trash"
-                                                                   onClick={() => handleDeleteMessage(message.id)}></i>
-                                                                <i className="fas fa-reply"
-                                                                   onClick={() => handleReplyMessage(message)}></i>
-                                                                <i className="fas fa-smile"
-                                                                   onClick={() => handleEmojiClick(message.id)}></i>
-                                                            </div>
-                                                        )}
-                                                    </div>
                                                 </div>
                                             </div>
-                                        );
-                                    })}
-                                    <div ref={messagesEndRef}></div>
-                                </div>
+                                            <span id="action_menu_btn" onClick={toggleMenu}>
+                                        <i className="fas fa-ellipsis-v"></i>
+                                    </span>
+                                            <div className={`action_menu ${isOpen ? 'open' : ''}`}>
+                                                <ul>
+                                                    <li id="toggle-dark-mode" onClick={handleToggleDarkMode}>
+                                                        <i className={`fa-regular ${darkMode ? 'fa-sun' : 'fa-moon'}`}
+                                                           id="icontype"></i>
+                                                        <span
+                                                            className={`${darkMode ? 'light' : 'dark'}`}>{darkMode ? 'Light mode' : 'Dark mode'}</span>
+                                                    </li>
+                                                    <li onClick={() => setChangeAvatarModal(true)}>
+                                                        <i className="fas fa-user-circle"></i> Change Avatar
+                                                    </li>
 
-                                <div className="card-footer">
-                                    <div className="input-group" style={{marginBottom:"10px"}}>
-                                        <div className="input-group-append" id="sendfile">
-                                            <span className="input-group-text attach_btn" style={{height:"30px"}}><i
+                                                    <li id="logout-button" onClick={handleLogout}><i
+                                                        className="fas fa-ban"></i> Logout
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        <div className="card-body msg_card_body" ref={messagesEndRef}
+                                             style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
+                                            {messages.map((message, index) => {
+                                                const sessionData = JSON.parse(sessionStorage.getItem('userList'));
+                                                const matchedUser = data.find(dbUser => dbUser.username === message.name);
+                                                const sessionUser = Array.isArray(sessionData) ? sessionData.find(sessionUser => sessionUser.name === message.name) : null;
+                                                let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
+
+                                                if (sessionUser && sessionUser.avatar) {
+                                                    avatarSrc = sessionUser.avatar;
+                                                } else if (matchedUser) {
+                                                    if (matchedUser.avatar && matchedUser.avatar.length > 0) {
+                                                        avatarSrc = matchedUser.avatar;
+                                                    } else if (matchedUser.gender === 'male') {
+                                                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
+                                                    } else if (matchedUser.gender === 'female') {
+                                                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                                                    }
+                                                }
+
+                                                return (
+
+// <<<<<<< HEAD
+
+                                                    <div key={index}
+
+                                                         className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`}
+
+                                                         ref={el => (specificMessageRef.current[message.id] = el)}
+
+                                                         onMouseEnter={() => setHoveredMessage(index)}
+
+                                                         onMouseLeave={() => setHoveredMessage(null)}>
+
+
+
+
+
+                                                        {/*=======*/}
+
+                                                        {/*                                            <div
+                                                         key={index} className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`} onMouseEnter={() => setHoveredMessage(index)} onMouseLeave={() => setHoveredMessage(null)}>*/}
+
+                                                        {/*>>>>>>> main*/}
+
+                                                        {searchType === 'room' && message.name !== username && (
+
+                                                            <span className="sender">{message.name} </span>
+
+                                                        )}
+
+                                                        <div className="img_cont_msg">
+
+                                                            <img src={avatarSrc} alt="avatar"
+
+                                                                 className="rounded-circle user_img_msg"/>
+
+
+                                                        </div>
+
+                                                        <div
+
+                                                            className={`msg_cotainer${message.name === username ? '_send' : ''}`}>
+
+                                                            <div className="message-content">
+
+                                                                {renderMessageContent(message)}
+
+                                                                {/*<<<<<<< HEAD*/}
+
+
+
+                                                                <span
+
+                                                                    className={`msg_time${message.name === username ? '_send' : ''}`}>
+
+                                                                 {renderDateTime(message.createAt)}
+
+                                                        </span>
+
+                                                                {/* Hiển thị các biểu tượng cảm xúc */}
+
+                                                                {message.reactions && (
+
+                                                                    <div className="message-reactions">
+
+                                                                        {message.reactions.map((reaction, reactionIndex) => (
+
+                                                                            <span key={reactionIndex}>{reaction}</span>
+
+                                                                        ))}
+
+                                                                    </div>
+
+                                                                )}
+
+                                                                {hoveredMessage === index && (
+
+                                                                    <div
+
+                                                                        className={`message-icons ${message.name === username ? 'left' : 'right'}`}>
+
+                                                                        <i className="fas fa-trash"
+
+                                                                           onClick={() => handleDeleteMessage(message.id)}></i>
+
+                                                                        <i className="fas fa-reply"
+
+                                                                           onClick={() => handleReplyMessage(message)}></i>
+
+                                                                        {/*=======*/}
+
+                                                                        {/*                                                        <span className={`msg_time${message.name === username ? '_send' : ''}`}>*/}
+
+                                                                        {/*                            {renderDateTime(message.createAt)}*/}
+
+                                                                        {/*                        </span>*/}
+
+                                                                        {/*                                                        {hoveredMessage === index && (*/}
+
+                                                                        {/*                                                            <div className={`message-icons ${message.name === username ? 'left' : 'right'}`}>*/}
+
+                                                                        {/*                                                                <i className="fas fa-trash"*/}
+
+                                                                        {/*                                                                   onClick={() => handleDeleteMessage(message.id)}></i>*/}
+
+                                                                        {/*                                                                <i className="fas fa-reply"*/}
+
+                                                                        {/*                                                                   onClick={() => handleReplyMessage(message)}></i>*/}
+
+                                                                        {/*>>>>>>> main*/}
+
+                                                                        <i className="fas fa-smile"
+
+                                                                           onClick={() => handleEmojiClick(message.id)}></i>
+
+                                                                    </div>
+
+                                                                )}
+
+                                                                {showEmojiPicker && emojiPickerMessageId === message.id && (
+
+                                                                    <div className="emoji-picker-container">
+
+                                                                        <EmojiPicker
+
+                                                                            onEmojiClick={(emojiData, event) => handleEmojiSelect(emojiData, event)}/>
+
+                                                                    </div>
+
+                                                                )}
+
+
+
+                                                            </div>
+
+                                                            {/*<<<<<<< HEAD*/}
+
+
+
+                                                        </div>
+
+
+
+                                                        {/*=======*/}
+
+                                                        {/*                                                </div>*/}
+
+                                                        {/*>>>>>>> main*/}
+
+                                                    </div>
+
+                                                );
+
+                                            })}
+                                            <div ref={messagesEndRef}></div>
+                                        </div>
+
+                                        <div className="card-footer">
+                                            <div className="input-group" style={{marginBottom: "10px"}}>
+                                                <div className="input-group-append" id="sendfile">
+                                            <span className="input-group-text attach_btn" style={{height: "30px"}}><i
                                                 className="fas fa-paperclip"></i></span>
-                                            <span className="input-group-text attach_btn" style={{height:"30px"}} onClick={() => setGifPickerVisible(!isGifPickerVisible)}>
-                                                <MDBIcon fas icon="gift" />
+                                                    <span className="input-group-text attach_btn"
+                                                          style={{height: "30px"}}
+                                                          onClick={() => setGifPickerVisible(!isGifPickerVisible)}>
+                                                <MDBIcon fas icon="gift"/>
 
                                             </span>
-                                        </div>
-                                        <textarea name="" className="form-control type_msg"
-                                                  placeholder="Type your message..."
-                                                  value={messageContentChat}
-                                                  onChange={handleInputChange}
-                                                  onKeyDown={handleKeyDown}// Listen for Enter key press>
-                                        ></textarea>
-                                        <div className="input-group-append">
+                                                </div>
+                                                <textarea name="" className="form-control type_msg"
+                                                          placeholder="Type your message..."
+                                                          value={messageContentChat}
+                                                          onChange={handleInputChange}
+                                                          onKeyDown={handleKeyDown}// Listen for Enter key press>
+                                                ></textarea>
+                                                <div className="input-group-append">
                                             <span className="input-group-text send_btn"
                                                   onClick={handleSendClick}><i
                                                 className="fas fa-location-arrow"></i></span>
+                                                </div>
+                                            </div>
+                                            {isGifPickerVisible && (
+                                                <div className="gif-picker" style={{
+                                                    position: 'absolute',
+                                                    bottom: '80px',
+                                                    zIndex: 1000,
+                                                    backgroundColor: 'white',
+                                                    padding: '10px',
+                                                    borderRadius: '8px'
+                                                }}>
+                                                    <div className="d-flex">
+                                                        <input
+                                                            type="text"
+                                                            className="form-control"
+                                                            placeholder="Search GIFs..."
+                                                            value={searchTerm}
+                                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') fetchGifs(searchTerm);
+                                                            }}
+                                                        />
+                                                        <button className="btn btn-primary ml-2"
+                                                                onClick={() => fetchGifs(searchTerm)}>Search
+                                                        </button>
+                                                    </div>
+                                                    <div className="d-flex flex-wrap mt-2">
+                                                        {gifList.map((gifUrl, index) => (
+                                                            <img
+                                                                key={index}
+                                                                src={gifUrl}
+                                                                alt={`gif-${index}`}
+                                                                style={{
+                                                                    width: '100px',
+                                                                    height: '100px',
+                                                                    margin: '5px',
+                                                                    cursor: 'pointer'
+                                                                }}
+                                                                onClick={() => handleGifClick(gifUrl)}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                    {isGifPickerVisible && (
-                                        <div className="gif-picker" style={{ position: 'absolute', bottom: '80px', zIndex: 1000, backgroundColor: 'white', padding: '10px', borderRadius: '8px' }}>
-                                            <div className="d-flex">
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    placeholder="Search GIFs..."
-                                                    value={searchTerm}
-                                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                                    onKeyDown={(e) => { if (e.key === 'Enter') fetchGifs(searchTerm); }}
-                                                />
-                                                <button className="btn btn-primary ml-2" onClick={() => fetchGifs(searchTerm)}>Search</button>
-                                            </div>
-                                            <div className="d-flex flex-wrap mt-2">
-                                                {gifList.map((gifUrl, index) => (
-                                                    <img
-                                                        key={index}
-                                                        src={gifUrl}
-                                                        alt={`gif-${index}`}
-                                                        style={{ width: '100px', height: '100px', margin: '5px', cursor: 'pointer' }}
-                                                        onClick={() => handleGifClick(gifUrl)}
-                                                    />
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </div>
+
                     </div>
-                </div>
-
-            </div>
 
 
-            <MDBModal show={roomModal} onHide={() => setRoomModal(false)}>
-                <MDBModalDialog>
-                    <MDBModalContent>
-                        <MDBModalHeader>
-                            <MDBModalTitle>Room</MDBModalTitle>
-                            <MDBBtn className="btn-close" color="none" onClick={() => setRoomModal(false)}/>
-                        </MDBModalHeader>
-                        <MDBTabs className="mb-3" id="tabchangeava" style={{marginBottom: 0, marginLeft: 0}}>
-                            <MDBTabsItem>
-                                <MDBTabsLink onClick={() =>setActiveRoomTab('create')} active={activeRoomTab === 'create'}>
-                                    Create
-                                </MDBTabsLink>
-                            </MDBTabsItem>
-                            <MDBTabsItem>
-                                <MDBTabsLink onClick={() => setActiveRoomTab('join')} active={activeTab === 'join'}>
-                                    Join
-                                </MDBTabsLink>
-                            </MDBTabsItem>
-                        </MDBTabs>
-                        <MDBTabsContent>
-                            <MDBTabsPane show={activeRoomTab === 'create'}>
-                                <MDBInput
-                                    type="text"
-                                    value={roomNames}
-                                    onChange={(e) => setRoomNames(e.target.value)}
-                                    label="Room Name"
-                                />
-                                <br />
-                                <input
-                                    type="file"
-                                    id="file"
-                                    style={{ display: "none" }}
-                                    onChange={handleAvatar}
-                                />
-                                <label htmlFor="file" className="LabelUpload" style={{backgroundColor:"white"}}>
-                                    <div className="img_cont_msg">
-                                        <img src={avatar.url || ava} alt="" className="rounded-circle user_img_msg" />
-                                    </div>
-                                    <span id="UploadImg">Upload an image</span>
-                                </label>
-                            </MDBTabsPane>
-                            <MDBTabsPane show={activeRoomTab === 'join'}>
-                                <MDBInput
-                                    type="text"
-                                    value={joinRoomCode}
-                                    onChange={(e) => setJoinRoomCode(e.target.value)}
-                                    label="Room Code"
-                                />
-                                <br />
+                    <MDBModal show={roomModal} onHide={() => setRoomModal(false)}>
+                        <MDBModalDialog>
+                            <MDBModalContent>
+                                <MDBModalHeader>
+                                    <MDBModalTitle>Room</MDBModalTitle>
+                                    <MDBBtn className="btn-close" color="none" onClick={() => setRoomModal(false)}/>
+                                </MDBModalHeader>
+                                <MDBTabs className="mb-3" id="tabchangeava" style={{marginBottom: 0, marginLeft: 0}}>
+                                    <MDBTabsItem>
+                                        <MDBTabsLink onClick={() => setActiveRoomTab('create')}
+                                                     active={activeRoomTab === 'create'}>
+                                            Create
+                                        </MDBTabsLink>
+                                    </MDBTabsItem>
+                                    <MDBTabsItem>
+                                        <MDBTabsLink onClick={() => setActiveRoomTab('join')}
+                                                     active={activeTab === 'join'}>
+                                            Join
+                                        </MDBTabsLink>
+                                    </MDBTabsItem>
+                                </MDBTabs>
+                                <MDBTabsContent>
+                                    <MDBTabsPane show={activeRoomTab === 'create'}>
+                                        <MDBInput
+                                            type="text"
+                                            value={roomNames}
+                                            onChange={(e) => setRoomNames(e.target.value)}
+                                            label="Room Name"
+                                        />
+                                        <br/>
+                                        <input
+                                            type="file"
+                                            id="file"
+                                            style={{display: "none"}}
+                                            onChange={handleAvatar}
+                                        />
+                                        <label htmlFor="file" className="LabelUpload"
+                                               style={{backgroundColor: "white"}}>
+                                            <div className="img_cont_msg">
+                                                <img src={avatar.url || ava} alt=""
+                                                     className="rounded-circle user_img_msg"/>
+                                            </div>
+                                            <span id="UploadImg">Upload an image</span>
+                                        </label>
+                                    </MDBTabsPane>
+                                    <MDBTabsPane show={activeRoomTab === 'join'}>
+                                        <MDBInput
+                                            type="text"
+                                            value={joinRoomCode}
+                                            onChange={(e) => setJoinRoomCode(e.target.value)}
+                                            label="Room Code"
+                                        />
+                                        <br/>
 
-                            </MDBTabsPane>
-                        </MDBTabsContent>
-                        <MDBModalFooter>
-                            <MDBBtn color="secondary" onClick={() => setRoomModal(false)}>
-                                Close
-                            </MDBBtn>
-                            <MDBBtn onClick={activeRoomTab === 'join' ? handleJoinRoom : handleCreateRoom}>
-                                {activeRoomTab === 'join' ? 'Join' : 'Create'}
-                            </MDBBtn>
-                        </MDBModalFooter>
-                    </MDBModalContent>
-                </MDBModalDialog>
-            </MDBModal>
+                                    </MDBTabsPane>
+                                </MDBTabsContent>
+                                <MDBModalFooter>
+                                    <MDBBtn color="secondary" onClick={() => setRoomModal(false)}>
+                                        Close
+                                    </MDBBtn>
+                                    <MDBBtn onClick={activeRoomTab === 'join' ? handleJoinRoom : handleCreateRoom}>
+                                        {activeRoomTab === 'join' ? 'Join' : 'Create'}
+                                    </MDBBtn>
+                                </MDBModalFooter>
+                            </MDBModalContent>
+                        </MDBModalDialog>
+                    </MDBModal>
 
-            {/* Modal Change Avatar */}
-            <MDBModal show={changeAvatarModal} onHide={() => setChangeAvatarModal(false)}>
-                <MDBModalDialog>
-                    <MDBModalContent>
-                        <MDBModalHeader>
-                            <MDBModalTitle>Change Avatar</MDBModalTitle>
-                            <MDBBtn className="btn-close" color="none" onClick={() => setChangeAvatarModal(false)} />
-                        </MDBModalHeader>
-                        <MDBTabs className="mb-3" style={{marginBottom:0}}>
-                            <MDBTabsItem>
-                                <MDBTabsLink onClick={() => setActiveTab('user')} active={activeTab === 'user'}>
-                                    User
-                                </MDBTabsLink>
-                            </MDBTabsItem>
-                            <MDBTabsItem>
-                                <MDBTabsLink onClick={() => setActiveTab('room')} active={activeTab === 'room'}>
-                                    Room
-                                </MDBTabsLink>
-                            </MDBTabsItem>
-                        </MDBTabs>
-                        <MDBTabsContent>
-                            <MDBTabsPane show={activeTab === 'user'}>
-                                <MDBInput style={{backgroundColor:"white"}}
-                                          type="text"
-                                          value={displayName}
-                                          label="Default Input"
-                                          disabled
-                                />
-                                <br />
-                                <input
-                                    type="file"
-                                    id="file"
-                                    style={{ display: "none" }}
-                                    onChange={handleAvatarChange}
-                                />
-                                <label htmlFor="file" className="LabelUpload" style={{backgroundColor:"white"}}>
-                                    <div className="img_cont_msg">
-                                        <img src={avatar.url || 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png'} alt="" className="rounded-circle user_img_msg" />
-                                    </div>
-                                    <span id="UploadImg">Upload an image</span>
-                                </label>
-                            </MDBTabsPane>
-                            <MDBTabsPane show={activeTab === 'room'}>
-                                <MDBInput
-                                    type="text"
-                                    value={roomNames}
-                                    onChange={(e) => setRoomNames(e.target.value)}
-                                    label="Room Name"
-                                    list="datalistOption"
-                                />
-                                <datalist id="datalistOption">
-                                    {userList
-                                        .filter(user => user.type === 1)
-                                        .map((user, index) => (
-                                            <option key={index} value={user.name} />
-                                        ))}
-                                </datalist>
-                                <br/>
-                                <input
-                                    type="file"
-                                    id="fileRoom"
-                                    style={{display: "none"}}
-                                    onChange={handleRoomAvatarChange}
-                                />
-                                <label htmlFor="fileRoom" className="LabelUpload" style={{backgroundColor: "white"}}>
-                                    <div className="img_cont_msg">
-                                        <img src={roomAvatar.url || 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png'} alt="" className="rounded-circle user_img_msg"/>
-                                    </div>
-                                    <span id="UploadImg">Upload an image</span>
-                                </label>
-                            </MDBTabsPane>
-                        </MDBTabsContent>
-                        <MDBModalFooter>
-                            <MDBBtn color="secondary" onClick={() => setChangeAvatarModal(false)}>
-                                Close
-                            </MDBBtn>
-                            <MDBBtn onClick={activeTab === 'user' ? updateUserAvatar : updateRoomAvatar}>
-                                Update Avatar
-                            </MDBBtn>
-                        </MDBModalFooter>
-                    </MDBModalContent>
-                </MDBModalDialog>
-            </MDBModal>
-        </>
-    );
+                    {/* Modal Change Avatar */}
+                    <MDBModal show={changeAvatarModal} onHide={() => setChangeAvatarModal(false)}>
+                        <MDBModalDialog>
+                            <MDBModalContent>
+                                <MDBModalHeader>
+                                    <MDBModalTitle>Change Avatar</MDBModalTitle>
+                                    <MDBBtn className="btn-close" color="none"
+                                            onClick={() => setChangeAvatarModal(false)}/>
+                                </MDBModalHeader>
+                                <MDBTabs className="mb-3" style={{marginBottom: 0}}>
+                                    <MDBTabsItem>
+                                        <MDBTabsLink onClick={() => setActiveTab('user')} active={activeTab === 'user'}>
+                                            User
+                                        </MDBTabsLink>
+                                    </MDBTabsItem>
+                                    <MDBTabsItem>
+                                        <MDBTabsLink onClick={() => setActiveTab('room')} active={activeTab === 'room'}>
+                                            Room
+                                        </MDBTabsLink>
+                                    </MDBTabsItem>
+                                </MDBTabs>
+                                <MDBTabsContent>
+                                    <MDBTabsPane show={activeTab === 'user'}>
+                                        <MDBInput style={{backgroundColor: "white"}}
+                                                  type="text"
+                                                  value={displayName}
+                                                  label="Default Input"
+                                                  disabled
+                                        />
+                                        <br/>
+                                        <input
+                                            type="file"
+                                            id="file"
+                                            style={{display: "none"}}
+                                            onChange={handleAvatarChange}
+                                        />
+                                        <label htmlFor="file" className="LabelUpload"
+                                               style={{backgroundColor: "white"}}>
+                                            <div className="img_cont_msg">
+                                                <img
+                                                    src={avatar.url || 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png'}
+                                                    alt="" className="rounded-circle user_img_msg"/>
+                                            </div>
+                                            <span id="UploadImg">Upload an image</span>
+                                        </label>
+                                    </MDBTabsPane>
+                                    <MDBTabsPane show={activeTab === 'room'}>
+                                        <MDBInput
+                                            type="text"
+                                            value={roomNames}
+                                            onChange={(e) => setRoomNames(e.target.value)}
+                                            label="Room Name"
+                                            list="datalistOption"
+                                        />
+                                        <datalist id="datalistOption">
+                                            {userList
+                                                .filter(user => user.type === 1)
+                                                .map((user, index) => (
+                                                    <option key={index} value={user.name}/>
+                                                ))}
+                                        </datalist>
+                                        <br/>
+                                        <input
+                                            type="file"
+                                            id="fileRoom"
+                                            style={{display: "none"}}
+                                            onChange={handleRoomAvatarChange}
+                                        />
+                                        <label htmlFor="fileRoom" className="LabelUpload"
+                                               style={{backgroundColor: "white"}}>
+                                            <div className="img_cont_msg">
+                                                <img
+                                                    src={roomAvatar.url || 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png'}
+                                                    alt="" className="rounded-circle user_img_msg"/>
+                                            </div>
+                                            <span id="UploadImg">Upload an image</span>
+                                        </label>
+                                    </MDBTabsPane>
+                                </MDBTabsContent>
+                                <MDBModalFooter>
+                                    <MDBBtn color="secondary" onClick={() => setChangeAvatarModal(false)}>
+                                        Close
+                                    </MDBBtn>
+                                    <MDBBtn onClick={activeTab === 'user' ? updateUserAvatar : updateRoomAvatar}>
+                                        Update Avatar
+                                    </MDBBtn>
+                                </MDBModalFooter>
+                            </MDBModalContent>
+                        </MDBModalDialog>
+                    </MDBModal>
+                </>
+            );
 }
+
