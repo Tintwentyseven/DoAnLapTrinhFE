@@ -1645,7 +1645,7 @@ export default function ChatRoom() {
                             </div>
                             <div className="col-md-8 col-xl-6 chat" id="chatcenter">
                                 <div className="card" id="chatcenter">
-                                    <div className="card-header msg_head">
+                                    <div className="card-header msg_head cor">
                                         <div className="d-flex bd-highlight">
                                             <div className="img_cont">
                                                 <img
