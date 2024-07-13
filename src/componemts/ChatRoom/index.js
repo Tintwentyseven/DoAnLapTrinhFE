@@ -40,6 +40,21 @@ import {
     arrayUnion
 } from "firebase/firestore";
 import ava from "../../img/addAvatar.png";
+import word from "../../img/file-type-word.256x239.png";
+import pdf from "../../img/file-type-pdf2.252x256.png";
+import xlsx from "../../img/file-type-excel.256x239.png";
+import txt from "../../img/file-txt.204x256.png";
+import zip from "../../img/zip.188x256.png";
+import pptx from "../../img/filetype-pptx.209x256.png";
+import html from "../../img/file-type-html.226x256.png";
+import css from "../../img/file-type-css.226x256.png";
+import js from "../../img/file-type-js-official.256x256.png";
+import ts from "../../img/file-type-typescript-official.256x256.png";
+import mp3 from "../../img/audio-x-mp3-playlist.256x253.png";
+import csv from "../../img/csv.224x256.png"
+import java from "../../img/java-original-wordmark.139x256.png";
+import sql from "../../img/sql-database-sql-azure.245x256.png";
+import drawio from "../../img/file-type-drawio.256x256.png";
 
 import upload from "../../componemts/ChatRoom/upload";
 
@@ -100,6 +115,8 @@ export default function ChatRoom() {
     const [searchTerm, setSearchTerm] = useState('');
     const [gifList, setGifList] = useState([]);
     const [selectedFile, setSelectedFile] = useState(null);
+    const [selectedFiles, setSelectedFiles] = useState([]);
+
 
 
     const triggerFileInput = () => {
@@ -109,19 +126,11 @@ export default function ChatRoom() {
     };
 
     const handleFileChange = (e) => {
-
-        const file = e.target.files[0];
-
-        if (file) {
-
-            setSelectedFile(file);
-
-
-
-            console.log("Selected file:", file.name); // In tên file ra console
-
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+            setSelectedFiles(prevFiles => [...prevFiles, ...files]);
+            files.forEach(file => console.log("Selected file:", file.name)); // Log each file name
         }
-
     };
 
     const [avatarUrls, setAvatarUrls] = useState({});
@@ -1073,12 +1082,15 @@ export default function ChatRoom() {
         const sessionData = JSON.parse(sessionStorage.getItem('sessionData'));
         const sessionUsername = sessionData ? sessionData.username : '';
 
-        let fileUrl = '';
-        if (selectedFile) {
-            const fileRef = ref(storage, `chat_files/${selectedFile.name}`);
-            await uploadBytes(fileRef, selectedFile);
-            fileUrl = await getDownloadURL(fileRef);
-            console.log("File URL:", fileUrl);
+        let fileUrls = [];
+        if (selectedFiles.length > 0) {
+            for (const file of selectedFiles) {
+                const fileRef = ref(storage, `chat_files/${file.name}`);
+                await uploadBytes(fileRef, file);
+                const fileUrl = await getDownloadURL(fileRef);
+                fileUrls.push(fileUrl);
+                console.log("File URL:", fileUrl);
+            }
         }
 
         const isRoom = userList.some(user => user.name === displayName && user.type === 1);
@@ -1087,10 +1099,12 @@ export default function ChatRoom() {
         const messageBytes = new TextEncoder().encode(messageContentChat.trim());
         const encodedMessage = fromByteArray(messageBytes);
 
+        const fileUrlsString = fileUrls.join(' ');
+
         const messageData = {
             type: isRoom ? "room" : "people",
             to: displayName,
-            mes: messageContentChat.trim() === '' ? fileUrl : `${fileUrl ? fileUrl + ' ' : ''}${encodedMessage}`
+            mes: `${fileUrlsString} ${encodedMessage}`.trim()
         };
 
         const chatMessage = {
@@ -1108,7 +1122,7 @@ export default function ChatRoom() {
         const newMessage = {
             name: sessionUsername,
             createAt: adjustedCreateAt,
-            mes: messageContentChat.trim() === '' ? fileUrl : `${fileUrl ? fileUrl + ' ' : ''}${messageContentChat.trim()}`,
+            mes: `${fileUrlsString} ${messageContentChat.trim()}`.trim(),
             type: isRoom ? "room" : "people",
             to: displayName
         };
@@ -1122,9 +1136,9 @@ export default function ChatRoom() {
             console.error('WebSocket is not open. Unable to send message.');
         }
 
-        // Clear message content and selected file after sending
+        // Clear message content and selected files after sending
         setMessageContentChat('');
-        setSelectedFile(null);
+        setSelectedFiles([]);
         setScrollToBottom(true);
     };
 
@@ -1143,8 +1157,13 @@ export default function ChatRoom() {
 
     const handleKeyDown = (event) => {
         if (event.key === 'Enter') {
-            event.preventDefault();
-            sendMessage();
+            if (event.shiftKey) {
+                event.preventDefault();
+                setMessageContentChat(prev => prev + '\n');
+            } else {
+                event.preventDefault();
+                sendMessage();
+            }
         }
     };
 
@@ -1261,64 +1280,92 @@ export default function ChatRoom() {
         const urlParts = mes.split("/");
         const fileNameWithParams = urlParts[urlParts.length - 1];
         const fileName = fileNameWithParams.split("?")[0];
-        return decodeURIComponent(fileName.replace("files%2F", ""));
+        return decodeURIComponent(fileName.replace("chat_files%2F", ""));
     };
-
+    const getFileIcon = (fileName) => {
+        const extension = fileName.split('.').pop().toLowerCase();
+        const fileIcons = {
+            'pdf': pdf,
+            'docx': word,
+            'xlsx': xlsx,
+            'pptx': pptx,
+            'css': css,
+            'html': html,
+            'js': js,
+            'txt': txt,
+            'zip': zip,
+            'mp3':mp3,
+            'java':java,
+            'sql':sql,
+            'csv':csv,
+            'drawio':drawio,
+            'ts':ts
+            // Add paths to other icons as necessary
+        };
+        return fileIcons[extension];
+    };
     const renderMessageContent = (message) => {
         if (!message || typeof message.mes !== 'string') {
             return <div className="message-content">{message?.mes || ''}</div>;
         }
 
-        const parts = message.mes.split(urlRegex);
-        const urls = message.mes.match(urlRegex) || [];
+        const urlRegex = /https?:\/\/[^\s]+/g;
+        const fileUrls = message.mes.match(urlRegex) || [];
+        const messageParts = message.mes.split(urlRegex);
+        const messageContent = messageParts.filter(part => !fileUrls.includes(part)).join('');
 
         return (
             <div className="message-content">
-                {parts.map((part, index) => (
-                    <React.Fragment key={index}>
-                        {part}
-                        {urls[index] &&
-                        checkURLFile(urls[index]) ? (
-                            <a href={urls[index]} target="_blank" rel="noopener noreferrer" download>
-                                {nameFile(urls[index])}
-                            </a>
-                        ) : /https:\/\/media[0-9]*\.giphy\.com\/media\/[a-zA-Z0-9]+\/[0-9]+\.gif/.test(urls[index]) ? (
+                {fileUrls.map((url, index) => (
+                    <div key={index} className="file-url">
+                        {checkURLFile(url) ? (
+                            <>
+                                <img src={getFileIcon(nameFile(url))} alt="" style={{ width: '24px', height: '24px', marginRight: '8px' }} />
+                                <a href={url} target="_blank" rel="noopener noreferrer" download>
+                                    {nameFile(url)}
+                                </a>
+                            </>
+                        ) : /https:\/\/media[0-9]*\.giphy\.com\/media\/[a-zA-Z0-9]+\/[0-9]+\.gif/.test(url) ? (
                             <iframe
-                                src={`https://giphy.com/embed/${urls[index].split('media/')[1].split('/')[0]}`}
+                                src={`https://giphy.com/embed/${url.split('media/')[1].split('/')[0]}`}
                                 width="300"
                                 height="271"
                                 frameBorder="0"
                                 className="giphy-embed"
                                 allowFullScreen
                             ></iframe>
-                        ) : /https:\/\/www.youtube.com\/watch\?v=/.test(urls[index]) ? (
+                        ) : /https:\/\/www.youtube.com\/watch\?v=/.test(url) ? (
                             <iframe
                                 width="100%"
                                 height="315"
-                                src={replaceText(urls[index], "watch?v=", "embed/")}
+                                src={replaceText(url, "watch?v=", "embed/")}
                                 title="YouTube video player"
                                 frameBorder="0"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                 allowFullScreen
                             ></iframe>
-                        ) : checkURLImg(urls[index]) ? (
-                            <div>
-                                <img
-                                    style={{
-                                        width: "300px",
-                                        height: "140px",
-                                        objectFit: "cover",
-                                    }}
-                                    src={urls[index]}
-                                    alt=""
-                                />
-                            </div>
+                        ) : checkURLImg(url) ? (
+                            <img
+                                style={{
+                                    width: "300px",
+                                    height: "140px",
+                                    objectFit: "cover",
+                                }}
+                                src={url}
+                                alt=""
+                            />
                         ) : (
-                            <a href={urls[index]} target="_blank" rel="noopener noreferrer">
-                                {urls[index]}
+                            <a href={url} target="_blank" rel="noopener noreferrer">
+                                {url}
                             </a>
                         )}
-                    </React.Fragment>
+                    </div>
+                ))}
+                {messageContent.trim() !== '' && messageContent.split('\n').map((line, index) => (
+                    <span key={index} className="message-line">
+                    {line}
+                        <br />
+                </span>
                 ))}
             </div>
         );
@@ -1969,18 +2016,20 @@ export default function ChatRoom() {
                                     <div ref={messagesEndRef}></div>
                                 </div>
 
-                                <div className="card-footer" style={{height: selectedFile ? '150px' : '100px'}}>
 
-                                    {selectedFile && (
-
-                                        <div className="selected-file" contentEditable={false}>
-
-                                            <span>{selectedFile.name}</span>
-
-                                            <button onClick={() => setSelectedFile(null)}>x</button>
-
+                                <div className="card-footer"
+                                     style={{height: selectedFiles.length > 0 ? '150px' : '100px'}}>
+                                    {selectedFiles.length > 0 && (
+                                        <div className="selected-files" contentEditable={false}>
+                                            {selectedFiles.map((file, index) => (
+                                                <div key={index} className="selected-file">
+                                                    <span>{file.name}</span>
+                                                    <button
+                                                        onClick={() => setSelectedFiles(prevFiles => prevFiles.filter((_, i) => i !== index))}>x
+                                                    </button>
+                                                </div>
+                                            ))}
                                         </div>
-
                                     )}
 
                                     <div className="input-group" style={{marginBottom: '10px'}}>
