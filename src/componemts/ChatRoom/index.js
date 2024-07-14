@@ -83,6 +83,7 @@ export default function ChatRoom() {
     const [messageContent, setMessageContent] = useState('');
     const [messageContentChat, setMessageContentChat] = useState('');
     const [displayName, setDisplayName] = useState(username);
+    const [type, setType] = useState(0);
     const [lastMessage, setLastMessage] = useState(null);
     const [lastIndex, setlastIndex] = useState(-1);
     const [searchType, setSearchType] = useState('');
@@ -827,6 +828,7 @@ export default function ChatRoom() {
     };
 
     const handleLiClick = async (name, type, roomOwner) => {
+        setType(type);
         setDisplayName(name);
         setMessageContent(type === 0 ? 'Người dùng' : 'Phòng');
         setSearchType(type === 0 ? 'user' : 'room');
@@ -973,6 +975,11 @@ export default function ChatRoom() {
                 }));
 
                 setMessages(firestoreData);
+                // Vòng lặp để in ra id của mỗi tin nhắn
+                firestoreData.forEach((message, index) => {
+                    console.log("id: "+ message.id);
+                    console.log("mes: "+ message.mes);
+                });
 
 
                 // Decode messages
@@ -1136,23 +1143,24 @@ export default function ChatRoom() {
 
         // Create a new message object for immediate display
 
-        const newMessage = {
-
-            name: username,
-            createAt: adjustedCreateAt, //
-            mes: messageContentChat.trim(), // Use the plain message content
-            type: isRoom ? "room" : "people",
-            to: displayName
-        }
+        // const newMessage = {
+        //
+        //     name: username,
+        //     createAt: adjustedCreateAt, //
+        //     mes: messageContentChat.trim(), // Use the plain message content
+        //     type: isRoom ? "room" : "people",
+        //     to: displayName
+        // }
 
         if (socket && socket.readyState === WebSocket.OPEN) {
             setMessageContentChat(''); // Clear message content after sending
             setScrollToBottom(true); // Scroll to bottom
             console.log('Message object:', chatMessage);
             socket.send(JSON.stringify(chatMessage));
+            setShouldFetchMessages(true);
 
             // Update messages state immediately
-            setMessages(prevMessages => [...prevMessages, newMessage]);
+            // setMessages(prevMessages => [...prevMessages, newMessage]);
         } else {
             console.error('WebSocket is not open. Unable to send message.');
         }
@@ -1160,7 +1168,7 @@ export default function ChatRoom() {
 
     useEffect(() => {
         if (shouldFetchMessages) {
-            handleLiClick(displayName, 0, roomOwner);
+            handleLiClick(displayName, type, roomOwner);
             setShouldFetchMessages(false); // Reset to prevent re-calling when messages change
         }
     }, [shouldFetchMessages]);
@@ -1332,45 +1340,95 @@ export default function ChatRoom() {
     //chuc nang xoa, thu hoi chat
     const [hoveredMessage, setHoveredMessage] = useState(null); // Thêm trạng thái để theo dõi tin nhắn được chọn
 
+    // const handleDeleteMessage = async (messageId) => {
+    //     console.log("messageId: "+messageId)
+    //     const updatedMessages = messages.map(message => {
+    //         if (message.id === messageId) {
+    //             if (!message.hasOwnProperty('isRecalled')) {
+    //                 return {...message, isRecalled: true};
+    //             }
+    //             return {...message, isRecalled: true};
+    //         }
+    //         return message;
+    //     });
+    //
+    //     setMessages(updatedMessages);
+    //     // Lấy tham chiếu của tin nhắn bị thu hồi
+    //     const messageElement = specificMessageRef.current[messageId];
+    //
+    //     const messageRef = doc(db, "messages", String(messageId));
+    //     const messageDoc = await getDoc(messageRef);
+    //
+    //     if (messageDoc.exists()) {
+    //         await updateDoc(messageRef, {
+    //             isRecalled: true
+    //         });
+    //     }else{
+    //         await setDoc(messageRef, {
+    //             id: messageId,
+    //             isRecalled: true
+    //         });
+    //     }
+    //
+    //     console.log('Message recalled:', messageId);
+    //
+    //     // Cuộn tới tin nhắn bị thu hồi
+    //     if (messageElement) {
+    //         messageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    //     }
+    //
+    //     // Ngăn việc cuộn tự động xuống cuối
+    //     setScrollToBottom(false);
+    // };
     const handleDeleteMessage = async (messageId) => {
-        console.log("messageId: "+messageId)
+        console.log("messageId: " + messageId);
+
+        // Kiểm tra nếu messageId là undefined
+        if (!messageId) {
+            console.error('messageId is undefined');
+            return;
+        }
+
+        // Cập nhật state của tin nhắn
         const updatedMessages = messages.map(message => {
             if (message.id === messageId) {
-                if (!message.hasOwnProperty('isRecalled')) {
-                    return {...message, isRecalled: true};
-                }
                 return {...message, isRecalled: true};
             }
             return message;
         });
 
         setMessages(updatedMessages);
+
         // Lấy tham chiếu của tin nhắn bị thu hồi
         const messageElement = specificMessageRef.current[messageId];
 
-        const messageRef = doc(db, "messages", String(messageId));
-        const messageDoc = await getDoc(messageRef);
+        try {
+            const messageRef = doc(db, "messages", String(messageId));
+            const messageDoc = await getDoc(messageRef);
 
-        if (messageDoc.exists()) {
-            await updateDoc(messageRef, {
-                isRecalled: true
-            });
-        }else{
-            await setDoc(messageRef, {
-                id: messageId,
-                isRecalled: true
-            });
+            if (messageDoc.exists()) {
+                await updateDoc(messageRef, {
+                    isRecalled: true
+                });
+            } else {
+                await setDoc(messageRef, {
+                    id: messageId,
+                    isRecalled: true
+                });
+            }
+
+            console.log('Message recalled:', messageId);
+
+            // Cuộn tới tin nhắn bị thu hồi
+            if (messageElement) {
+                messageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            // Ngăn việc cuộn tự động xuống cuối
+            setScrollToBottom(false);
+        } catch (error) {
+            console.error("Error recalling message: ", error);
         }
-
-        console.log('Message recalled:', messageId);
-
-        // Cuộn tới tin nhắn bị thu hồi
-        if (messageElement) {
-            messageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-
-        // Ngăn việc cuộn tự động xuống cuối
-        setScrollToBottom(false);
     };
 
 
@@ -1892,52 +1950,26 @@ export default function ChatRoom() {
 
                                                         <div
 
-                                                            className={`msg_cotainer${message.name === username ? '_send' : ''}`}>
+                                                            className={`msg_cotainer${message.name === username ? '_send' : ''}   ${message.isRecalled &&message.name === username  ? 'recalledMessage' : ''}`}>
 
-                                                            <div className="message-content">
+                                                            {/*<div className={"message-content" }>*/}
+                                                            <div
+                                                                className={`message-content`}>
 
-                                                        {/*        {renderMessageContent(message)}*/}
-
-                                                        {/*        /!*<<<<<<< HEAD*!/*/}
-
-
-
-                                                        {/*        <span*/}
-
-                                                        {/*            className={`msg_time${message.name === username ? '_send' : ''}`}>*/}
-
-                                                        {/*         {renderDateTime(message.createAt)}*/}
-
-                                                        {/*</span>*/}
-
-                                                        {/*        /!* Hiển thị các biểu tượng cảm xúc *!/*/}
-
-                                                        {/*        {message.reactions && (*/}
-
-                                                        {/*            <div className="message-reactions">*/}
-
-                                                        {/*                {message.reactions.map((reaction, reactionIndex) => (*/}
-
-                                                        {/*                    <span key={reactionIndex}>{reaction}</span>*/}
-
-                                                        {/*                ))}*/}
-
-                                                        {/*            </div>*/}
-
-                                                        {/*        )}*/}
-
-                                                                {message.isRecalled ? (
+                                                                {message.isRecalled&&message.name === username ? (
                                                                     <span>Tin nhắn đã bị thu hồi</span>
                                                                 ) : (
                                                                     <>
                                                                         {renderMessageContent(message)}
-                                                                        <span className={`msg_time${message.name === username ? '_send' : ''}`}>
+                                                                        <span
+                                                                            className={`msg_time${message.name === username ? '_send' : ''}`}>
                                                                             {renderDateTime(message.createAt)}
                                                                         </span>
                                                                         {message.reactions && (
                                                                             <div className="message-reactions">
                                                                                 {message.reactions.map((reaction, reactionIndex) => (
-                                                                                    <span key={reactionIndex}>{reaction}</span>
+                                                                                    <span
+                                                                                        key={reactionIndex}>{reaction}</span>
                                                                                 ))}
                                                                             </div>
                                                                         )}
@@ -1949,36 +1981,13 @@ export default function ChatRoom() {
                                                                     <div
 
                                                                         className={`message-icons ${message.name === username ? 'left' : 'right'}`}>
+                                                                        {message.name !== username ?"":( <i className="fas fa-trash"
 
-                                                                        <i className="fas fa-trash"
+                                                                            onClick={() => handleDeleteMessage(message.id)}></i>)}
 
-                                                                           onClick={() => handleDeleteMessage( message.id)}></i>
+                                                                <i className="fas fa-reply"
 
-                                                                        <i className="fas fa-reply"
-
-                                                                           onClick={() => handleReplyMessage(message)}></i>
-
-                                                                        {/*=======*/}
-
-                                                                        {/*                                                        <span className={`msg_time${message.name === username ? '_send' : ''}`}>*/}
-
-                                                                        {/*                            {renderDateTime(message.createAt)}*/}
-
-                                                                        {/*                        </span>*/}
-
-                                                                        {/*                                                        {hoveredMessage === index && (*/}
-
-                                                                        {/*                                                            <div className={`message-icons ${message.name === username ? 'left' : 'right'}`}>*/}
-
-                                                                        {/*                                                                <i className="fas fa-trash"*/}
-
-                                                                        {/*                                                                   onClick={() => handleDeleteMessage(message.id)}></i>*/}
-
-                                                                        {/*                                                                <i className="fas fa-reply"*/}
-
-                                                                        {/*                                                                   onClick={() => handleReplyMessage(message)}></i>*/}
-
-                                                                        {/*>>>>>>> main*/}
+                                                                   onClick={() => handleReplyMessage(message)}></i>
 
                                                                         <i className="fas fa-smile"
 
@@ -1989,18 +1998,11 @@ export default function ChatRoom() {
                                                                 )}
 
                                                                 {showEmojiPicker && emojiPickerMessageId === message.id && (
-
                                                                     <div className="emoji-picker-container">
-
                                                                         <EmojiPicker
-
                                                                             onEmojiClick={(emojiData, event) => handleEmojiSelect(emojiData, event)}/>
-
                                                                     </div>
-
                                                                 )}
-
-
 
                                                             </div>
 
