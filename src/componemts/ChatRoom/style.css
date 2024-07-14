@@ -741,3 +741,12 @@ input[type="radio"]:checked + .tab-label + .tab-slider {
     cursor: pointer;
     color: #ff0000;
 }
+/*Thêm lớp CSS*/
+.recalledMessage {
+    background-color: rgba(176, 175, 175, 0.8) !important;
+    font-style: italic;
+    color: white;
+}
+.cor{
+    background: #89afd7 !important;
+}

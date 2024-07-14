@@ -42,8 +42,22 @@ import {
 import ava from "../../img/addAvatar.png";
 
 import upload from "../../componemts/ChatRoom/upload";
-
-import {auth, db} from "../../firebase";
+import word from "../../img/file-type-word.256x239.png";
+import pdf from "../../img/file-type-pdf2.252x256.png";
+import xlsx from "../../img/file-type-excel.256x239.png";
+import txt from "../../img/file-txt.204x256.png";
+import zip from "../../img/zip.188x256.png";
+import pptx from "../../img/filetype-pptx.209x256.png";
+import html from "../../img/file-type-html.226x256.png";
+import css from "../../img/file-type-css.226x256.png";
+import js from "../../img/file-type-js-official.256x256.png";
+import ts from "../../img/file-type-typescript-official.256x256.png";
+import mp3 from "../../img/audio-x-mp3-playlist.256x253.png";
+import csv from "../../img/csv.224x256.png"
+import java from "../../img/java-original-wordmark.139x256.png";
+import sql from "../../img/sql-database-sql-azure.245x256.png";
+import drawio from "../../img/file-type-drawio.256x256.png";
+import {auth, db,storage} from "../../firebase";
 import EmojiPicker from 'emoji-picker-react';
 
 import {getStorage, ref, uploadBytes, getDownloadURL} from "firebase/storage";
@@ -101,6 +115,17 @@ export default function ChatRoom() {
     const GIPHY_API_KEY = '5LcV29T4yVNSvuCZ3vu2S2BQpUdfWHIy'; // Thay bằng API key của bạn
     const [searchTerm, setSearchTerm] = useState('');
     const [gifList, setGifList] = useState([]);
+    const [selectedFiles, setSelectedFiles] = useState([]);
+
+
+    const handleFileChange = (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+            setSelectedFiles(prevFiles => [...prevFiles, ...files]);
+            files.forEach(file => console.log("Selected file:", file.name)); // Log each file name
+        }
+    };
+
 
 
     const [avatarUrls, setAvatarUrls] = useState({});
@@ -148,48 +173,80 @@ export default function ChatRoom() {
             .catch(error => console.error('Error fetching GIFs:', error));
     };
     const handleGifClick = async (gifUrl) => {
-        const sessionData = JSON.parse(sessionStorage.getItem('sessionData'));
-        const sessionUsername = sessionData ? sessionData.username : '';
+        if (gifUrl === '') return;
 
+        // Encode message content
+        const messageBytes = new TextEncoder().encode(gifUrl);
+        const encodedMessageGif = fromByteArray(messageBytes);
 
-
-        // Send the message via WebSocket
+        // Determine if displayName is a room
         const isRoom = userList.some(user => user.name === displayName && user.type === 1);
 
-        const chatMessage = {
-            action: "onchat",
-            data: {
-                event: "SEND_CHAT",
+        let chatMessage;
+        if (isRoom) {
+            console.log("Sending message to room:", displayName);
+            chatMessage = {
+                action: "onchat",
                 data: {
-                    type: isRoom ? "room" : "people",
-                    to: displayName,
-                    mes: gifUrl
+                    event: "SEND_CHAT",
+                    data: {
+                        type: "room",
+                        to: displayName,
+                        mes: encodedMessageGif
+                    }
                 }
-            }
-        };
+            };
+        } else {
+            console.log("Sending message to user:", displayName);
+            chatMessage = {
+                action: "onchat",
+                data: {
+                    event: "SEND_CHAT",
+                    data: {
+                        type: "people",
+                        to: displayName,
+                        mes: encodedMessageGif
+                    }
+                }
+            };
+        }
+
+        // Create a new message object for immediate display
+        const date = new Date();
+
+        date.setHours(date.getHours() - 7);
+
+        const adjustedCreateAt = date.toISOString();
+
+
+
+        // Create a new message object for immediate display
+
+
+
+        // Create a new message object for immediate display
+
+        // const newMessage = {
+        //
+        //     name: username,
+        //     createAt: adjustedCreateAt, //
+        //     mes: messageContentChat.trim(), // Use the plain message content
+        //     type: isRoom ? "room" : "people",
+        //     to: displayName
+        // }
 
         if (socket && socket.readyState === WebSocket.OPEN) {
+            setMessageContentChat(''); // Clear message content after sending
+            setScrollToBottom(true); // Scroll to bottom
+            console.log('Message object:', chatMessage);
             socket.send(JSON.stringify(chatMessage));
+            setShouldFetchMessages(true);
 
             // Update messages state immediately
-            const date = new Date();
-            date.setHours(date.getHours() - 7);
-            const adjustedCreateAt = date.toISOString();
-
-            // Create a new message object for immediate display
-
-            const newMessage = {
-                name: sessionUsername,
-                createAt: adjustedCreateAt, //
-                mes: gifUrl, // Use the GIF URL as the message content
-                type: isRoom ? "room" : "people",
-                to: displayName
-            };
-            setMessages(prevMessages => [...prevMessages, newMessage]);
+            // setMessages(prevMessages => [...prevMessages, newMessage]);
         } else {
             console.error('WebSocket is not open. Unable to send message.');
         }
-
         setGifPickerVisible(false);
     };
     // Hàm kiểm tra trạng thái user
@@ -1087,7 +1144,51 @@ export default function ChatRoom() {
     //     }
     // };
 
+    const sendFiles = async () => {
+        if (selectedFiles.length === 0) return;
 
+        let fileUrls = [];
+        for (const file of selectedFiles) {
+            const fileRef = ref(storage, `chat_files/${file.name}`);
+            await uploadBytes(fileRef, file);
+            const fileUrl = await getDownloadURL(fileRef);
+            fileUrls.push(fileUrl);
+            console.log("File URL:", fileUrl);
+        }
+
+        const fileUrlsString = fileUrls.join(' ').trim();
+        const isRoom = userList.some(user => user.name === displayName && user.type === 1);
+
+        let chatMessage = {
+            action: "onchat",
+            data: {
+                event: "SEND_CHAT",
+                data: {
+                    type: isRoom ? "room" : "people",
+                    to: displayName,
+                    mes: fileUrlsString
+                }
+            }
+        };
+
+        const date = new Date();
+        date.setHours(date.getHours() - 7);
+        const adjustedCreateAt = date.toISOString();
+
+
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            setSelectedFiles([]); // Clear selected files after sending
+            setScrollToBottom(true); // Scroll to bottom
+            console.log('File message object:', chatMessage);
+            socket.send(JSON.stringify(chatMessage));
+            setShouldFetchMessages(true);
+
+            // Update messages state immediately
+        } else {
+            console.error('WebSocket is not open. Unable to send message.');
+        }
+    };
     // hàm send chat
     const sendChat = () => {
         if (messageContentChat.trim() === '') return;
@@ -1178,13 +1279,22 @@ export default function ChatRoom() {
     };
 
     const handleSendClick = () => {
-        sendChat();
+        if (selectedFiles.length > 0) {
+            sendFiles();
+        } else {
+            sendChat();
+        }
     };
 
     const handleKeyDown = (event) => {
         if (event.key === 'Enter') {
-            event.preventDefault();
-            sendChat();
+            if (event.shiftKey) {
+                event.preventDefault();
+                setMessageContentChat(prev => prev + '\n');
+            } else {
+                event.preventDefault();
+                sendChat();
+            }
         }
     };
 
@@ -1281,60 +1391,116 @@ export default function ChatRoom() {
     const replaceText = (text, text1, text2) => {
         return text.replace(text1, text2);
     };
-    //Regex kiểm tra đường dẫn//
-    const urlRegex = /https?:\/\/[^\s]+/g;
-    //Tải lên và kiểm tra tin nhắn là dạng text hay u//
-    const renderMessageContent = (message) => {
-        const parts = message.mes.split(urlRegex);
-        const urls = message.mes.match(urlRegex);
 
-        if (urls) {
-            return (
-                <div className="message-content">
-                    {parts.map((part, index) => (
-                        <React.Fragment key={index}>
-                            {part}
-                            {urls[index] && (
-                                // Check if the URL is a Giphy URL and extract the GIF ID
-                                /https:\/\/media[0-9]*\.giphy\.com\/media\/[a-zA-Z0-9]+\/[0-9]+\.gif/.test(urls[index]) ? (
-                                    <iframe
-                                        src={`https://giphy.com/embed/${urls[index].split('media/')[1].split('/')[0]}`}
-                                        width="300"
-                                        height="271"
-                                        frameBorder="0"
-                                        className="giphy-embed"
-                                        allowFullScreen
-                                    ></iframe>
-                                ) : (
-                                    // Check if the URL is a YouTube URL and embed the video
-                                    /https:\/\/www.youtube.com\/watch\?v=/.test(urls[index]) ? (
-                                        <iframe
-                                            width="100%"
-                                            height="315"
-                                            src={replaceText(urls[index], "watch?v=", "embed/")}
-                                            title="YouTube video player"
-                                            frameBorder="0"
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                            allowFullScreen
-                                        ></iframe>
-                                    ) : (
-                                        // Otherwise, render the URL as a link
-                                        <a href={urls[index]} target="_blank" rel="noopener noreferrer">
-                                            {urls[index]}
-                                        </a>
-                                    )
-                                )
-                            )}
-                        </React.Fragment>
-                    ))}
-                </div>
-            );
-        }
 
-        return <div className="message-content">{message.mes}</div>;
+
+    const checkURLFile = (mes) => {
+        return (
+            mes?.startsWith("https://firebasestorage") && checkIncludes(mes, "files")
+        );
     };
 
+// Regex to check for URLs
+    const urlRegex = /https?:\/\/[^\s]+/g;
+    const checkURLImg = (mes) => {
+        return (
+            mes?.startsWith("https://firebasestorage") && checkIncludes(mes, "images")
+        );
+    };
+    const nameFile = (mes) => {
+        const urlParts = mes.split("/");
+        const fileNameWithParams = urlParts[urlParts.length - 1];
+        const fileName = fileNameWithParams.split("?")[0];
+        return decodeURIComponent(fileName.replace("chat_files%2F", ""));
+    };
+    const getFileIcon = (fileName) => {
+        const extension = fileName.split('.').pop().toLowerCase();
+        const fileIcons = {
+            'pdf': pdf,
+            'docx': word,
+            'xlsx': xlsx,
+            'pptx': pptx,
+            'css': css,
+            'html': html,
+            'js': js,
+            'txt': txt,
+            'zip': zip,
+            'mp3':mp3,
+            'java':java,
+            'sql':sql,
+            'csv':csv,
+            'drawio':drawio,
+            'ts':ts
+            // Add paths to other icons as necessary
+        };
+        return fileIcons[extension];
+    };
+    const renderMessageContent = (message) => {
+        if (!message || typeof message.mes !== 'string') {
+            return <div className="message-content">{message?.mes || ''}</div>;
+        }
 
+        const urlRegex = /https?:\/\/[^\s]+/g;
+        const fileUrls = message.mes.match(urlRegex) || [];
+        const messageParts = message.mes.split(urlRegex);
+        const messageContent = messageParts.filter(part => !fileUrls.includes(part)).join('');
+
+        return (
+            <div className="message-content">
+                {fileUrls.map((url, index) => (
+                    <div key={index} className="file-url">
+                        {checkURLFile(url) ? (
+                            <>
+                                <img src={getFileIcon(nameFile(url))} alt="" style={{ width: '24px', height: '24px', marginRight: '8px' }} />
+                                <a href={url} target="_blank" rel="noopener noreferrer" download>
+                                    {nameFile(url)}
+                                </a>
+                            </>
+                        ) : /https:\/\/media[0-9]*\.giphy\.com\/media\/[a-zA-Z0-9]+\/[0-9]+\.gif/.test(url) ? (
+                            <iframe
+                                src={`https://giphy.com/embed/${url.split('media/')[1].split('/')[0]}`}
+                                width="300"
+                                height="271"
+                                frameBorder="0"
+                                className="giphy-embed"
+                                allowFullScreen
+                            ></iframe>
+                        ) : /https:\/\/www.youtube.com\/watch\?v=/.test(url) ? (
+                            <iframe
+                                width="100%"
+                                height="315"
+                                src={replaceText(url, "watch?v=", "embed/")}
+                                title="YouTube video player"
+                                frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowFullScreen
+                            ></iframe>
+                        ) : checkURLImg(url) ? (
+                            <img
+                                style={{
+                                    width: "300px",
+                                    height: "140px",
+                                    objectFit: "cover",
+                                }}
+                                src={url}
+                                alt=""
+                            />
+                        ) : (
+                            <a href={url} target="_blank" rel="noopener noreferrer">
+                                {url}
+                            </a>
+                        )}
+                    </div>
+                ))}
+                {messageContent.trim() !== '' && messageContent.split('\n').map((line, index) => (
+                    <span key={index} className="message-line">
+                    {line}
+                        <br />
+                </span>
+                ))}
+            </div>
+        );
+    };
 
 // >>>>>>> main
     //chuc nang xoa, thu hoi chat
@@ -2016,11 +2182,33 @@ export default function ChatRoom() {
                                     <div ref={messagesEndRef}></div>
                                 </div>
 
-                                <div className="card-footer">
+                                <div className="card-footer"
+                                     style={{height: selectedFiles.length > 0 ? '150px' : '100px'}}>
+                                    {selectedFiles.length > 0 && (
+                                        <div className="selected-files" contentEditable={false}>
+                                            {selectedFiles.map((file, index) => (
+                                                <div key={index} className="selected-file">
+                                                    <span>{file.name}</span>
+                                                    <button
+                                                        onClick={() => setSelectedFiles(prevFiles => prevFiles.filter((_, i) => i !== index))}>x
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
                                     <div className="input-group" style={{marginBottom: "10px"}}>
                                         <div className="input-group-append" id="sendfile">
-                                            <span className="input-group-text attach_btn" style={{height: "30px"}}><i
-                                                className="fas fa-paperclip"></i></span>
+                                            <label className="input-group-text attach_btn"
+                                                   style={{height: '30px', cursor: 'pointer'}}>
+
+                                                <i className="fas fa-paperclip"></i>
+
+                                                <input type="file" style={{display: 'none'}}
+                                                       onChange={handleFileChange} multiple/>
+
+                                            </label>
+
                                             <span className="input-group-text attach_btn"
                                                   style={{height: "30px"}}
                                                   onClick={() => setGifPickerVisible(!isGifPickerVisible)}>
@@ -2252,4 +2440,3 @@ export default function ChatRoom() {
         </>
     );
 }
-
