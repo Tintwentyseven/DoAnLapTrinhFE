@@ -1711,150 +1711,150 @@ export default function ChatRoom() {
     }, []);
 
 
-            return (
-                <>
-                    <div className="maincontainer">
-                        <div className="container-fluid h-50">
-                            <div className="row justify-content-center h-100">
-                                <div className="col-md-4 col-xl-3 chat" id="chatleft">
-                                    <div className="card mb-sm-3 mb-md-0 contacts_card">
-                                        <div className="card-header">
-                                            <div className="input-group">
-                                                <div className="input-group-prepend"></div>
-                                                <input
-                                                    type="checkbox"
-                                                    className="cbox"
-                                                    aria-label="Checkbox for search"
-                                                    checked={isCheckboxChecked}
-                                                    onChange={handleCheckboxChange}
-                                                />
-                                                <MDBInput
-                                                    type="text"
-                                                    placeholder="Search..."
-                                                    name="searchInput"
-                                                    className="form-control search"
-                                                    value={searchInput}
-                                                    onChange={handleSearchInputChange}
-                                                    list="datalistOptions"
-                                                />
-                                                <datalist id="datalistOptions">
-                                                    {userList
-                                                        .filter(user => !isCheckboxChecked ? user.type === 0 : user.type === 1)
-                                                        .map((user, index) => (
-                                                            <option key={index} value={user.name}/>
-                                                        ))}
-                                                </datalist>
-                                                <div className="input-group-prepend">
+    return (
+        <>
+            <div className="maincontainer">
+                <div className="container-fluid h-50">
+                    <div className="row justify-content-center h-100">
+                        <div className="col-md-4 col-xl-3 chat" id="chatleft">
+                            <div className="card mb-sm-3 mb-md-0 contacts_card">
+                                <div className="card-header">
+                                    <div className="input-group">
+                                        <div className="input-group-prepend"></div>
+                                        <input
+                                            type="checkbox"
+                                            className="cbox"
+                                            aria-label="Checkbox for search"
+                                            checked={isCheckboxChecked}
+                                            onChange={handleCheckboxChange}
+                                        />
+                                        <MDBInput
+                                            type="text"
+                                            placeholder="Search..."
+                                            name="searchInput"
+                                            className="form-control search"
+                                            value={searchInput}
+                                            onChange={handleSearchInputChange}
+                                            list="datalistOptions"
+                                        />
+                                        <datalist id="datalistOptions">
+                                            {userList
+                                                .filter(user => !isCheckboxChecked ? user.type === 0 : user.type === 1)
+                                                .map((user, index) => (
+                                                    <option key={index} value={user.name}/>
+                                                ))}
+                                        </datalist>
+                                        <div className="input-group-prepend">
                     <span className="input-group-text search_btn" onClick={handleSearch}>
                         <i className="fas fa-search"></i>
                     </span>
-                                                </div>
-                                            </div>
-                                            <div className="tabs-wrapper">
-                                                <input type="radio" name="tab" id="userTab"
-                                                       checked={activeContactsTab === 'user'}
-                                                       onChange={() => setActiveContactsTab('user')}/>
-                                                <label htmlFor="userTab" className="tab-label">User</label>
-                                                <input type="radio" name="tab" id="roomTab"
-                                                       checked={activeContactsTab === 'room'}
-                                                       onChange={() => setActiveContactsTab('room')}/>
-                                                <label htmlFor="roomTab" className="tab-label">Room</label>
-                                                <div className="tab-slider"></div>
-                                            </div>
                                         </div>
-                                        <div className="card-body contacts_body"
-                                             style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '550px'}}>
-                                            <ul className="contacts">
-                                                {userList.length > 0 ? (
-                                                    userList
-                                                        .filter(user => activeContactsTab === 'user' ? user.type === 0 : user.type === 1)
-                                                        .map((user, index) => {
-                                                            const matchedUser = data.find(dbUser => dbUser.username === user.name);
-                                                            const sessionUser = Array.isArray(sessionData) ? sessionData.find(sessionUser => sessionUser.name === user.name) : null;
-                                                            let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
-
-                                                            if (user.avatar) {
-                                                                avatarSrc = user.avatar;
-                                                            } else if (user.type === 1) {
-                                                                const matchedRoom = rooms.find(room => room.roomname === user.name);
-                                                                if (matchedRoom && matchedRoom.roomavatar) {
-                                                                    avatarSrc = matchedRoom.roomavatar;
-                                                                }
-                                                            } else {
-                                                                if (sessionUser && sessionUser.avatar) {
-                                                                    avatarSrc = sessionUser.avatar;
-                                                                } else if (matchedUser) {
-                                                                    if (matchedUser.avatar && matchedUser.avatar.length > 0) {
-                                                                        avatarSrc = matchedUser.avatar;
-                                                                    } else if (matchedUser.gender === 'male') {
-                                                                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
-                                                                    } else if (matchedUser.gender === 'female') {
-                                                                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
-                                                                    }
-                                                                }
-                                                            }
-
-
-                                                            return (
-                                                                <li key={index}
-                                                                    className={user.name === displayName ? 'active' : ''}
-                                                                    onClick={() => handleLiClick(user.name, user.type, user.roomOwner)}>
-                                                                    <div className="d-flex bd-highlight">
-                                                                        <div className="img_cont">
-                                                                            <img
-                                                                                src={avatarSrc}
-                                                                                alt="avatar"
-                                                                                className="rounded-circle user_img"
-                                                                            />
-                                                                            {/*<span className="online_icon"></span>*/}
-                                                                            <span
-                                                                                className={`online_icon ${userStatuses[user.name] ? 'online' : 'offline'}`}></span>
-                                                                        </div>
-                                                                        <div className="user_info">
-                                                                            <span>{user.name}</span>
-                                                                            <p className="typechat">Type: {user.type}</p>
-                                                                            <p>Last
-                                                                                Action: {renderDateTime(user.actionTime)}</p>
-                                                                        </div>
-
-                                                                    </div>
-                                                                </li>
-                                                            );
-                                                        })
-
-                                                ) : (
-                                                    <li>No users found.</li>
-                                                )}
-                                            </ul>
-                                        </div>
-                                        <div className="card-footer"></div>
+                                    </div>
+                                    <div className="tabs-wrapper">
+                                        <input type="radio" name="tab" id="userTab"
+                                               checked={activeContactsTab === 'user'}
+                                               onChange={() => setActiveContactsTab('user')}/>
+                                        <label htmlFor="userTab" className="tab-label">User</label>
+                                        <input type="radio" name="tab" id="roomTab"
+                                               checked={activeContactsTab === 'room'}
+                                               onChange={() => setActiveContactsTab('room')}/>
+                                        <label htmlFor="roomTab" className="tab-label">Room</label>
+                                        <div className="tab-slider"></div>
                                     </div>
                                 </div>
+                                <div className="card-body contacts_body"
+                                     style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '550px'}}>
+                                    <ul className="contacts">
+                                        {userList.length > 0 ? (
+                                            userList
+                                                .filter(user => activeContactsTab === 'user' ? user.type === 0 : user.type === 1)
+                                                .map((user, index) => {
+                                                    const matchedUser = data.find(dbUser => dbUser.username === user.name);
+                                                    const sessionUser = Array.isArray(sessionData) ? sessionData.find(sessionUser => sessionUser.name === user.name) : null;
+                                                    let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
 
-                                <div className="col-md-8 col-xl-6 chat" id="chatcenter">
-                                    <div className="card" id="chatcenter">
-                                        <div className="card-header msg_head cor">
-                                            <div className="d-flex bd-highlight">
-                                                <div className="img_cont">
-                                                    <img
-                                                        src={userAvatar}
-                                                        className="rounded-circle user_img"
-                                                    />
+                                                    if (user.avatar) {
+                                                        avatarSrc = user.avatar;
+                                                    } else if (user.type === 1) {
+                                                        const matchedRoom = rooms.find(room => room.roomname === user.name);
+                                                        if (matchedRoom && matchedRoom.roomavatar) {
+                                                            avatarSrc = matchedRoom.roomavatar;
+                                                        }
+                                                    } else {
+                                                        if (sessionUser && sessionUser.avatar) {
+                                                            avatarSrc = sessionUser.avatar;
+                                                        } else if (matchedUser) {
+                                                            if (matchedUser.avatar && matchedUser.avatar.length > 0) {
+                                                                avatarSrc = matchedUser.avatar;
+                                                            } else if (matchedUser.gender === 'male') {
+                                                                avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
+                                                            } else if (matchedUser.gender === 'female') {
+                                                                avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                                                            }
+                                                        }
+                                                    }
 
-                                                    {/*<span className="online_icon"></span>*/}
-                                                    <span
-                                                        className={`online_icon ${userStatuses[displayName] ? 'online' : 'offline'}`}></span>
 
-                                                </div>
-                                                <div className="user_info">
-                                                    <span>{displayName}</span>
-                                                    {searchType === 'room' && messageContent && <p>{messageContent}</p>}
-                                                </div>
+                                                    return (
+                                                        <li key={index}
+                                                            className={user.name === displayName ? 'active' : ''}
+                                                            onClick={() => handleLiClick(user.name, user.type, user.roomOwner)}>
+                                                            <div className="d-flex bd-highlight">
+                                                                <div className="img_cont">
+                                                                    <img
+                                                                        src={avatarSrc}
+                                                                        alt="avatar"
+                                                                        className="rounded-circle user_img"
+                                                                    />
+                                                                    {/*<span className="online_icon"></span>*/}
+                                                                    <span
+                                                                        className={`online_icon ${userStatuses[user.name] ? 'online' : 'offline'}`}></span>
+                                                                </div>
+                                                                <div className="user_info">
+                                                                    <span>{user.name}</span>
+                                                                    <p className="typechat">Type: {user.type}</p>
+                                                                    <p>Last
+                                                                        Action: {renderDateTime(user.actionTime)}</p>
+                                                                </div>
 
-                                                <div className="video_cam">
-                                                    <span><i className="fas fa-video"></i></span>
-                                                    <span><i className="fas fa-phone"></i></span>
-                                                    <span>
+                                                            </div>
+                                                        </li>
+                                                    );
+                                                })
+
+                                        ) : (
+                                            <li>No users found.</li>
+                                        )}
+                                    </ul>
+                                </div>
+                                <div className="card-footer"></div>
+                            </div>
+                        </div>
+
+                        <div className="col-md-8 col-xl-6 chat" id="chatcenter">
+                            <div className="card" id="chatcenter">
+                                <div className="card-header msg_head cor">
+                                    <div className="d-flex bd-highlight">
+                                        <div className="img_cont">
+                                            <img
+                                                src={userAvatar}
+                                                className="rounded-circle user_img"
+                                            />
+
+                                            {/*<span className="online_icon"></span>*/}
+                                            <span
+                                                className={`online_icon ${userStatuses[displayName] ? 'online' : 'offline'}`}></span>
+
+                                        </div>
+                                        <div className="user_info">
+                                            <span>{displayName}</span>
+                                            {searchType === 'room' && messageContent && <p>{messageContent}</p>}
+                                        </div>
+
+                                        <div className="video_cam">
+                                            <span><i className="fas fa-video"></i></span>
+                                            <span><i className="fas fa-phone"></i></span>
+                                            <span>
                                                 <MDBBtn
                                                     rounded
                                                     size="sm"
@@ -1865,391 +1865,391 @@ export default function ChatRoom() {
                                                     <MDBIcon fas icon="plus-circle"/>
                                                 </MDBBtn>
                                             </span>
-                                                </div>
-                                            </div>
-                                            <span id="action_menu_btn" onClick={toggleMenu}>
+                                        </div>
+                                    </div>
+                                    <span id="action_menu_btn" onClick={toggleMenu}>
                                         <i className="fas fa-ellipsis-v"></i>
                                     </span>
-                                            <div className={`action_menu ${isOpen ? 'open' : ''}`}>
-                                                <ul>
-                                                    <li id="toggle-dark-mode" onClick={handleToggleDarkMode}>
-                                                        <i className={`fa-regular ${darkMode ? 'fa-sun' : 'fa-moon'}`}
-                                                           id="icontype"></i>
-                                                        <span
-                                                            className={`${darkMode ? 'light' : 'dark'}`}>{darkMode ? 'Light mode' : 'Dark mode'}</span>
-                                                    </li>
-                                                    <li onClick={() => setChangeAvatarModal(true)}>
-                                                        <i className="fas fa-user-circle"></i> Change Avatar
-                                                    </li>
+                                    <div className={`action_menu ${isOpen ? 'open' : ''}`}>
+                                        <ul>
+                                            <li id="toggle-dark-mode" onClick={handleToggleDarkMode}>
+                                                <i className={`fa-regular ${darkMode ? 'fa-sun' : 'fa-moon'}`}
+                                                   id="icontype"></i>
+                                                <span
+                                                    className={`${darkMode ? 'light' : 'dark'}`}>{darkMode ? 'Light mode' : 'Dark mode'}</span>
+                                            </li>
+                                            <li onClick={() => setChangeAvatarModal(true)}>
+                                                <i className="fas fa-user-circle"></i> Change Avatar
+                                            </li>
 
-                                                    <li id="logout-button" onClick={handleLogout}><i
-                                                        className="fas fa-ban"></i> Logout
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                        <div className="card-body msg_card_body" ref={messagesEndRef}
-                                             style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
-                                            {messages.map((message, index) => {
-                                                const sessionData = JSON.parse(sessionStorage.getItem('userList'));
-                                                const matchedUser = data.find(dbUser => dbUser.username === message.name);
-                                                const sessionUser = Array.isArray(sessionData) ? sessionData.find(sessionUser => sessionUser.name === message.name) : null;
-                                                let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
+                                            <li id="logout-button" onClick={handleLogout}><i
+                                                className="fas fa-ban"></i> Logout
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div className="card-body msg_card_body" ref={messagesEndRef}
+                                     style={{overflowY: 'auto', overflowX: 'auto', maxHeight: '600px'}}>
+                                    {messages.map((message, index) => {
+                                        const sessionData = JSON.parse(sessionStorage.getItem('userList'));
+                                        const matchedUser = data.find(dbUser => dbUser.username === message.name);
+                                        const sessionUser = Array.isArray(sessionData) ? sessionData.find(sessionUser => sessionUser.name === message.name) : null;
+                                        let avatarSrc = 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png';
 
-                                                if (sessionUser && sessionUser.avatar) {
-                                                    avatarSrc = sessionUser.avatar;
-                                                } else if (matchedUser) {
-                                                    if (matchedUser.avatar && matchedUser.avatar.length > 0) {
-                                                        avatarSrc = matchedUser.avatar;
-                                                    } else if (matchedUser.gender === 'male') {
-                                                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
-                                                    } else if (matchedUser.gender === 'female') {
-                                                        avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
-                                                    }
-                                                }
+                                        if (sessionUser && sessionUser.avatar) {
+                                            avatarSrc = sessionUser.avatar;
+                                        } else if (matchedUser) {
+                                            if (matchedUser.avatar && matchedUser.avatar.length > 0) {
+                                                avatarSrc = matchedUser.avatar;
+                                            } else if (matchedUser.gender === 'male') {
+                                                avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar7.png';
+                                            } else if (matchedUser.gender === 'female') {
+                                                avatarSrc = 'https://bootdey.com/img/Content/avatar/avatar3.png';
+                                            }
+                                        }
 
-                                                return (
+                                        return (
 
 // <<<<<<< HEAD
 
-                                                    <div key={index}
+                                            <div key={index}
 
-                                                         className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`}
+                                                 className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`}
 
-                                                         ref={el => (specificMessageRef.current[message.id] = el)}
+                                                 ref={el => (specificMessageRef.current[message.id] = el)}
 
-                                                         onMouseEnter={() => setHoveredMessage(index)}
+                                                 onMouseEnter={() => setHoveredMessage(index)}
 
-                                                         onMouseLeave={() => setHoveredMessage(null)}>
-
-
+                                                 onMouseLeave={() => setHoveredMessage(null)}>
 
 
 
-                                                        {/*=======*/}
 
-                                                        {/*                                            <div
+
+                                                {/*=======*/}
+
+                                                {/*                                            <div
                                                          key={index} className={`d-flex mb-4 ${message.name === username ? 'justify-content-end' : 'justify-content-start'}`} onMouseEnter={() => setHoveredMessage(index)} onMouseLeave={() => setHoveredMessage(null)}>*/}
 
-                                                        {/*>>>>>>> main*/}
+                                                {/*>>>>>>> main*/}
 
-                                                        {searchType === 'room' && message.name !== username && (
+                                                {searchType === 'room' && message.name !== username && (
 
-                                                            <span className="sender">{message.name} </span>
+                                                    <span className="sender">{message.name} </span>
 
-                                                        )}
+                                                )}
 
-                                                        <div className="img_cont_msg">
+                                                <div className="img_cont_msg">
 
-                                                            <img src={avatarSrc} alt="avatar"
+                                                    <img src={avatarSrc} alt="avatar"
 
-                                                                 className="rounded-circle user_img_msg"/>
+                                                         className="rounded-circle user_img_msg"/>
 
 
-                                                        </div>
+                                                </div>
 
-                                                        <div
+                                                <div
 
-                                                            className={`msg_cotainer${message.name === username ? '_send' : ''}   ${message.isRecalled &&message.name === username  ? 'recalledMessage' : ''}`}>
+                                                    className={`msg_cotainer${message.name === username ? '_send' : ''}   ${message.isRecalled &&message.name === username  ? 'recalledMessage' : ''}`}>
 
-                                                            {/*<div className={"message-content" }>*/}
-                                                            <div
-                                                                className={`message-content`}>
+                                                    {/*<div className={"message-content" }>*/}
+                                                    <div
+                                                        className={`message-content`}>
 
-                                                                {message.isRecalled&&message.name === username ? (
-                                                                    <span>Tin nhắn đã bị thu hồi</span>
-                                                                ) : (
-                                                                    <>
-                                                                        {renderMessageContent(message)}
-                                                                        <span
-                                                                            className={`msg_time${message.name === username ? '_send' : ''}`}>
+                                                        {message.isRecalled&&message.name === username ? (
+                                                            <span>Tin nhắn đã bị thu hồi</span>
+                                                        ) : (
+                                                            <>
+                                                                {renderMessageContent(message)}
+                                                                <span
+                                                                    className={`msg_time${message.name === username ? '_send' : ''}`}>
                                                                             {renderDateTime(message.createAt)}
                                                                         </span>
-                                                                        {message.reactions && (
-                                                                            <div className="message-reactions">
-                                                                                {message.reactions.map((reaction, reactionIndex) => (
-                                                                                    <span
-                                                                                        key={reactionIndex}>{reaction}</span>
-                                                                                ))}
-                                                                            </div>
-                                                                        )}
-                                                                    </>
+                                                                {message.reactions && (
+                                                                    <div className="message-reactions">
+                                                                        {message.reactions.map((reaction, reactionIndex) => (
+                                                                            <span
+                                                                                key={reactionIndex}>{reaction}</span>
+                                                                        ))}
+                                                                    </div>
                                                                 )}
+                                                            </>
+                                                        )}
 
-                                                                {hoveredMessage === index && (
+                                                        {hoveredMessage === index && (
 
-                                                                    <div
+                                                            <div
 
-                                                                        className={`message-icons ${message.name === username ? 'left' : 'right'}`}>
-                                                                        {message.name !== username ?"":( <i className="fas fa-trash"
+                                                                className={`message-icons ${message.name === username ? 'left' : 'right'}`}>
+                                                                {message.name !== username ?"":( <i className="fas fa-trash"
 
-                                                                            onClick={() => handleDeleteMessage(message.id)}></i>)}
+                                                                                                    onClick={() => handleDeleteMessage(message.id)}></i>)}
 
                                                                 <i className="fas fa-reply"
 
                                                                    onClick={() => handleReplyMessage(message)}></i>
 
-                                                                        <i className="fas fa-smile"
+                                                                <i className="fas fa-smile"
 
-                                                                           onClick={() => handleEmojiClick(message.id)}></i>
-
-                                                                    </div>
-
-                                                                )}
-
-                                                                {showEmojiPicker && emojiPickerMessageId === message.id && (
-                                                                    <div className="emoji-picker-container">
-                                                                        <EmojiPicker
-                                                                            onEmojiClick={(emojiData, event) => handleEmojiSelect(emojiData, event)}/>
-                                                                    </div>
-                                                                )}
+                                                                   onClick={() => handleEmojiClick(message.id)}></i>
 
                                                             </div>
 
-                                                        </div>
+                                                        )}
+
+                                                        {showEmojiPicker && emojiPickerMessageId === message.id && (
+                                                            <div className="emoji-picker-container">
+                                                                <EmojiPicker
+                                                                    onEmojiClick={(emojiData, event) => handleEmojiSelect(emojiData, event)}/>
+                                                            </div>
+                                                        )}
 
                                                     </div>
 
-                                                );
+                                                </div>
 
-                                            })}
-                                            <div ref={messagesEndRef}></div>
-                                        </div>
+                                            </div>
 
-                                        <div className="card-footer">
-                                            <div className="input-group" style={{marginBottom: "10px"}}>
-                                                <div className="input-group-append" id="sendfile">
+                                        );
+
+                                    })}
+                                    <div ref={messagesEndRef}></div>
+                                </div>
+
+                                <div className="card-footer">
+                                    <div className="input-group" style={{marginBottom: "10px"}}>
+                                        <div className="input-group-append" id="sendfile">
                                             <span className="input-group-text attach_btn" style={{height: "30px"}}><i
                                                 className="fas fa-paperclip"></i></span>
-                                                    <span className="input-group-text attach_btn"
-                                                          style={{height: "30px"}}
-                                                          onClick={() => setGifPickerVisible(!isGifPickerVisible)}>
+                                            <span className="input-group-text attach_btn"
+                                                  style={{height: "30px"}}
+                                                  onClick={() => setGifPickerVisible(!isGifPickerVisible)}>
                                                 <MDBIcon fas icon="gift"/>
 
                                             </span>
-                                                </div>
-                                                <textarea name="" className="form-control type_msg"
-                                                          placeholder="Type your message..."
-                                                          value={messageContentChat}
-                                                          onChange={handleInputChange}
-                                                          onKeyDown={handleKeyDown}// Listen for Enter key press>
-                                                ></textarea>
-                                                <div className="input-group-append">
+                                        </div>
+                                        <textarea name="" className="form-control type_msg"
+                                                  placeholder="Type your message..."
+                                                  value={messageContentChat}
+                                                  onChange={handleInputChange}
+                                                  onKeyDown={handleKeyDown}// Listen for Enter key press>
+                                        ></textarea>
+                                        <div className="input-group-append">
                                             <span className="input-group-text send_btn"
                                                   onClick={handleSendClick}><i
                                                 className="fas fa-location-arrow"></i></span>
-                                                </div>
-                                            </div>
-                                            {isGifPickerVisible && (
-                                                <div className="gif-picker" style={{
-                                                    position: 'absolute',
-                                                    bottom: '80px',
-                                                    zIndex: 1000,
-                                                    backgroundColor: 'white',
-                                                    padding: '10px',
-                                                    borderRadius: '8px'
-                                                }}>
-                                                    <div className="d-flex">
-                                                        <input
-                                                            type="text"
-                                                            className="form-control"
-                                                            placeholder="Search GIFs..."
-                                                            value={searchTerm}
-                                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === 'Enter') fetchGifs(searchTerm);
-                                                            }}
-                                                        />
-                                                        <button className="btn btn-primary ml-2"
-                                                                onClick={() => fetchGifs(searchTerm)}>Search
-                                                        </button>
-                                                    </div>
-                                                    <div className="d-flex flex-wrap mt-2">
-                                                        {gifList.map((gifUrl, index) => (
-                                                            <img
-                                                                key={index}
-                                                                src={gifUrl}
-                                                                alt={`gif-${index}`}
-                                                                style={{
-                                                                    width: '100px',
-                                                                    height: '100px',
-                                                                    margin: '5px',
-                                                                    cursor: 'pointer'
-                                                                }}
-                                                                onClick={() => handleGifClick(gifUrl)}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
                                     </div>
+                                    {isGifPickerVisible && (
+                                        <div className="gif-picker" style={{
+                                            position: 'absolute',
+                                            bottom: '80px',
+                                            zIndex: 1000,
+                                            backgroundColor: 'white',
+                                            padding: '10px',
+                                            borderRadius: '8px'
+                                        }}>
+                                            <div className="d-flex">
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    placeholder="Search GIFs..."
+                                                    value={searchTerm}
+                                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') fetchGifs(searchTerm);
+                                                    }}
+                                                />
+                                                <button className="btn btn-primary ml-2"
+                                                        onClick={() => fetchGifs(searchTerm)}>Search
+                                                </button>
+                                            </div>
+                                            <div className="d-flex flex-wrap mt-2">
+                                                {gifList.map((gifUrl, index) => (
+                                                    <img
+                                                        key={index}
+                                                        src={gifUrl}
+                                                        alt={`gif-${index}`}
+                                                        style={{
+                                                            width: '100px',
+                                                            height: '100px',
+                                                            margin: '5px',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                        onClick={() => handleGifClick(gifUrl)}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
-
                     </div>
+                </div>
+
+            </div>
 
 
-                    <MDBModal show={roomModal} onHide={() => setRoomModal(false)}>
-                        <MDBModalDialog>
-                            <MDBModalContent>
-                                <MDBModalHeader>
-                                    <MDBModalTitle>Room</MDBModalTitle>
-                                    <MDBBtn className="btn-close" color="none" onClick={() => setRoomModal(false)}/>
-                                </MDBModalHeader>
-                                <MDBTabs className="mb-3" id="tabchangeava" style={{marginBottom: 0, marginLeft: 0}}>
-                                    <MDBTabsItem>
-                                        <MDBTabsLink onClick={() => setActiveRoomTab('create')}
-                                                     active={activeRoomTab === 'create'}>
-                                            Create
-                                        </MDBTabsLink>
-                                    </MDBTabsItem>
-                                    <MDBTabsItem>
-                                        <MDBTabsLink onClick={() => setActiveRoomTab('join')}
-                                                     active={activeTab === 'join'}>
-                                            Join
-                                        </MDBTabsLink>
-                                    </MDBTabsItem>
-                                </MDBTabs>
-                                <MDBTabsContent>
-                                    <MDBTabsPane show={activeRoomTab === 'create'}>
-                                        <MDBInput
-                                            type="text"
-                                            value={roomNames}
-                                            onChange={(e) => setRoomNames(e.target.value)}
-                                            label="Room Name"
-                                        />
-                                        <br/>
-                                        <input
-                                            type="file"
-                                            id="file"
-                                            style={{display: "none"}}
-                                            onChange={handleAvatar}
-                                        />
-                                        <label htmlFor="file" className="LabelUpload"
-                                               style={{backgroundColor: "white"}}>
-                                            <div className="img_cont_msg">
-                                                <img src={avatar.url || ava} alt=""
-                                                     className="rounded-circle user_img_msg"/>
-                                            </div>
-                                            <span id="UploadImg">Upload an image</span>
-                                        </label>
-                                    </MDBTabsPane>
-                                    <MDBTabsPane show={activeRoomTab === 'join'}>
-                                        <MDBInput
-                                            type="text"
-                                            value={joinRoomCode}
-                                            onChange={(e) => setJoinRoomCode(e.target.value)}
-                                            label="Room Code"
-                                        />
-                                        <br/>
+            <MDBModal show={roomModal} onHide={() => setRoomModal(false)}>
+                <MDBModalDialog>
+                    <MDBModalContent>
+                        <MDBModalHeader>
+                            <MDBModalTitle>Room</MDBModalTitle>
+                            <MDBBtn className="btn-close" color="none" onClick={() => setRoomModal(false)}/>
+                        </MDBModalHeader>
+                        <MDBTabs className="mb-3" id="tabchangeava" style={{marginBottom: 0, marginLeft: 0}}>
+                            <MDBTabsItem>
+                                <MDBTabsLink onClick={() => setActiveRoomTab('create')}
+                                             active={activeRoomTab === 'create'}>
+                                    Create
+                                </MDBTabsLink>
+                            </MDBTabsItem>
+                            <MDBTabsItem>
+                                <MDBTabsLink onClick={() => setActiveRoomTab('join')}
+                                             active={activeTab === 'join'}>
+                                    Join
+                                </MDBTabsLink>
+                            </MDBTabsItem>
+                        </MDBTabs>
+                        <MDBTabsContent>
+                            <MDBTabsPane show={activeRoomTab === 'create'}>
+                                <MDBInput
+                                    type="text"
+                                    value={roomNames}
+                                    onChange={(e) => setRoomNames(e.target.value)}
+                                    label="Room Name"
+                                />
+                                <br/>
+                                <input
+                                    type="file"
+                                    id="file"
+                                    style={{display: "none"}}
+                                    onChange={handleAvatar}
+                                />
+                                <label htmlFor="file" className="LabelUpload"
+                                       style={{backgroundColor: "white"}}>
+                                    <div className="img_cont_msg">
+                                        <img src={avatar.url || ava} alt=""
+                                             className="rounded-circle user_img_msg"/>
+                                    </div>
+                                    <span id="UploadImg">Upload an image</span>
+                                </label>
+                            </MDBTabsPane>
+                            <MDBTabsPane show={activeRoomTab === 'join'}>
+                                <MDBInput
+                                    type="text"
+                                    value={joinRoomCode}
+                                    onChange={(e) => setJoinRoomCode(e.target.value)}
+                                    label="Room Code"
+                                />
+                                <br/>
 
-                                    </MDBTabsPane>
-                                </MDBTabsContent>
-                                <MDBModalFooter>
-                                    <MDBBtn color="secondary" onClick={() => setRoomModal(false)}>
-                                        Close
-                                    </MDBBtn>
-                                    <MDBBtn onClick={activeRoomTab === 'join' ? handleJoinRoom : handleCreateRoom}>
-                                        {activeRoomTab === 'join' ? 'Join' : 'Create'}
-                                    </MDBBtn>
-                                </MDBModalFooter>
-                            </MDBModalContent>
-                        </MDBModalDialog>
-                    </MDBModal>
+                            </MDBTabsPane>
+                        </MDBTabsContent>
+                        <MDBModalFooter>
+                            <MDBBtn color="secondary" onClick={() => setRoomModal(false)}>
+                                Close
+                            </MDBBtn>
+                            <MDBBtn onClick={activeRoomTab === 'join' ? handleJoinRoom : handleCreateRoom}>
+                                {activeRoomTab === 'join' ? 'Join' : 'Create'}
+                            </MDBBtn>
+                        </MDBModalFooter>
+                    </MDBModalContent>
+                </MDBModalDialog>
+            </MDBModal>
 
-                    {/* Modal Change Avatar */}
-                    <MDBModal show={changeAvatarModal} onHide={() => setChangeAvatarModal(false)}>
-                        <MDBModalDialog>
-                            <MDBModalContent>
-                                <MDBModalHeader>
-                                    <MDBModalTitle>Change Avatar</MDBModalTitle>
-                                    <MDBBtn className="btn-close" color="none"
-                                            onClick={() => setChangeAvatarModal(false)}/>
-                                </MDBModalHeader>
-                                <MDBTabs className="mb-3" style={{marginBottom: 0}}>
-                                    <MDBTabsItem>
-                                        <MDBTabsLink onClick={() => setActiveTab('user')} active={activeTab === 'user'}>
-                                            User
-                                        </MDBTabsLink>
-                                    </MDBTabsItem>
-                                    <MDBTabsItem>
-                                        <MDBTabsLink onClick={() => setActiveTab('room')} active={activeTab === 'room'}>
-                                            Room
-                                        </MDBTabsLink>
-                                    </MDBTabsItem>
-                                </MDBTabs>
-                                <MDBTabsContent>
-                                    <MDBTabsPane show={activeTab === 'user'}>
-                                        <MDBInput style={{backgroundColor: "white"}}
-                                                  type="text"
-                                                  value={displayName}
-                                                  label="Default Input"
-                                                  disabled
-                                        />
-                                        <br/>
-                                        <input
-                                            type="file"
-                                            id="file"
-                                            style={{display: "none"}}
-                                            onChange={handleAvatarChange}
-                                        />
-                                        <label htmlFor="file" className="LabelUpload"
-                                               style={{backgroundColor: "white"}}>
-                                            <div className="img_cont_msg">
-                                                <img
-                                                    src={avatar.url || 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png'}
-                                                    alt="" className="rounded-circle user_img_msg"/>
-                                            </div>
-                                            <span id="UploadImg">Upload an image</span>
-                                        </label>
-                                    </MDBTabsPane>
-                                    <MDBTabsPane show={activeTab === 'room'}>
-                                        <MDBInput
-                                            type="text"
-                                            value={roomNames}
-                                            onChange={(e) => setRoomNames(e.target.value)}
-                                            label="Room Name"
-                                            list="datalistOption"
-                                        />
-                                        <datalist id="datalistOption">
-                                            {userList
-                                                .filter(user => user.type === 1)
-                                                .map((user, index) => (
-                                                    <option key={index} value={user.name}/>
-                                                ))}
-                                        </datalist>
-                                        <br/>
-                                        <input
-                                            type="file"
-                                            id="fileRoom"
-                                            style={{display: "none"}}
-                                            onChange={handleRoomAvatarChange}
-                                        />
-                                        <label htmlFor="fileRoom" className="LabelUpload"
-                                               style={{backgroundColor: "white"}}>
-                                            <div className="img_cont_msg">
-                                                <img
-                                                    src={roomAvatar.url || 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png'}
-                                                    alt="" className="rounded-circle user_img_msg"/>
-                                            </div>
-                                            <span id="UploadImg">Upload an image</span>
-                                        </label>
-                                    </MDBTabsPane>
-                                </MDBTabsContent>
-                                <MDBModalFooter>
-                                    <MDBBtn color="secondary" onClick={() => setChangeAvatarModal(false)}>
-                                        Close
-                                    </MDBBtn>
-                                    <MDBBtn onClick={activeTab === 'user' ? updateUserAvatar : updateRoomAvatar}>
-                                        Update Avatar
-                                    </MDBBtn>
-                                </MDBModalFooter>
-                            </MDBModalContent>
-                        </MDBModalDialog>
-                    </MDBModal>
-                </>
-            );
+            {/* Modal Change Avatar */}
+            <MDBModal show={changeAvatarModal} onHide={() => setChangeAvatarModal(false)}>
+                <MDBModalDialog>
+                    <MDBModalContent>
+                        <MDBModalHeader>
+                            <MDBModalTitle>Change Avatar</MDBModalTitle>
+                            <MDBBtn className="btn-close" color="none"
+                                    onClick={() => setChangeAvatarModal(false)}/>
+                        </MDBModalHeader>
+                        <MDBTabs className="mb-3" style={{marginBottom: 0}}>
+                            <MDBTabsItem>
+                                <MDBTabsLink onClick={() => setActiveTab('user')} active={activeTab === 'user'}>
+                                    User
+                                </MDBTabsLink>
+                            </MDBTabsItem>
+                            <MDBTabsItem>
+                                <MDBTabsLink onClick={() => setActiveTab('room')} active={activeTab === 'room'}>
+                                    Room
+                                </MDBTabsLink>
+                            </MDBTabsItem>
+                        </MDBTabs>
+                        <MDBTabsContent>
+                            <MDBTabsPane show={activeTab === 'user'}>
+                                <MDBInput style={{backgroundColor: "white"}}
+                                          type="text"
+                                          value={displayName}
+                                          label="Default Input"
+                                          disabled
+                                />
+                                <br/>
+                                <input
+                                    type="file"
+                                    id="file"
+                                    style={{display: "none"}}
+                                    onChange={handleAvatarChange}
+                                />
+                                <label htmlFor="file" className="LabelUpload"
+                                       style={{backgroundColor: "white"}}>
+                                    <div className="img_cont_msg">
+                                        <img
+                                            src={avatar.url || 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png'}
+                                            alt="" className="rounded-circle user_img_msg"/>
+                                    </div>
+                                    <span id="UploadImg">Upload an image</span>
+                                </label>
+                            </MDBTabsPane>
+                            <MDBTabsPane show={activeTab === 'room'}>
+                                <MDBInput
+                                    type="text"
+                                    value={roomNames}
+                                    onChange={(e) => setRoomNames(e.target.value)}
+                                    label="Room Name"
+                                    list="datalistOption"
+                                />
+                                <datalist id="datalistOption">
+                                    {userList
+                                        .filter(user => user.type === 1)
+                                        .map((user, index) => (
+                                            <option key={index} value={user.name}/>
+                                        ))}
+                                </datalist>
+                                <br/>
+                                <input
+                                    type="file"
+                                    id="fileRoom"
+                                    style={{display: "none"}}
+                                    onChange={handleRoomAvatarChange}
+                                />
+                                <label htmlFor="fileRoom" className="LabelUpload"
+                                       style={{backgroundColor: "white"}}>
+                                    <div className="img_cont_msg">
+                                        <img
+                                            src={roomAvatar.url || 'https://therichpost.com/wp-content/uploads/2020/06/avatar2.png'}
+                                            alt="" className="rounded-circle user_img_msg"/>
+                                    </div>
+                                    <span id="UploadImg">Upload an image</span>
+                                </label>
+                            </MDBTabsPane>
+                        </MDBTabsContent>
+                        <MDBModalFooter>
+                            <MDBBtn color="secondary" onClick={() => setChangeAvatarModal(false)}>
+                                Close
+                            </MDBBtn>
+                            <MDBBtn onClick={activeTab === 'user' ? updateUserAvatar : updateRoomAvatar}>
+                                Update Avatar
+                            </MDBBtn>
+                        </MDBModalFooter>
+                    </MDBModalContent>
+                </MDBModalDialog>
+            </MDBModal>
+        </>
+    );
 }
 
