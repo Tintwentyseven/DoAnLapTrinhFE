@@ -1384,6 +1384,8 @@ export default function ChatRoom() {
             }
         };
     }, [socket, userList, joinRoomCode]);
+
+
     const checkIncludes = (text, smallText) => {
         return text.includes(smallText);
     };
@@ -1392,27 +1394,6 @@ export default function ChatRoom() {
         return text.replace(text1, text2);
     };
 
-
-
-    const checkURLFile = (mes) => {
-        return (
-            mes?.startsWith("https://firebasestorage") && checkIncludes(mes, "files")
-        );
-    };
-
-// Regex to check for URLs
-    const urlRegex = /https?:\/\/[^\s]+/g;
-    const checkURLImg = (mes) => {
-        return (
-            mes?.startsWith("https://firebasestorage") && checkIncludes(mes, "images")
-        );
-    };
-    const nameFile = (mes) => {
-        const urlParts = mes.split("/");
-        const fileNameWithParams = urlParts[urlParts.length - 1];
-        const fileName = fileNameWithParams.split("?")[0];
-        return decodeURIComponent(fileName.replace("chat_files%2F", ""));
-    };
     const getFileIcon = (fileName) => {
         const extension = fileName.split('.').pop().toLowerCase();
         const fileIcons = {
@@ -1435,72 +1416,95 @@ export default function ChatRoom() {
         };
         return fileIcons[extension];
     };
+
+
+    const urlRegex = /https?:\/\/[^\s]+/g;
+    const checkURLFile = (mes) => {
+        return (
+            mes?.startsWith("https://firebasestorage") &&
+            (checkIncludes(mes, "files") || checkIncludes(mes, "images")) // Kiểm tra nếu là file hoặc ảnh
+        );
+    };
+
+    const nameFile = (mes) => {
+        const urlParts = mes.split("/");
+        const fileNameWithParams = urlParts[urlParts.length - 1];
+        const fileName = fileNameWithParams.split("?")[0];
+        return decodeURIComponent(fileName.replace("files%2F", ""));
+    };
+
+    const isImageURL = (url) => {
+        const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+        const lowerCaseUrl = url.toLowerCase();
+        return imageExtensions.some(ext => lowerCaseUrl.includes(ext));
+    };
+
     const renderMessageContent = (message) => {
         if (!message || typeof message.mes !== 'string') {
             return <div className="message-content">{message?.mes || ''}</div>;
         }
 
-        const urlRegex = /https?:\/\/[^\s]+/g;
-        const fileUrls = message.mes.match(urlRegex) || [];
-        const messageParts = message.mes.split(urlRegex);
-        const messageContent = messageParts.filter(part => !fileUrls.includes(part)).join('');
+        const parts = message.mes.split(urlRegex);
+        const urls = message.mes.match(urlRegex) || [];
 
         return (
             <div className="message-content">
-                {fileUrls.map((url, index) => (
-                    <div key={index} className="file-url">
-                        {checkURLFile(url) ? (
-                            <>
-                                <img src={getFileIcon(nameFile(url))} alt="" style={{ width: '24px', height: '24px', marginRight: '8px' }} />
-                                <a href={url} target="_blank" rel="noopener noreferrer" download>
-                                    {nameFile(url)}
+                {parts.map((part, index) => (
+                    <React.Fragment key={index}>
+                        {part}
+                        {urls[index] &&
+                        checkURLFile(urls[index]) ? (
+                            isImageURL(urls[index]) ? (
+                                <div>
+                                    <img
+                                        style={{
+                                            maxWidth: "100%",
+                                            height: "auto",
+                                            objectFit: "cover",
+                                        }}
+                                        src={urls[index]}
+                                        alt=""
+                                    />
+                                </div>
+                            ) : (
+                                <>
+                                <img src={getFileIcon(nameFile(urls[index]))} alt="" style={{ width: '24px', height: '24px', marginRight: '8px' }} />
+                                <a href={urls[index]} target="_blank" rel="noopener noreferrer" download>
+                                    {nameFile(urls[index])}
                                 </a>
                             </>
-                        ) : /https:\/\/media[0-9]*\.giphy\.com\/media\/[a-zA-Z0-9]+\/[0-9]+\.gif/.test(url) ? (
+                            )
+                        ) : /https:\/\/media[0-9]*\.giphy\.com\/media\/[a-zA-Z0-9]+\/[0-9]+\.gif/.test(urls[index]) ? (
                             <iframe
-                                src={`https://giphy.com/embed/${url.split('media/')[1].split('/')[0]}`}
+                                src={`https://giphy.com/embed/${urls[index].split('media/')[1].split('/')[0]}`}
                                 width="300"
                                 height="271"
                                 frameBorder="0"
                                 className="giphy-embed"
                                 allowFullScreen
                             ></iframe>
-                        ) : /https:\/\/www.youtube.com\/watch\?v=/.test(url) ? (
+                        ) : /https:\/\/www.youtube.com\/watch\?v=/.test(urls[index]) ? (
                             <iframe
                                 width="100%"
                                 height="315"
-                                src={replaceText(url, "watch?v=", "embed/")}
+                                src={replaceText(urls[index], "watch?v=", "embed/")}
                                 title="YouTube video player"
                                 frameBorder="0"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                 allowFullScreen
                             ></iframe>
-                        ) : checkURLImg(url) ? (
-                            <img
-                                style={{
-                                    width: "300px",
-                                    height: "140px",
-                                    objectFit: "cover",
-                                }}
-                                src={url}
-                                alt=""
-                            />
                         ) : (
-                            <a href={url} target="_blank" rel="noopener noreferrer">
-                                {url}
+                            <a href={urls[index]} target="_blank" rel="noopener noreferrer">
+                                {urls[index]}
                             </a>
                         )}
-                    </div>
-                ))}
-                {messageContent.trim() !== '' && messageContent.split('\n').map((line, index) => (
-                    <span key={index} className="message-line">
-                    {line}
-                        <br />
-                </span>
+                    </React.Fragment>
                 ))}
             </div>
         );
     };
+
+
 
 // >>>>>>> main
     //chuc nang xoa, thu hoi chat
