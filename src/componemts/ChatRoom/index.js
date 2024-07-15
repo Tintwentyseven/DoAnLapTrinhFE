@@ -42,7 +42,21 @@ import {
 import ava from "../../img/addAvatar.png";
 
 import upload from "../../componemts/ChatRoom/upload";
-
+import word from "../../img/file-type-word.256x239.png";
+import pdf from "../../img/file-type-pdf2.252x256.png";
+import xlsx from "../../img/file-type-excel.256x239.png";
+import txt from "../../img/file-txt.204x256.png";
+import zip from "../../img/zip.188x256.png";
+import pptx from "../../img/filetype-pptx.209x256.png";
+import html from "../../img/file-type-html.226x256.png";
+import css from "../../img/file-type-css.226x256.png";
+import js from "../../img/file-type-js-official.256x256.png";
+import ts from "../../img/file-type-typescript-official.256x256.png";
+import mp3 from "../../img/audio-x-mp3-playlist.256x253.png";
+import csv from "../../img/csv.224x256.png"
+import java from "../../img/java-original-wordmark.139x256.png";
+import sql from "../../img/sql-database-sql-azure.245x256.png";
+import drawio from "../../img/file-type-drawio.256x256.png";
 import {auth, db,storage} from "../../firebase";
 import EmojiPicker from 'emoji-picker-react';
 
@@ -83,7 +97,9 @@ export default function ChatRoom() {
     const [messageContent, setMessageContent] = useState('');
     const [messageContentChat, setMessageContentChat] = useState('');
     const [displayName, setDisplayName] = useState(username);
+    const [type, setType] = useState(0);
     const [lastMessage, setLastMessage] = useState(null);
+    const [lastIndex, setlastIndex] = useState(-1);
     const [searchType, setSearchType] = useState('');
     const [messages, setMessages] = useState([]);
     const [darkMode, setDarkMode] = useState(false);
@@ -99,30 +115,18 @@ export default function ChatRoom() {
     const GIPHY_API_KEY = '5LcV29T4yVNSvuCZ3vu2S2BQpUdfWHIy'; // Thay bằng API key của bạn
     const [searchTerm, setSearchTerm] = useState('');
     const [gifList, setGifList] = useState([]);
-    const [selectedFile, setSelectedFile] = useState(null);
+    const [selectedFiles, setSelectedFiles] = useState([]);
 
-
-    const triggerFileInput = () => {
-
-        document.getElementById("file").click();
-
-    };
 
     const handleFileChange = (e) => {
-
-        const file = e.target.files[0];
-
-        if (file) {
-
-            setSelectedFile(file);
-
-
-
-            console.log("Selected file:", file.name); // In tên file ra console
-
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+            setSelectedFiles(prevFiles => [...prevFiles, ...files]);
+            files.forEach(file => console.log("Selected file:", file.name)); // Log each file name
         }
-
     };
+
+
 
     const [avatarUrls, setAvatarUrls] = useState({});
 
@@ -169,48 +173,80 @@ export default function ChatRoom() {
             .catch(error => console.error('Error fetching GIFs:', error));
     };
     const handleGifClick = async (gifUrl) => {
-        const sessionData = JSON.parse(sessionStorage.getItem('sessionData'));
-        const sessionUsername = sessionData ? sessionData.username : '';
+        if (gifUrl === '') return;
 
+        // Encode message content
+        const messageBytes = new TextEncoder().encode(gifUrl);
+        const encodedMessageGif = fromByteArray(messageBytes);
 
-
-        // Send the message via WebSocket
+        // Determine if displayName is a room
         const isRoom = userList.some(user => user.name === displayName && user.type === 1);
 
-        const chatMessage = {
-            action: "onchat",
-            data: {
-                event: "SEND_CHAT",
+        let chatMessage;
+        if (isRoom) {
+            console.log("Sending message to room:", displayName);
+            chatMessage = {
+                action: "onchat",
                 data: {
-                    type: isRoom ? "room" : "people",
-                    to: displayName,
-                    mes: gifUrl
+                    event: "SEND_CHAT",
+                    data: {
+                        type: "room",
+                        to: displayName,
+                        mes: encodedMessageGif
+                    }
                 }
-            }
-        };
+            };
+        } else {
+            console.log("Sending message to user:", displayName);
+            chatMessage = {
+                action: "onchat",
+                data: {
+                    event: "SEND_CHAT",
+                    data: {
+                        type: "people",
+                        to: displayName,
+                        mes: encodedMessageGif
+                    }
+                }
+            };
+        }
+
+        // Create a new message object for immediate display
+        const date = new Date();
+
+        date.setHours(date.getHours() - 7);
+
+        const adjustedCreateAt = date.toISOString();
+
+
+
+        // Create a new message object for immediate display
+
+
+
+        // Create a new message object for immediate display
+
+        // const newMessage = {
+        //
+        //     name: username,
+        //     createAt: adjustedCreateAt, //
+        //     mes: messageContentChat.trim(), // Use the plain message content
+        //     type: isRoom ? "room" : "people",
+        //     to: displayName
+        // }
 
         if (socket && socket.readyState === WebSocket.OPEN) {
+            setMessageContentChat(''); // Clear message content after sending
+            setScrollToBottom(true); // Scroll to bottom
+            console.log('Message object:', chatMessage);
             socket.send(JSON.stringify(chatMessage));
+            setShouldFetchMessages(true);
 
             // Update messages state immediately
-            const date = new Date();
-            date.setHours(date.getHours() - 7);
-            const adjustedCreateAt = date.toISOString();
-
-            // Create a new message object for immediate display
-
-            const newMessage = {
-                name: sessionUsername,
-                createAt: adjustedCreateAt, //
-                mes: gifUrl, // Use the GIF URL as the message content
-                type: isRoom ? "room" : "people",
-                to: displayName
-            };
-            setMessages(prevMessages => [...prevMessages, newMessage]);
+            // setMessages(prevMessages => [...prevMessages, newMessage]);
         } else {
             console.error('WebSocket is not open. Unable to send message.');
         }
-
         setGifPickerVisible(false);
     };
     // Hàm kiểm tra trạng thái user
@@ -342,9 +378,9 @@ export default function ChatRoom() {
 
     useEffect(() => {
         const handleBeforeUnload = () => {
-
-            localStorage.clear();
-            sessionStorage.clear();
+            //
+            // localStorage.clear();
+            // sessionStorage.clear();
 
         };
 
@@ -848,11 +884,8 @@ export default function ChatRoom() {
         }
     };
 
-
-    // const handleLiClick = (name, type, roomOwner) => {
-    //     console.log("toi da vao hien thi");
-
     const handleLiClick = async (name, type, roomOwner) => {
+        setType(type);
         setDisplayName(name);
         setMessageContent(type === 0 ? 'Người dùng' : 'Phòng');
         setSearchType(type === 0 ? 'user' : 'room');
@@ -893,16 +926,14 @@ export default function ChatRoom() {
         setUserAvatar(avatarSrc);
         setAvatarUrls(prevState => ({...prevState, [name]: avatarSrc}));
 
-        // Update sessionStorage if sessionData is not null
-        if (sessionData) {
-            const updatedSessionData = sessionData.map(user => {
-                if (user.name === name) {
-                    return {...user, avatar: avatarSrc};
-                }
-                return user;
-            });
-            sessionStorage.setItem('userList', JSON.stringify(updatedSessionData));
-        }
+        // Update sessionStorage
+        const updatedSessionData = sessionData.map(user => {
+            if (user.name === name) {
+                return {...user, avatar: avatarSrc};
+            }
+            return user;
+        });
+        sessionStorage.setItem('userList', JSON.stringify(updatedSessionData));
 
         if (!socket || socket.readyState !== WebSocket.OPEN) {
             console.error('WebSocket connection is not open');
@@ -927,6 +958,7 @@ export default function ChatRoom() {
 
         socket.send(JSON.stringify(requestData));
 
+
         socket.onmessage = async (event) => {
             const response = JSON.parse(event.data);
             if (response.status === "success") {
@@ -936,21 +968,12 @@ export default function ChatRoom() {
                 } else if (type === 1 && response.data && Array.isArray(response.data.chatData)) {
                     fetchedMessages = response.data.chatData.reverse();
                 }
-
-                // Fetch reactions from Firestore
-                const reactions = await fetchReactions();
-
-                // Combine reactions with messages
-                const updatedMessages = fetchedMessages.map(message => {
-                    message.reactions = reactions[message.id] || [];
-                    return message;
-                });
-
-                setMessages(updatedMessages);
-
-                // Decode messages
                 let lastIndex = fetchedMessages.length - 1;
+                setLastMessage(lastIndex);
                 const lastmessage = fetchedMessages[lastIndex];
+                // console.log("lastmessage "+lastmessage);
+                // console.log(lastmessage.id);
+                // console.log(lastmessage.mes);
                 setLastMessage(lastmessage);
 
                 fetchedMessages.forEach(message => {
@@ -965,9 +988,63 @@ export default function ChatRoom() {
                     }
                 });
 
+
+                // Lấy dữ liệu reactions từ localStorage
+                // const storedReactions = JSON.parse(localStorage.getItem('reactions')) || {};
+                //
+                // // Cập nhật messages với reactions từ localStorage
+                // const updatedMessages = fetchedMessages.map(message => {
+                //     if (storedReactions[message.id]) {
+                //         message.reactions = storedReactions[message.id];
+                //     } else {
+                //         message.reactions = [];
+                //     }
+                //     return message;
+                // });
+                // setMessages(updatedMessages);
+                // console.log("danh sach: "+fetchedMessages);
+
+                // Lấy phản ứng từ Firestore
+                const reactions = await fetchReactions();
+
+                // // Kết hợp phản ứng vào tin nhắn
+                //                 // const updatedMessages = fetchedMessages.map(message => {
+                //                 //     message.reactions = reactions[message.id] || [];
+                //                 //     return message;
+                //                 // });
+                // Lấy dữ liệu từ Firestore
+                const firestoreData = await Promise.all(fetchedMessages.map(async message => {
+                    // Lấy dữ liệu từ Firestore cho tin nhắn hiện tại
+                    const messageRef = doc(db, "messages", String(message.id));
+                    const messageDoc = await getDoc(messageRef);
+
+                    if (messageDoc.exists()) {
+                        const firebaseMessage = messageDoc.data();
+                        message.isRecalled = firebaseMessage.isRecalled || false;
+                        message.reactions = firebaseMessage.reactions || [];
+                    } else {
+                        // Nếu tin nhắn không tồn tại trên Firestore, khởi tạo giá trị mặc định
+                        message.isRecalled = false;
+                        message.reactions = [];
+                    }
+
+                    return message;
+                }));
+
+                setMessages(firestoreData);
+                // Vòng lặp để in ra id của mỗi tin nhắn
+                firestoreData.forEach((message, index) => {
+                    console.log("id: "+ message.id);
+                    console.log("mes: "+ message.mes);
+                });
+
+
+                // Decode messages
+
+
                 // Update message list
-                setMessages([...fetchedMessages]);
-                setScrollToBottom(true);
+                // setMessages([...fetchedMessages]);
+                setScrollToBottom(false);
 
             } else {
                 Swal.fire({
@@ -978,10 +1055,10 @@ export default function ChatRoom() {
         };
         setScrollToBottom(true);
     };
-
     useEffect(() => {
         setScrollToBottom(true);
     }, [messages]);
+
     useEffect(() => {
         setScrollToBottom(true);
     }, [messages]);
@@ -1066,38 +1143,31 @@ export default function ChatRoom() {
     //         sendChat();
     //     }
     // };
-    const handleSendClick = async () => {
-        await sendMessage();
-    };
-    const sendMessage = async () => {
-        const sessionData = JSON.parse(sessionStorage.getItem('sessionData'));
-        const sessionUsername = sessionData ? sessionData.username : '';
 
-        let fileUrl = '';
-        if (selectedFile) {
-            const fileRef = ref(storage, `chat_files/${selectedFile.name}`);
-            await uploadBytes(fileRef, selectedFile);
-            fileUrl = await getDownloadURL(fileRef);
+    const sendFiles = async () => {
+        if (selectedFiles.length === 0) return;
+
+        let fileUrls = [];
+        for (const file of selectedFiles) {
+            const fileRef = ref(storage, `chat_files/${file.name}`);
+            await uploadBytes(fileRef, file);
+            const fileUrl = await getDownloadURL(fileRef);
+            fileUrls.push(fileUrl);
             console.log("File URL:", fileUrl);
         }
 
+        const fileUrlsString = fileUrls.join(' ').trim();
         const isRoom = userList.some(user => user.name === displayName && user.type === 1);
 
-        // Encode message content
-        const messageBytes = new TextEncoder().encode(messageContentChat.trim());
-        const encodedMessage = fromByteArray(messageBytes);
-
-        const messageData = {
-            type: isRoom ? "room" : "people",
-            to: displayName,
-            mes: messageContentChat.trim() === '' ? fileUrl : `${fileUrl ? fileUrl + ' ' : ''}${encodedMessage}`
-        };
-
-        const chatMessage = {
+        let chatMessage = {
             action: "onchat",
             data: {
                 event: "SEND_CHAT",
-                data: messageData
+                data: {
+                    type: isRoom ? "room" : "people",
+                    to: displayName,
+                    mes: fileUrlsString
+                }
             }
         };
 
@@ -1105,46 +1175,126 @@ export default function ChatRoom() {
         date.setHours(date.getHours() - 7);
         const adjustedCreateAt = date.toISOString();
 
-        const newMessage = {
-            name: sessionUsername,
-            createAt: adjustedCreateAt,
-            mes: messageContentChat.trim() === '' ? fileUrl : `${fileUrl ? fileUrl + ' ' : ''}${messageContentChat.trim()}`,
-            type: isRoom ? "room" : "people",
-            to: displayName
-        };
+
 
         if (socket && socket.readyState === WebSocket.OPEN) {
+            setSelectedFiles([]); // Clear selected files after sending
+            setScrollToBottom(true); // Scroll to bottom
+            console.log('File message object:', chatMessage);
             socket.send(JSON.stringify(chatMessage));
+            setShouldFetchMessages(true);
 
             // Update messages state immediately
-            setMessages(prevMessages => [...prevMessages, newMessage]);
         } else {
             console.error('WebSocket is not open. Unable to send message.');
         }
+    };
+    // hàm send chat
+    const sendChat = () => {
+        if (messageContentChat.trim() === '') return;
 
-        // Clear message content and selected file after sending
-        setMessageContentChat('');
-        setSelectedFile(null);
-        setScrollToBottom(true);
+        // Encode message content
+        const messageBytes = new TextEncoder().encode(messageContentChat.trim());
+        const encodedMessage = fromByteArray(messageBytes);
+
+        // Determine if displayName is a room
+        const isRoom = userList.some(user => user.name === displayName && user.type === 1);
+
+        let chatMessage;
+        if (isRoom) {
+            console.log("Sending message to room:", displayName);
+            chatMessage = {
+                action: "onchat",
+                data: {
+                    event: "SEND_CHAT",
+                    data: {
+                        type: "room",
+                        to: displayName,
+                        mes: encodedMessage
+                    }
+                }
+            };
+        } else {
+            console.log("Sending message to user:", displayName);
+            chatMessage = {
+                action: "onchat",
+                data: {
+                    event: "SEND_CHAT",
+                    data: {
+                        type: "people",
+                        to: displayName,
+                        mes: encodedMessage
+                    }
+                }
+            };
+        }
+
+        // Create a new message object for immediate display
+        const date = new Date();
+
+        date.setHours(date.getHours() - 7);
+
+        const adjustedCreateAt = date.toISOString();
+
+
+
+        // Create a new message object for immediate display
+
+
+
+        // Create a new message object for immediate display
+
+        // const newMessage = {
+        //
+        //     name: username,
+        //     createAt: adjustedCreateAt, //
+        //     mes: messageContentChat.trim(), // Use the plain message content
+        //     type: isRoom ? "room" : "people",
+        //     to: displayName
+        // }
+
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            setMessageContentChat(''); // Clear message content after sending
+            setScrollToBottom(true); // Scroll to bottom
+            console.log('Message object:', chatMessage);
+            socket.send(JSON.stringify(chatMessage));
+            setShouldFetchMessages(true);
+
+            // Update messages state immediately
+            // setMessages(prevMessages => [...prevMessages, newMessage]);
+        } else {
+            console.error('WebSocket is not open. Unable to send message.');
+        }
     };
 
     useEffect(() => {
         if (shouldFetchMessages) {
-            handleLiClick(displayName, 0, roomOwner);
+            handleLiClick(displayName, type, roomOwner);
             setShouldFetchMessages(false); // Reset to prevent re-calling when messages change
         }
     }, [shouldFetchMessages]);
-
 
     const handleInputChange = (event) => {
         setMessageContentChat(event.target.value);
     };
 
+    const handleSendClick = () => {
+        if (selectedFiles.length > 0) {
+            sendFiles();
+        } else {
+            sendChat();
+        }
+    };
 
     const handleKeyDown = (event) => {
         if (event.key === 'Enter') {
-            event.preventDefault();
-            sendMessage();
+            if (event.shiftKey) {
+                event.preventDefault();
+                setMessageContentChat(prev => prev + '\n');
+            } else {
+                event.preventDefault();
+                sendChat();
+            }
         }
     };
 
@@ -1244,6 +1394,29 @@ export default function ChatRoom() {
         return text.replace(text1, text2);
     };
 
+    const getFileIcon = (fileName) => {
+        const extension = fileName.split('.').pop().toLowerCase();
+        const fileIcons = {
+            'pdf': pdf,
+            'docx': word,
+            'xlsx': xlsx,
+            'pptx': pptx,
+            'css': css,
+            'html': html,
+            'js': js,
+            'txt': txt,
+            'zip': zip,
+            'mp3':mp3,
+            'java':java,
+            'sql':sql,
+            'csv':csv,
+            'drawio':drawio,
+            'ts':ts
+            // Add paths to other icons as necessary
+        };
+        return fileIcons[extension];
+    };
+
 
     const urlRegex = /https?:\/\/[^\s]+/g;
     const checkURLFile = (mes) => {
@@ -1294,9 +1467,12 @@ export default function ChatRoom() {
                                     />
                                 </div>
                             ) : (
+                                <>
+                                <img src={getFileIcon(nameFile(urls[index]))} alt="" style={{ width: '24px', height: '24px', marginRight: '8px' }} />
                                 <a href={urls[index]} target="_blank" rel="noopener noreferrer" download>
                                     {nameFile(urls[index])}
                                 </a>
+                            </>
                             )
                         ) : /https:\/\/media[0-9]*\.giphy\.com\/media\/[a-zA-Z0-9]+\/[0-9]+\.gif/.test(urls[index]) ? (
                             <iframe
@@ -1329,31 +1505,108 @@ export default function ChatRoom() {
     };
 
 
-// >>>>>>> main
 
+// >>>>>>> main
     //chuc nang xoa, thu hoi chat
     const [hoveredMessage, setHoveredMessage] = useState(null); // Thêm trạng thái để theo dõi tin nhắn được chọn
-    // Thêm các hàm xử lý
-    const handleDeleteMessage = (messageId) => {
-        // Xử lý xóa tin nhắn
-        console.log('Delete message:', messageId);
+
+    // const handleDeleteMessage = async (messageId) => {
+    //     console.log("messageId: "+messageId)
+    //     const updatedMessages = messages.map(message => {
+    //         if (message.id === messageId) {
+    //             if (!message.hasOwnProperty('isRecalled')) {
+    //                 return {...message, isRecalled: true};
+    //             }
+    //             return {...message, isRecalled: true};
+    //         }
+    //         return message;
+    //     });
+    //
+    //     setMessages(updatedMessages);
+    //     // Lấy tham chiếu của tin nhắn bị thu hồi
+    //     const messageElement = specificMessageRef.current[messageId];
+    //
+    //     const messageRef = doc(db, "messages", String(messageId));
+    //     const messageDoc = await getDoc(messageRef);
+    //
+    //     if (messageDoc.exists()) {
+    //         await updateDoc(messageRef, {
+    //             isRecalled: true
+    //         });
+    //     }else{
+    //         await setDoc(messageRef, {
+    //             id: messageId,
+    //             isRecalled: true
+    //         });
+    //     }
+    //
+    //     console.log('Message recalled:', messageId);
+    //
+    //     // Cuộn tới tin nhắn bị thu hồi
+    //     if (messageElement) {
+    //         messageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    //     }
+    //
+    //     // Ngăn việc cuộn tự động xuống cuối
+    //     setScrollToBottom(false);
+    // };
+    const handleDeleteMessage = async (messageId) => {
+        console.log("messageId: " + messageId);
+
+        // Kiểm tra nếu messageId là undefined
+        if (!messageId) {
+            console.error('messageId is undefined');
+            return;
+        }
+
+        // Cập nhật state của tin nhắn
+        const updatedMessages = messages.map(message => {
+            if (message.id === messageId) {
+                return {...message, isRecalled: true};
+            }
+            return message;
+        });
+
+        setMessages(updatedMessages);
+
+        // Lấy tham chiếu của tin nhắn bị thu hồi
+        const messageElement = specificMessageRef.current[messageId];
+
+        try {
+            const messageRef = doc(db, "messages", String(messageId));
+            const messageDoc = await getDoc(messageRef);
+
+            if (messageDoc.exists()) {
+                await updateDoc(messageRef, {
+                    isRecalled: true
+                });
+            } else {
+                await setDoc(messageRef, {
+                    id: messageId,
+                    isRecalled: true
+                });
+            }
+
+            console.log('Message recalled:', messageId);
+
+            // Cuộn tới tin nhắn bị thu hồi
+            if (messageElement) {
+                messageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            // Ngăn việc cuộn tự động xuống cuối
+            setScrollToBottom(false);
+        } catch (error) {
+            console.error("Error recalling message: ", error);
+        }
     };
+
 
     const handleReplyMessage = (message) => {
         // Xử lý trả lời tin nhắn
         console.log('Reply to message:', message);
     };
-    // const handleEmojiClick = (messageId) => {
-    //     // Mở một danh sách các biểu tượng cảm xúc cho người dùng chọn
-    //     // Sau khi người dùng chọn, gửi biểu tượng cảm xúc kèm theo tin nhắn
-    //     console.log(`Thả biểu tượng cảm xúc cho tin nhắn có ID: ${messageId}`);
-    //     // Thực hiện logic thêm biểu tượng cảm xúc vào tin nhắn
-    // };
-    // const [showEmojiPicker, setShowEmojiPicker] = useState(false); // State để điều khiển hiển thị Emoji Picker
-    //
-    // const toggleEmojiPicker = () => {
-    //     setShowEmojiPicker(!showEmojiPicker);
-    // };
+
     const [showEmojiPicker, setShowEmojiPicker] = useState(false); // State để điều khiển hiển thị Emoji Picker
     const [emojiPickerMessageId, setEmojiPickerMessageId] = useState(null); // Trạng thái để lưu trữ ID tin nhắn hiện tại
     const emojiPickerRef = useRef(null);
@@ -1747,9 +2000,10 @@ export default function ChatRoom() {
                                 <div className="card-footer"></div>
                             </div>
                         </div>
+
                         <div className="col-md-8 col-xl-6 chat" id="chatcenter">
                             <div className="card" id="chatcenter">
-                                <div className="card-header msg_head">
+                                <div className="card-header msg_head cor">
                                     <div className="d-flex bd-highlight">
                                         <div className="img_cont">
                                             <img
@@ -1839,6 +2093,9 @@ export default function ChatRoom() {
                                                  onMouseLeave={() => setHoveredMessage(null)}>
 
 
+
+
+
                                                 {/*=======*/}
 
                                                 {/*                                            <div
@@ -1863,37 +2120,30 @@ export default function ChatRoom() {
 
                                                 <div
 
-                                                    className={`msg_cotainer${message.name === username ? '_send' : ''}`}>
+                                                    className={`msg_cotainer${message.name === username ? '_send' : ''}   ${message.isRecalled &&message.name === username  ? 'recalledMessage' : ''}`}>
 
-                                                    <div className="message-content">
+                                                    {/*<div className={"message-content" }>*/}
+                                                    <div
+                                                        className={`message-content`}>
 
-                                                        {renderMessageContent(message)}
-
-                                                        {/*<<<<<<< HEAD*/}
-
-
-                                                        <span
-
-                                                            className={`msg_time${message.name === username ? '_send' : ''}`}>
-
-                                                                 {renderDateTime(message.createAt)}
-
-                                                        </span>
-
-                                                        {/* Hiển thị các biểu tượng cảm xúc */}
-
-                                                        {message.reactions && (
-
-                                                            <div className="message-reactions">
-
-                                                                {message.reactions.map((reaction, reactionIndex) => (
-
-                                                                    <span key={reactionIndex}>{reaction}</span>
-
-                                                                ))}
-
-                                                            </div>
-
+                                                        {message.isRecalled&&message.name === username ? (
+                                                            <span>Tin nhắn đã bị thu hồi</span>
+                                                        ) : (
+                                                            <>
+                                                                {renderMessageContent(message)}
+                                                                <span
+                                                                    className={`msg_time${message.name === username ? '_send' : ''}`}>
+                                                                            {renderDateTime(message.createAt)}
+                                                                        </span>
+                                                                {message.reactions && (
+                                                                    <div className="message-reactions">
+                                                                        {message.reactions.map((reaction, reactionIndex) => (
+                                                                            <span
+                                                                                key={reactionIndex}>{reaction}</span>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </>
                                                         )}
 
                                                         {hoveredMessage === index && (
@@ -1901,36 +2151,13 @@ export default function ChatRoom() {
                                                             <div
 
                                                                 className={`message-icons ${message.name === username ? 'left' : 'right'}`}>
+                                                                {message.name !== username ?"":( <i className="fas fa-trash"
 
-                                                                <i className="fas fa-trash"
-
-                                                                   onClick={() => handleDeleteMessage(message.id)}></i>
+                                                                                                    onClick={() => handleDeleteMessage(message.id)}></i>)}
 
                                                                 <i className="fas fa-reply"
 
                                                                    onClick={() => handleReplyMessage(message)}></i>
-
-                                                                {/*=======*/}
-
-                                                                {/*                                                        <span className={`msg_time${message.name === username ? '_send' : ''}`}>*/}
-
-                                                                {/*                            {renderDateTime(message.createAt)}*/}
-
-                                                                {/*                        </span>*/}
-
-                                                                {/*                                                        {hoveredMessage === index && (*/}
-
-                                                                {/*                                                            <div className={`message-icons ${message.name === username ? 'left' : 'right'}`}>*/}
-
-                                                                {/*                                                                <i className="fas fa-trash"*/}
-
-                                                                {/*                                                                   onClick={() => handleDeleteMessage(message.id)}></i>*/}
-
-                                                                {/*                                                                <i className="fas fa-reply"*/}
-
-                                                                {/*                                                                   onClick={() => handleReplyMessage(message)}></i>*/}
-
-                                                                {/*>>>>>>> main*/}
 
                                                                 <i className="fas fa-smile"
 
@@ -1941,31 +2168,15 @@ export default function ChatRoom() {
                                                         )}
 
                                                         {showEmojiPicker && emojiPickerMessageId === message.id && (
-
                                                             <div className="emoji-picker-container">
-
                                                                 <EmojiPicker
-
                                                                     onEmojiClick={(emojiData, event) => handleEmojiSelect(emojiData, event)}/>
-
                                                             </div>
-
                                                         )}
-
 
                                                     </div>
 
-                                                    {/*<<<<<<< HEAD*/}
-
-
                                                 </div>
-
-
-                                                {/*=======*/}
-
-                                                {/*                                                </div>*/}
-
-                                                {/*>>>>>>> main*/}
 
                                             </div>
 
@@ -1975,24 +2186,23 @@ export default function ChatRoom() {
                                     <div ref={messagesEndRef}></div>
                                 </div>
 
-                                <div className="card-footer" style={{height: selectedFile ? '150px' : '100px'}}>
-
-                                    {selectedFile && (
-
-                                        <div className="selected-file" contentEditable={false}>
-
-                                            <span>{selectedFile.name}</span>
-
-                                            <button onClick={() => setSelectedFile(null)}>x</button>
-
+                                <div className="card-footer"
+                                     style={{height: selectedFiles.length > 0 ? '150px' : '100px'}}>
+                                    {selectedFiles.length > 0 && (
+                                        <div className="selected-files" contentEditable={false}>
+                                            {selectedFiles.map((file, index) => (
+                                                <div key={index} className="selected-file">
+                                                    <span>{file.name}</span>
+                                                    <button
+                                                        onClick={() => setSelectedFiles(prevFiles => prevFiles.filter((_, i) => i !== index))}>x
+                                                    </button>
+                                                </div>
+                                            ))}
                                         </div>
-
                                     )}
 
-                                    <div className="input-group" style={{marginBottom: '10px'}}>
-
+                                    <div className="input-group" style={{marginBottom: "10px"}}>
                                         <div className="input-group-append" id="sendfile">
-
                                             <label className="input-group-text attach_btn"
                                                    style={{height: '30px', cursor: 'pointer'}}>
 
@@ -2003,13 +2213,12 @@ export default function ChatRoom() {
 
                                             </label>
 
-                                            <span
-                                                className="input-group-text attach_btn"
-                                                style={{height: '30px'}}
-                                                onClick={() => setGifPickerVisible(!isGifPickerVisible)}
-                                            >
-            <MDBIcon fas icon="gift"/>
-          </span>
+                                            <span className="input-group-text attach_btn"
+                                                  style={{height: "30px"}}
+                                                  onClick={() => setGifPickerVisible(!isGifPickerVisible)}>
+                                                <MDBIcon fas icon="gift"/>
+
+                                            </span>
                                         </div>
                                         <textarea name="" className="form-control type_msg"
                                                   placeholder="Type your message..."

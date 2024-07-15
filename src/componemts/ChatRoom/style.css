@@ -30,6 +30,16 @@
     border-radius: 15px 15px 0 0 !important;
     border-bottom: 0 !important;
 }
+ /*Thêm lớp CSS*/
+   .recalledMessage {
+       background-color: rgba(176, 175, 175, 0.8) !important;
+       font-style: italic;
+       color: white;
+   }
+
+.cor{
+    background: #89afd7 !important;
+}
 .card-footer{
     border-radius: 0 0 15px 15px !important;
     border-top: 0 !important;
@@ -690,4 +700,53 @@ input[type="radio"]:checked + .tab-label + .tab-slider {
     color: red;
     margin-left: 10px;
     pointer-events: all; /* Cho phép nhấn nút xóa */
+}
+.message-content {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.message-line {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.file-url {
+    margin-bottom: 8px;
+}
+
+.file-url img {
+    vertical-align: middle;
+}
+.card-footer .selected-files {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.card-footer .selected-file {
+    align-items: center;
+    background: #f1f1f1;
+    border-radius: 8px;
+    max-width: fit-content;
+    margin-right: 8px; /* Adjust spacing between file items */
+}
+
+.card-footer .selected-file span {
+    margin-right: 8px;
+}
+
+.card-footer .selected-file button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #ff0000;
+}
+/*Thêm lớp CSS*/
+.recalledMessage {
+    background-color: rgba(176, 175, 175, 0.8) !important;
+    font-style: italic;
+    color: white;
+}
+.cor{
+    background: #89afd7 !important;
 }

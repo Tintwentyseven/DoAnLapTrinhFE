@@ -12,6 +12,15 @@ import {getStorage} from 'firebase/storage'
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// const firebaseConfig = {
+//     apiKey: "AIzaSyBJdkT_57OtCMhR75eHDhCxsuwYjM9WbZw",
+//     authDomain: "appchat-4fabb.firebaseapp.com",
+//     projectId: "appchat-4fabb",
+//     storageBucket: "appchat-4fabb.appspot.com",
+//     messagingSenderId: "587294163073",
+//     appId: "1:587294163073:web:80c282b393ec57e1fecd80",
+//     measurementId: "G-KELT5BRS1Y"
+// };
 const firebaseConfig = {
     apiKey: "AIzaSyB3sY4q9TgbxhsDLw1ottcpQiVmbrzYzl8",
     authDomain: "appchatfe.firebaseapp.com",
