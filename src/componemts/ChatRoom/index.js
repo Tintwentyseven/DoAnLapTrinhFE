@@ -1234,6 +1234,8 @@ export default function ChatRoom() {
             }
         };
     }, [socket, userList, joinRoomCode]);
+
+
     const checkIncludes = (text, smallText) => {
         return text.includes(smallText);
     };
@@ -1243,25 +1245,25 @@ export default function ChatRoom() {
     };
 
 
-
+    const urlRegex = /https?:\/\/[^\s]+/g;
     const checkURLFile = (mes) => {
         return (
-            mes?.startsWith("https://firebasestorage") && checkIncludes(mes, "files")
+            mes?.startsWith("https://firebasestorage") &&
+            (checkIncludes(mes, "files") || checkIncludes(mes, "images")) // Kiểm tra nếu là file hoặc ảnh
         );
     };
 
-// Regex to check for URLs
-    const urlRegex = /https?:\/\/[^\s]+/g;
-    const checkURLImg = (mes) => {
-        return (
-            mes?.startsWith("https://firebasestorage") && checkIncludes(mes, "images")
-        );
-    };
     const nameFile = (mes) => {
         const urlParts = mes.split("/");
         const fileNameWithParams = urlParts[urlParts.length - 1];
         const fileName = fileNameWithParams.split("?")[0];
         return decodeURIComponent(fileName.replace("files%2F", ""));
+    };
+
+    const isImageURL = (url) => {
+        const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+        const lowerCaseUrl = url.toLowerCase();
+        return imageExtensions.some(ext => lowerCaseUrl.includes(ext));
     };
 
     const renderMessageContent = (message) => {
@@ -1279,9 +1281,23 @@ export default function ChatRoom() {
                         {part}
                         {urls[index] &&
                         checkURLFile(urls[index]) ? (
-                            <a href={urls[index]} target="_blank" rel="noopener noreferrer" download>
-                                {nameFile(urls[index])}
-                            </a>
+                            isImageURL(urls[index]) ? (
+                                <div>
+                                    <img
+                                        style={{
+                                            maxWidth: "100%",
+                                            height: "auto",
+                                            objectFit: "cover",
+                                        }}
+                                        src={urls[index]}
+                                        alt=""
+                                    />
+                                </div>
+                            ) : (
+                                <a href={urls[index]} target="_blank" rel="noopener noreferrer" download>
+                                    {nameFile(urls[index])}
+                                </a>
+                            )
                         ) : /https:\/\/media[0-9]*\.giphy\.com\/media\/[a-zA-Z0-9]+\/[0-9]+\.gif/.test(urls[index]) ? (
                             <iframe
                                 src={`https://giphy.com/embed/${urls[index].split('media/')[1].split('/')[0]}`}
@@ -1301,18 +1317,6 @@ export default function ChatRoom() {
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                 allowFullScreen
                             ></iframe>
-                        ) : checkURLImg(urls[index]) ? (
-                            <div>
-                                <img
-                                    style={{
-                                        width: "300px",
-                                        height: "140px",
-                                        objectFit: "cover",
-                                    }}
-                                    src={urls[index]}
-                                    alt=""
-                                />
-                            </div>
                         ) : (
                             <a href={urls[index]} target="_blank" rel="noopener noreferrer">
                                 {urls[index]}
@@ -1323,6 +1327,8 @@ export default function ChatRoom() {
             </div>
         );
     };
+
+
 // >>>>>>> main
 
     //chuc nang xoa, thu hoi chat
